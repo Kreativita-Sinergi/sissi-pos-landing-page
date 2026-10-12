@@ -43,10 +43,10 @@ export const metadata: Metadata = {
     siteName: "Sissi POS",
     images: [
       {
-        url: "/images/og-sissi.jpg",
+        url: "/images/og-sissi-2026.jpg",
         width: 1200,
         height: 630,
-        alt: "Layar Kasir Sissi di tablet",
+        alt: "Sissi POS — Internet mati, kasir tetap jalan. Layar Kasir di tablet dan Layar dapur di HP.",
       },
     ],
   },
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/images/og-sissi.jpg"],
+    images: ["/images/og-sissi-2026.jpg"],
   },
   icons: {
     icon: "/logos/sissi-icon.svg",
