@@ -59,7 +59,9 @@ export function Footer() {
           <div className="flex items-center gap-4 text-[#525866]">
             {/* Instagram */}
             <Link
-              href="https://instagram.com"
+              href="https://www.instagram.com/sissi.indonesia/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="opacity-70 hover:opacity-100 transition-opacity"
               aria-label="Instagram"
             >
@@ -72,24 +74,12 @@ export function Footer() {
                 />
               </div>
             </Link>
-            {/* TikTok */}
-            <Link
-              href="https://tiktok.com"
-              className="opacity-70 hover:opacity-100 transition-opacity"
-              aria-label="TikTok"
-            >
-              <div className="relative w-5 h-5">
-                <Image
-                  src="/logos/tiktok.svg"
-                  alt="TikTok"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-            </Link>
+            {/* TikTok: disembunyikan dulu (keputusan pemilik 2026-10-12) */}
             {/* YouTube */}
             <Link
-              href="https://youtube.com"
+              href="https://www.youtube.com/@SissiKreatifTeknologi"
+              target="_blank"
+              rel="noopener noreferrer"
               className="opacity-70 hover:opacity-100 transition-opacity"
               aria-label="YouTube"
             >
