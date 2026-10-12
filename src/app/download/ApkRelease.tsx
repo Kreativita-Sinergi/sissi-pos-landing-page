@@ -2,7 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { Check, Copy, Download } from "lucide-react";
-import { APK_LATEST_JSON_URL, APK_LATEST_URL } from "@/constants/site";
+import {
+  APK_LATEST_JSON_URL,
+  APK_LATEST_URL,
+  MIN_ANDROID,
+  PLAY_STORE_URL,
+} from "@/constants/site";
 
 /** Isi `latest.json` (dibuat `sissi-app/tool/build_apk.sh`). */
 type ApkInfo = {
@@ -12,6 +17,11 @@ type ApkInfo = {
   sha256: string;
   releasedAt: string;
 };
+
+type LoadState =
+  | { status: "loading" }
+  | { status: "ready"; info: ApkInfo }
+  | { status: "failed" };
 
 function parseInfo(raw: unknown): ApkInfo | null {
   if (!raw || typeof raw !== "object") return null;
@@ -50,21 +60,28 @@ function formatDate(iso: string): string | null {
   });
 }
 
+const ANDROID_REQ = `${MIN_ANDROID}+`;
+const PILL =
+  "h-[30px] px-3 rounded-full text-[14px] inline-flex items-center whitespace-nowrap";
+
 /**
- * Tombol unduh + data versi yang dibaca saat runtime. Bila latest.json gagal dimuat,
- * tombol tetap tampil tanpa angka.
+ * Kartu unduhan APK. Data versi dibaca saat runtime dari `latest.json`; bila gagal,
+ * kartu tetap tampil tanpa angka dan tombol unduh tetap berfungsi.
  */
-export function ApkRelease() {
-  const [info, setInfo] = useState<ApkInfo | null>(null);
+export function ApkRelease({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<LoadState>({ status: "loading" });
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const ctrl = new AbortController();
     fetch(APK_LATEST_JSON_URL, { cache: "no-store", signal: ctrl.signal })
       .then((res) => (res.ok ? res.json() : null))
-      .then((json) => setInfo(parseInfo(json)))
+      .then((json) => {
+        const info = parseInfo(json);
+        setState(info ? { status: "ready", info } : { status: "failed" });
+      })
       .catch(() => {
-        // Diam: tombol unduh tetap berfungsi tanpa data versi.
+        if (!ctrl.signal.aborted) setState({ status: "failed" });
       });
     return () => ctrl.abort();
   }, []);
@@ -75,66 +92,127 @@ export function ApkRelease() {
     return () => clearTimeout(t);
   }, [copied]);
 
+  const info = state.status === "ready" ? state.info : null;
+
   const copySha = async () => {
     if (!info) return;
     try {
       await navigator.clipboard.writeText(info.sha256);
       setCopied(true);
     } catch {
-      // Clipboard ditolak browser: kode tetap bisa diseleksi manual.
+      // Clipboard ditolak browser: kode lengkap tetap ada di atribut title.
     }
   };
 
   const date = info ? formatDate(info.releasedAt) : null;
 
   return (
-    <div>
-      <a
-        href={APK_LATEST_URL}
-        className="h-[52px] w-full sm:w-auto px-6 rounded-[10px] bg-[#292e31] hover:bg-[#1b2022] text-white font-semibold text-[16px] inline-flex items-center justify-center gap-2.5 transition-colors"
-      >
-        <Download className="w-5 h-5" aria-hidden />
-        <span>Unduh APK</span>
-      </a>
+    <div className="rounded-[16px] border border-border-subtle bg-white shadow-so-card overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12">
+        <div className="lg:col-span-8 p-6 sm:p-8">
+          {children}
 
-      {info && (
-        <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[15px]">
-          <dt className="text-[#7d8986]">Versi</dt>
-          <dd className="text-[#292e31] font-medium">
-            {info.version}{" "}
-            <span className="text-[#7d8986] font-normal">(build {info.build})</span>
-          </dd>
-          <dt className="text-[#7d8986]">Ukuran</dt>
-          <dd className="text-[#292e31]">{formatSize(info.sizeBytes)}</dd>
-          {date && (
-            <>
-              <dt className="text-[#7d8986]">Rilis</dt>
-              <dd className="text-[#292e31]">{date}</dd>
-            </>
-          )}
-          <dt className="text-[#7d8986] pt-1">SHA-256</dt>
-          <dd className="min-w-0">
-            <div className="flex items-start gap-2">
-              <code className="min-w-0 flex-1 break-all font-mono text-[13px] leading-relaxed text-[#525866] bg-[#f3f6f5] rounded-[6px] px-2.5 py-1.5">
-                {info.sha256}
-              </code>
-              <button
-                type="button"
-                onClick={copySha}
-                aria-label="Salin kode SHA-256"
-                className="shrink-0 h-[34px] px-3 rounded-[6px] border border-[#e4e9e7] hover:bg-[#f3f6f5] text-[13px] font-medium text-[#292e31] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-[#be5823]" aria-hidden />
-                ) : (
-                  <Copy className="w-4 h-4" aria-hidden />
-                )}
-                <span aria-live="polite">{copied ? "Tersalin" : "Salin"}</span>
-              </button>
-            </div>
-          </dd>
-        </dl>
-      )}
+          <div className="mt-6" aria-busy={state.status === "loading"}>
+            {state.status === "loading" && (
+              <div className="flex flex-wrap gap-2" aria-hidden>
+                {[96, 72, 132, 104].map((w) => (
+                  <span
+                    key={w}
+                    className="h-[30px] rounded-full bg-bg-muted animate-pulse"
+                    style={{ width: w }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {state.status === "failed" && (
+              <ul className="flex flex-wrap items-center gap-2" aria-label="Info rilis">
+                <li className={`${PILL} bg-bg-muted text-text-body`}>
+                  {ANDROID_REQ}
+                </li>
+                <li className="text-[14px] text-text-muted">
+                  Tombol selalu mengunduh versi terbaru.
+                </li>
+              </ul>
+            )}
+
+            {info && (
+              <>
+                <ul className="flex flex-wrap gap-2" aria-label="Info rilis">
+                  <li className={`${PILL} bg-brand-tint text-brand-ink font-semibold`}>
+                    Versi {info.version}
+                    <span className="ml-1 font-normal">
+                      (build {info.build})
+                    </span>
+                  </li>
+                  <li className={`${PILL} bg-bg-muted text-text-body`}>
+                    {formatSize(info.sizeBytes)}
+                  </li>
+                  {date && (
+                    <li className={`${PILL} bg-bg-muted text-text-body`}>
+                      Rilis {date}
+                    </li>
+                  )}
+                  <li className={`${PILL} bg-bg-muted text-text-body`}>
+                    {ANDROID_REQ}
+                  </li>
+                </ul>
+
+                <div className="mt-4 flex items-center gap-2 min-w-0">
+                  <span className="shrink-0 text-[13px] text-text-muted">
+                    SHA-256
+                  </span>
+                  <code
+                    title={info.sha256}
+                    className="min-w-0 truncate font-mono text-[13px] text-text-body"
+                  >
+                    <span aria-hidden>
+                      {info.sha256.slice(0, 8)}…{info.sha256.slice(-6)}
+                    </span>
+                    <span className="sr-only">{info.sha256}</span>
+                  </code>
+                  <button
+                    type="button"
+                    onClick={copySha}
+                    aria-label="Salin kode SHA-256 lengkap"
+                    className="shrink-0 h-[30px] px-2.5 rounded-[6px] border border-border-subtle hover:bg-bg-muted text-[13px] font-medium text-text-heading inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {copied ? (
+                      <Check className="w-3.5 h-3.5 text-success" aria-hidden />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" aria-hidden />
+                    )}
+                    <span aria-live="polite">
+                      {copied ? "Tersalin" : "Salin"}
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-span-4 flex flex-col justify-center gap-3 px-6 pb-6 sm:px-8 sm:pb-8 lg:py-8 lg:border-l border-border-subtle lg:bg-bg-muted">
+          <a
+            href={APK_LATEST_URL}
+            className="h-[56px] w-full px-6 rounded-[12px] bg-brand-deep hover:bg-brand-deeper text-white font-semibold text-[17px] inline-flex items-center justify-center gap-2.5 transition-colors"
+          >
+            <Download className="w-5 h-5" aria-hidden />
+            <span>Unduh APK</span>
+          </a>
+          <p className="text-[14px] text-text-muted text-center">
+            Ada Google Play?{" "}
+            <a
+              href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-deep font-medium hover:underline"
+            >
+              Pasang dari sana
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
