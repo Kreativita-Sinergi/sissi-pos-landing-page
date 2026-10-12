@@ -22,7 +22,7 @@ import { ApiError } from "@/lib/sissiApi";
 import { newUuid, type SelfOrderApi } from "@/lib/selfOrder/api";
 import { formatRate, formatRupiah } from "@/lib/selfOrder/pricing";
 import type { StoredOrder } from "@/lib/selfOrder/storage";
-import { FINAL_STATUSES, type OrderStatus, type OrderStatusResponse, type OrderType, type PublicOrder } from "@/lib/selfOrder/types";
+import { FINAL_STATUSES, type OrderStatusResponse, type OrderType, type PublicOrder } from "@/lib/selfOrder/types";
 import { ORDER_TYPE_LABEL } from "./CartSheet";
 import { PaymentView } from "./PaymentView";
 import { Sheet } from "./Sheet";
@@ -31,56 +31,90 @@ import { EmptyState, Frame, Notice, cardClass, dangerButton, focusRing, primaryB
 const DEFAULT_POLL_S = 10;
 const NO_RESPONSE_MS = 3 * 60 * 1000;
 
-const STEP_INDEX: Partial<Record<OrderStatus, number>> = {
-  awaiting_payment: 0,
-  pending: 0,
-  accepted: 1,
-  preparing: 2,
-  ready: 3,
-  completed: 4,
-};
+const FALLBACK_FLOW = { track_status: true, kitchen: true, delivered: false };
 
-function steps(order: PublicOrder): { title: string; at: string | null }[] {
-  const ready = order.table ? "Siap diantar" : "Siap diambil";
-  return [
-    order.pay_mode === "online"
-      ? { title: "Pesanan dikirim, menunggu pembayaran", at: order.created_at }
-      : { title: "Pesanan dikirim", at: order.created_at },
-    {
-      title: order.pay_mode === "online" ? "Lunas, pesanan diterima" : "Diterima kasir",
-      at: order.accepted_at,
-    },
-    { title: "Sedang disiapkan", at: null },
-    { title: ready, at: order.ready_at },
-    { title: "Selesai", at: order.completed_at },
+type Step = { key: "sent" | "paid" | "preparing" | "ready"; title: string; at: string | null };
+
+// Langkah sesuai alur outlet: tanpa pantau status berhenti di "Lunas"; langkah "Sedang disiapkan" hanya bila
+// outlet memakai layar dapur. Pengantaran setelah "Siap" urusan kafe.
+function steps(order: PublicOrder): Step[] {
+  const flow = order.flow ?? FALLBACK_FLOW;
+  const online = order.pay_mode === "online";
+  const list: Step[] = [
+    { key: "sent", title: online ? "Pesanan dikirim, menunggu pembayaran" : "Pesanan dikirim", at: order.created_at },
+    { key: "paid", title: online ? "Lunas, pesanan diterima" : "Lunas di kasir", at: order.accepted_at },
   ];
+  if (!flow.track_status) return list;
+  if (flow.kitchen) list.push({ key: "preparing", title: "Sedang disiapkan", at: null });
+  list.push({ key: "ready", title: flow.delivered ? "Siap diantar ke meja" : "Siap diambil", at: order.ready_at });
+  return list;
 }
 
-const STEP_ICONS: LucideIcon[] = [Send, ClipboardCheck, ChefHat, BellRing, CircleCheck];
+// Posisi langkah saat ini (undefined = tidak ditampilkan) dan apakah langkah itu sudah tuntas.
+function stepState(order: PublicOrder, list: Step[]): { index: number; finished: boolean } | undefined {
+  const at = (key: Step["key"]) => list.findIndex((s) => s.key === key);
+  switch (order.status) {
+    case "awaiting_payment":
+    case "pending":
+      return { index: 0, finished: false };
+    case "accepted":
+      return { index: at("paid"), finished: list.length === 2 };
+    case "preparing": {
+      const i = at("preparing");
+      return i >= 0 ? { index: i, finished: false } : { index: at("paid"), finished: list.length === 2 };
+    }
+    case "ready":
+    case "completed": {
+      const i = at("ready");
+      return { index: i >= 0 ? i : list.length - 1, finished: true };
+    }
+    default:
+      return undefined;
+  }
+}
+
+const STEP_ICONS: Record<Step["key"], LucideIcon> = {
+  sent: Send,
+  paid: ClipboardCheck,
+  preparing: ChefHat,
+  ready: BellRing,
+};
 
 type Mood = { icon: LucideIcon; tone: "brand" | "success" | "danger"; message: string; alert?: boolean };
 
 // Pesan ramah per status untuk kartu nomor pesanan.
 function moodOf(order: PublicOrder): Mood {
+  const flow = order.flow ?? FALLBACK_FLOW;
+  const table = order.table?.name;
+  // Tanpa pantau status: setelah lunas cukup dijelaskan bagaimana pesanan sampai.
+  const paidNote =
+    flow.delivered && table
+      ? `Pesananmu sedang disiapkan dan akan diantar ke ${table}.`
+      : `Pesananmu sedang disiapkan. Ambil di konter saat nomor ${order.order_no} dipanggil.`;
   switch (order.status) {
     case "awaiting_payment":
       return { icon: Wallet, tone: "brand", message: "Selesaikan pembayaran QRIS di bawah agar pesanan langsung diproses." };
     case "pending":
       return { icon: Clock, tone: "brand", message: "Pesananmu sudah masuk. Silakan bayar di kasir, lalu pesanan langsung disiapkan." };
     case "accepted":
-      return { icon: ClipboardCheck, tone: "brand", message: "Pesanan sudah diterima kasir dan segera disiapkan." };
+      return flow.track_status
+        ? { icon: ClipboardCheck, tone: "success", message: "Pembayaran diterima. Pesananmu segera disiapkan." }
+        : { icon: CircleCheck, tone: "success", message: `Pembayaran diterima. ${paidNote}` };
     case "preparing":
       return { icon: ChefHat, tone: "brand", message: "Pesananmu sedang disiapkan. Tunggu sebentar, ya." };
     case "ready":
       return {
         icon: BellRing,
         tone: "success",
-        message: order.table
-          ? `Pesananmu segera diantar ke ${order.table.name}.`
-          : `Silakan ambil pesanan di konter dengan nomor ${order.order_no}.`,
+        message:
+          flow.delivered && table
+            ? `Pesananmu segera diantar ke ${table}.`
+            : `Silakan ambil pesanan di konter dengan nomor ${order.order_no}.`,
       };
     case "completed":
-      return { icon: CircleCheck, tone: "success", message: "Selamat menikmati. Terima kasih sudah memesan!" };
+      return flow.track_status
+        ? { icon: CircleCheck, tone: "success", message: "Selamat menikmati. Terima kasih sudah memesan!" }
+        : { icon: CircleCheck, tone: "success", message: `Pembayaran diterima. ${paidNote}` };
     case "rejected":
       return {
         icon: CircleX,
@@ -353,7 +387,8 @@ export function OrderView({
 
   const createdMs = Date.parse(order.created_at);
   const noResponse = status === "pending" && now > 0 && Number.isFinite(createdMs) && now - createdMs > NO_RESPONSE_MS;
-  const stepIndex = STEP_INDEX[order.status];
+  const stepList = steps(order);
+  const progress = stepState(order, stepList);
   const canCancel = status === "pending" || status === "awaiting_payment";
   const group = data?.group;
   const canAdd = !!group?.can_add && allowAdditional;
@@ -366,10 +401,8 @@ export function OrderView({
     danger: { icon: "bg-danger-tint text-danger", pill: "bg-danger-tint text-danger" },
   }[mood.tone];
   const cashierStrip =
-    order.pay_mode === "cashier" && (status === "pending" || status === "accepted" || status === "preparing" || status === "ready")
-      ? status === "pending"
-        ? { title: "Bayar di kasir", body: "Tunjukkan nomor pesanan ini ke kasir." }
-        : { title: `Pembayaran di kasir — sebutkan nomor ${order.order_no}.`, body: null }
+    order.pay_mode === "cashier" && status === "pending"
+      ? { title: "Bayar di kasir", body: "Tunjukkan nomor pesanan ini ke kasir." }
       : null;
 
   return (
@@ -458,19 +491,19 @@ export function OrderView({
         )}
         {loadError && <Notice tone="danger" role="alert">{loadError}</Notice>}
 
-        {stepIndex !== undefined && (
+        {progress && progress.index >= 0 && (
           <section aria-labelledby="judul-progres" className={`${cardClass} p-5`}>
             <h2 id="judul-progres" className="mb-4 text-[18px] font-bold tracking-tight">
               Perkembangan pesanan
             </h2>
             <ol className="flex flex-col">
-              {steps(order).map((s, i) => {
-                const done = i < stepIndex || (i === stepIndex && status === "completed");
-                const current = i === stepIndex && status !== "completed";
-                const last = i === 4;
-                const Icon = STEP_ICONS[i];
+              {stepList.map((s, i) => {
+                const done = i < progress.index || (i === progress.index && progress.finished);
+                const current = i === progress.index && !progress.finished;
+                const last = i === stepList.length - 1;
+                const Icon = STEP_ICONS[s.key];
                 return (
-                  <li key={i} aria-current={current ? "step" : undefined} className={`flex gap-3.5 ${last ? "" : "min-h-[68px]"}`}>
+                  <li key={s.key} aria-current={current ? "step" : undefined} className={`flex gap-3.5 ${last ? "" : "min-h-[68px]"}`}>
                     <div className="flex flex-col items-center">
                       <span
                         className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${

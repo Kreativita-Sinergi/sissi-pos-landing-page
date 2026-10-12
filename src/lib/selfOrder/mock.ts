@@ -20,8 +20,7 @@ import type {
   OrderStatusResponse,
   Payment,
   PublicOrder,
-  PublicTable,
-} from "./types";
+  PublicTable, OrderFlow } from "./types";
 
 const STORE_KEY = "sissi-pesan-mock:v1";
 
@@ -268,18 +267,35 @@ function guard(code: string) {
 
 const SEC = 1000;
 
-function statusLabel(status: OrderStatus, hasTable: boolean): string {
+function statusLabel(status: OrderStatus, flow: OrderFlow): string {
   switch (status) {
     case "awaiting_payment": return "Menunggu pembayaran";
     case "pending": return "Menunggu dibayar di kasir";
-    case "accepted": return "Pesanan diterima";
+    case "accepted": return "Lunas";
     case "preparing": return "Sedang disiapkan";
-    case "ready": return hasTable ? "Siap diantar" : "Siap, silakan ambil";
-    case "completed": return "Selesai";
+    case "ready": return flow.delivered ? "Siap diantar ke meja" : "Siap, silakan ambil";
+    case "completed": return flow.track_status ? "Selesai" : "Lunas";
     case "rejected": return "Pesanan ditolak";
     case "canceled": return "Dibatalkan";
     case "expired": return "Kedaluwarsa";
   }
+}
+
+// Alur mock dari kode QR: "tanpa-pantau" = berhenti di Lunas, "tanpa-dapur" = tanpa langkah dapur, "antar" =
+// diantar ke meja (makan di tempat bermeja).
+function mockFlow(code: string, hasTable: boolean, orderType: string): OrderFlow {
+  return {
+    track_status: !code.includes("tanpa-pantau"),
+    kitchen: !code.includes("tanpa-dapur"),
+    delivered: code.includes("antar") && hasTable && orderType === "dine_in",
+  };
+}
+
+// Status setelah lunas [t] ms lalu (dapur siap ±20 dtk; pengantaran urusan kafe).
+function afterPaid(flow: OrderFlow, t: number): OrderStatus {
+  if (!flow.track_status) return "completed";
+  if (t < 20 * SEC) return flow.kitchen ? "preparing" : "accepted";
+  return "ready";
 }
 
 function iso(ms: number | null): string | null {
@@ -288,6 +304,8 @@ function iso(ms: number | null): string | null {
 
 function evolve(m: MockOrder, now: number): MockOrder {
   const o = { ...m.order };
+  const flow = mockFlow(m.code, !!o.table, o.order_type);
+  o.flow = flow;
   let payment = m.payment ? { ...m.payment } : null;
   const final = (s: OrderStatus) => ["completed", "rejected", "canceled", "expired"].includes(s);
 
@@ -301,7 +319,7 @@ function evolve(m: MockOrder, now: number): MockOrder {
       if (payment) payment = { ...payment, status: "paid", paid_at: iso(m.paidMs) };
       const t = now - m.paidMs;
       o.accepted_at = iso(m.paidMs);
-      o.status = t < 10 * SEC ? "accepted" : t < 30 * SEC ? "preparing" : t < 180 * SEC ? "ready" : "completed";
+      o.status = afterPaid(flow, t);
     } else {
       const exp = payment ? Date.parse(payment.expires_at) : m.createdMs + 120 * SEC;
       if (payment && now >= exp) payment = { ...payment, status: "expired" };
@@ -316,12 +334,12 @@ function evolve(m: MockOrder, now: number): MockOrder {
       o.status = o.expires_at && now >= Date.parse(o.expires_at) ? "expired" : "pending";
     } else {
       o.accepted_at = iso(m.createdMs + 8 * SEC);
-      o.status = t < 16 * SEC ? "accepted" : t < 35 * SEC ? "preparing" : t < 180 * SEC ? "ready" : "completed";
+      o.status = afterPaid(flow, t - 8 * SEC);
     }
   }
   if (o.status === "ready" || o.status === "completed") o.ready_at ??= new Date(now).toISOString();
   if (o.status === "completed") o.completed_at ??= new Date(now).toISOString();
-  o.status_label = statusLabel(o.status, !!o.table);
+  o.status_label = statusLabel(o.status, flow);
   if (final(o.status) && o.expires_at) o.expires_at = o.status === "expired" ? o.expires_at : null;
   return { ...m, order: o, payment };
 }

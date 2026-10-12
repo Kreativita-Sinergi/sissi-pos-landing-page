@@ -131,6 +131,15 @@ export type PublicOrder = {
   accepted_at: string | null;
   ready_at: string | null;
   completed_at: string | null;
+  /** Alur menurut pengaturan outlet (server lama: tidak ada → pantau penuh). */
+  flow?: OrderFlow;
+};
+
+/** Pantau status, langkah dapur, dan diantar ke meja (kontrak `PublicOrder.flow`). */
+export type OrderFlow = {
+  track_status: boolean;
+  kitchen: boolean;
+  delivered: boolean;
 };
 
 export type PaymentStatus = "pending" | "paid" | "expired" | "failed" | "canceled" | "refunded";
