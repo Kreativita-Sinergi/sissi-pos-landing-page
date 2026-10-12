@@ -420,20 +420,29 @@ function Check({
   hint: string;
   disabled?: boolean;
 }) {
+  // Hanya kotak centang yang bisa diklik (permintaan pemilik); teks tetap jadi
+  // nama & keterangan aksesibel lewat aria-labelledby/aria-describedby.
+  const id = useId();
   return (
-    <label className="flex cursor-pointer items-start gap-3">
+    <div className="flex items-start gap-3">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className={`mt-0.5 h-[18px] w-[18px] shrink-0 accent-brand-deep ${focusRing}`}
+        aria-labelledby={`${id}-l`}
+        aria-describedby={`${id}-h`}
+        className={`mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-brand-deep disabled:cursor-not-allowed ${focusRing}`}
       />
-      <span className="min-w-0">
-        <span className="block text-[14px] font-semibold text-text-heading">{label}</span>
-        <span className="block text-[13px] text-text-muted">{hint}</span>
-      </span>
-    </label>
+      <div className="min-w-0">
+        <span id={`${id}-l`} className="block text-[14px] font-semibold text-text-heading">
+          {label}
+        </span>
+        <span id={`${id}-h`} className="block text-[13px] text-text-muted">
+          {hint}
+        </span>
+      </div>
+    </div>
   );
 }
 
