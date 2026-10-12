@@ -115,11 +115,9 @@ export function ForcePasswordView() {
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-[440px]">
           <div className="mb-6 flex items-center gap-3">
-            <Image src="/logos/sissi-icon.svg" alt="" width={36} height={36} priority />
-            <div className="leading-tight">
-              <p className="text-[17px] font-bold text-text-heading">Sissi</p>
-              <p className="text-[13px] text-text-muted">Admin platform</p>
-            </div>
+            <Image src="/logos/sissi-logo-horizontal.svg" alt="Sissi" width={99} height={32} priority />
+            <span className="h-6 w-px bg-border-subtle" aria-hidden />
+            <p className="text-[14px] font-medium text-text-muted">Admin platform</p>
           </div>
           {error ? (
             <ErrorBlock

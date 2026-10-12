@@ -195,11 +195,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {/* Navigasi samping — desktop */}
           <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-border-subtle bg-white lg:flex">
             <div className="flex h-16 items-center gap-2.5 px-5">
-              <Image src="/logos/sissi-icon.svg" alt="" width={28} height={28} />
-              <div className="leading-tight">
-                <p className="text-[15px] font-bold">Sissi</p>
-                <p className="text-[12px] text-text-muted">Admin platform</p>
-              </div>
+              <Image src="/logos/sissi-logo-horizontal.svg" alt="Sissi" width={87} height={28} />
+              <span className="h-5 w-px bg-border-subtle" aria-hidden />
+              <p className="text-[13px] font-medium text-text-muted">Admin</p>
             </div>
             <nav aria-label="Menu admin" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pt-2">
               {NAV_GROUPS.map((g) => (
@@ -254,10 +252,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             {/* Kepala + tab — HP & tablet */}
             <header className="sticky top-0 z-20 border-b border-border-subtle bg-white lg:hidden">
               <div className="flex h-14 items-center gap-2.5 px-4">
-                <Image src="/logos/sissi-icon.svg" alt="" width={26} height={26} />
-                <p className="min-w-0 flex-1 truncate text-[15px] font-bold">
-                  Sissi <span className="font-medium text-text-muted">Admin</span>
-                </p>
+                <Image src="/logos/sissi-logo-horizontal.svg" alt="Sissi" width={74} height={24} />
+                <span className="h-4 w-px bg-border-subtle" aria-hidden />
+                <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-muted">Admin</p>
                 <Link href="/admin/akun" className={`rounded-full ${focusRing}`} aria-label={`Akun saya (${admin.email})`}>
                   <Avatar name={admin.name} />
                 </Link>
