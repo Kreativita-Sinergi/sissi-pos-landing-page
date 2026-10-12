@@ -1,113 +1,119 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { PLAY_STORE_URL } from "@/constants/site";
+import { GooglePlayIcon } from "@/components/shared/GooglePlayIcon";
+
+const BUSINESS_LINKS = [
+  { label: "Kuliner", href: "/untuk-usaha/kuliner" },
+  { label: "Ritel", href: "/untuk-usaha/ritel" },
+  { label: "Jasa", href: "/untuk-usaha/jasa" },
+  { label: "Penyewaan", href: "/untuk-usaha/penyewaan" },
+];
 
 export function HeroSection() {
   return (
-    <section className="bg-[#f1702c] text-white relative overflow-hidden pt-[82px]">
-      {/* Top Hero Text Section */}
-      <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-[120px] pt-12 sm:pt-16 pb-10 sm:pb-14">
-        {/* Main Headline - Left Aligned in Figma */}
-        <div className="max-w-[1000px]">
-          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[76px] font-semibold text-white tracking-tight leading-[1.08] text-left">
-            Satu layar untuk semua yang terjadi di kasir.
-          </h1>
-        </div>
+    <section className="bg-white relative overflow-hidden pt-[82px]">
+      {/* Teks di atas latar oranye merek */}
+      <div className="bg-[#f1702c] text-white">
+        <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-[120px] pt-10 sm:pt-16 pb-14 sm:pb-20 lg:pb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 lg:items-end">
+            <div className="lg:col-span-7">
+              <p className="text-[13px] font-mono font-medium tracking-wider uppercase text-[#fef1eb] mb-4">
+                Aplikasi kasir untuk HP &amp; tablet Android
+              </p>
+              <h1 className="text-[40px] leading-[1.05] sm:text-6xl lg:text-[72px] font-semibold tracking-tight text-white">
+                Internet mati, kasir tetap jalan.
+              </h1>
+            </div>
 
-        {/* Row: Subtitle on Left, Buttons on Right (Desktop) */}
-        <div className="mt-8 sm:mt-9 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 lg:gap-12">
-          {/* Subtitle */}
-          <p className="text-base sm:text-lg lg:text-[19px] text-[#fef1eb] font-normal leading-relaxed max-w-[560px] text-left">
-            Untuk kuliner, toko, jasa, dan penyewaan. Pesanan, pembayaran,
-            sampai tutup kasir tercatat di tablet dan HP Android, juga saat
-            internet putus.
-          </p>
+            <div className="lg:col-span-5 flex flex-col gap-6">
+              <p className="text-[17px] sm:text-lg text-[#fef1eb] leading-relaxed">
+                Catat penjualan, potong stok, hitung HPP per varian, terima
+                QRIS, dan kirim pesanan ke dapur dari satu aplikasi. Begitu
+                sinyal kembali, semua perangkat di outlet ikut terbarui.
+              </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-            <Link
-              href="#daftar"
-              className="h-[51px] px-[22px] bg-white hover:bg-[#fef1eb] text-[#292e31] font-medium text-[16px] rounded-[8px] flex items-center justify-center transition-all shadow-sm cursor-pointer"
-            >
-              Daftar sekarang
-            </Link>
-            <Link
-              href="#unduh"
-              className="h-[51px] px-[22px] bg-transparent hover:bg-white/10 text-white font-medium text-[16px] rounded-[8px] flex items-center justify-center gap-2.5 transition-colors border border-transparent cursor-pointer"
-            >
-              {/* Exact Google Play Vector Icon from Figma */}
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="shrink-0"
-              >
-                <path
-                  d="M2.25 15.375V2.62499C2.25 2.18249 2.505 1.79249 2.88 1.61249L10.2675 8.99999L2.88 16.3875C2.505 16.2 2.25 15.8175 2.25 15.375ZM12.6075 11.34L4.5375 16.005L10.905 9.63749L12.6075 11.34ZM15.12 8.10749C15.375 8.30999 15.5625 8.62499 15.5625 8.99999C15.5625 9.37499 15.3975 9.67499 15.135 9.88499L13.4175 10.875L11.5425 8.99999L13.4175 7.12499L15.12 8.10749ZM4.5375 1.99499L12.6075 6.65999L10.905 8.36249L4.5375 1.99499Z"
-                  fill="white"
-                />
-              </svg>
-              <span>Unduh aplikasi</span>
-            </Link>
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <a
+                  href={PLAY_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-[52px] px-6 bg-white hover:bg-[#fef1eb] text-[#292e31] font-semibold text-[16px] rounded-[10px] inline-flex items-center justify-center gap-2.5 transition-colors"
+                >
+                  <GooglePlayIcon />
+                  <span>Unduh di Google Play</span>
+                </a>
+                <Link
+                  href="/panduan"
+                  className="h-[52px] px-6 text-white font-medium text-[16px] rounded-[10px] inline-flex items-center justify-center border border-white/60 hover:bg-white/10 transition-colors"
+                >
+                  Lihat panduan
+                </Link>
+              </div>
+
+              <p className="text-[14px] text-[#fef1eb] leading-relaxed">
+                <span className="font-medium text-white">Untuk usaha</span>{" "}
+                {BUSINESS_LINKS.map((biz, idx) => (
+                  <React.Fragment key={biz.href}>
+                    <Link
+                      href={biz.href}
+                      className="underline decoration-white/40 underline-offset-4 hover:decoration-white"
+                    >
+                      {biz.label}
+                    </Link>
+                    {idx < BUSINESS_LINKS.length - 1 ? " · " : ""}
+                  </React.Fragment>
+                ))}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Hero Layar - Straddling between Orange and White Backgrounds */}
-      <div className="relative w-full">
-        {/* Background Split: Top is Orange (330px), Bottom is White */}
-        <div className="absolute inset-0 flex flex-col pointer-events-none">
-          <div className="h-[45%] sm:h-[48%] bg-[#f1702c]" />
-          <div className="flex-1 bg-white" />
-        </div>
-
-        {/* Centered Mockup Screen (width: 1040) */}
-        <div className="relative max-w-[1040px] mx-auto px-4 sm:px-6 lg:px-0 z-10 pb-10 sm:pb-16">
-          <div className="relative w-full drop-shadow-[0_20px_50px_rgba(5,40,32,0.15)]">
-            <Image
-              src="/images/hero-screen.png"
-              alt="Aplikasi Kasir Sissi"
-              width={2100}
-              height={1380}
-              priority
-              className="w-full h-auto block"
-              sizes="(max-width: 1040px) 100vw, 1040px"
-            />
-
-            {/* Figma Callout 1 (Menu per kategori) */}
-            <div
-              className="absolute left-[9.2%] top-[10.2%] w-[28px] h-[28px] sm:w-[34px] sm:h-[34px] rounded-full bg-[#ff7a45] border-[3px] border-white text-white font-bold font-mono text-xs sm:text-[14px] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.25)] select-none cursor-pointer hover:scale-110 transition-transform"
-              title="1. Menu per kategori"
-            >
-              1
+      {/* Komposisi layar asli: tablet + HP, menjembatani oranye & putih */}
+      <div className="relative">
+        <div
+          className="absolute inset-x-0 top-0 h-[38%] bg-[#f1702c]"
+          aria-hidden="true"
+        />
+        <div className="relative max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-[120px] pb-4 sm:pb-8">
+          <figure className="relative mx-auto max-w-[1060px] pr-[12%] sm:pr-[10%]">
+            {/* Tablet — layar Kasir */}
+            <div className="rounded-[16px] sm:rounded-[26px] bg-[#1b2022] p-[5px] sm:p-[10px] shadow-[0_24px_60px_-20px_rgba(41,46,49,0.45)]">
+              <div className="overflow-hidden rounded-[11px] sm:rounded-[17px] bg-white">
+                <Image
+                  src="/images/app/kasir-tablet.webp"
+                  alt="Layar Kasir Sissi di tablet: Es Kopi Susu Gula Aren 2x (less ice, extra shot), Americano, dan Caffe Latte, total Rp117.810 termasuk biaya layanan dan PB1 10%."
+                  width={1280}
+                  height={800}
+                  preload
+                  sizes="(max-width: 1100px) 88vw, 950px"
+                  className="block w-full h-auto"
+                />
+              </div>
             </div>
 
-            {/* Figma Callout 2 (Cari menu atau SKU) */}
-            <div
-              className="absolute left-[26.4%] top-[5.4%] w-[28px] h-[28px] sm:w-[34px] sm:h-[34px] rounded-full bg-[#ff7a45] border-[3px] border-white text-white font-bold font-mono text-xs sm:text-[14px] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.25)] select-none cursor-pointer hover:scale-110 transition-transform"
-              title="2. Cari menu atau SKU"
-            >
-              2
+            {/* HP — Layar dapur, menumpang di sudut kanan bawah tablet */}
+            <div className="absolute right-0 bottom-[-6%] w-[26%] sm:w-[22%] max-w-[230px]">
+              <div className="rounded-[16px] sm:rounded-[30px] bg-[#1b2022] p-[4px] sm:p-[7px] shadow-[0_24px_50px_-16px_rgba(41,46,49,0.55)]">
+                <div className="overflow-hidden rounded-[12px] sm:rounded-[24px] bg-white">
+                  <Image
+                    src="/images/app/dapur-hp.webp"
+                    alt="Layar dapur Sissi di HP: tiket Meja 02 dan tambahan Meja 05, status masak per item."
+                    width={390}
+                    height={844}
+                    preload
+                    sizes="(max-width: 640px) 26vw, 230px"
+                    className="block w-full h-auto"
+                  />
+                </div>
+              </div>
             </div>
-
-            {/* Figma Callout 3 (Pesanan per meja) */}
-            <div
-              className="absolute right-[6.6%] top-[17%] w-[28px] h-[28px] sm:w-[34px] sm:h-[34px] rounded-full bg-[#ff7a45] border-[3px] border-white text-white font-bold font-mono text-xs sm:text-[14px] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.25)] select-none cursor-pointer hover:scale-110 transition-transform"
-              title="3. Pesanan per meja"
-            >
-              3
-            </div>
-
-            {/* Figma Callout 4 (Bayar di tempat) */}
-            <div
-              className="absolute right-[11.2%] bottom-[14.8%] w-[28px] h-[28px] sm:w-[34px] sm:h-[34px] rounded-full bg-[#ff7a45] border-[3px] border-white text-white font-bold font-mono text-xs sm:text-[14px] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.25)] select-none cursor-pointer hover:scale-110 transition-transform"
-              title="4. Bayar di tempat"
-            >
-              4
-            </div>
-          </div>
+          </figure>
+          <p className="mx-auto max-w-[1060px] mt-12 sm:mt-16 text-[13px] text-[#7d8986] font-mono">
+            Layar asli aplikasi · Tablet: Kasir · HP: Layar dapur
+          </p>
         </div>
       </div>
     </section>

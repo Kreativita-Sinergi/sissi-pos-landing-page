@@ -1,51 +1,50 @@
 import React from "react";
 
-const CALLOUT_ITEMS = [
+/**
+ * Penjelas tepat di bawah gambar hero: hal-hal yang terlihat di layar asli itu,
+ * ditulis dengan angka dari layar yang sama.
+ */
+const NOTES = [
   {
-    number: "1",
-    title: "Menu per kategori",
+    label: "Offline",
+    title: "Jualan dulu, sinkron belakangan",
     description:
-      "Foto, harga, dan stok terlihat. Ketuk sekali untuk menambah ke pesanan.",
+      "Transaksi disimpan di perangkat. Saat internet kembali, data terkirim sendiri dan tablet atau HP lain di outlet ikut terbarui.",
   },
   {
-    number: "2",
-    title: "Cari menu atau SKU",
+    label: "Pesanan",
+    title: "Varian dan catatan per item",
     description:
-      "Ketik nama atau scan barcode. Hasilnya muncul saat kamu mengetik.",
+      "Es Kopi Susu Gula Aren ×2, less ice, extra shot. Kasir tidak perlu menulis ulang untuk dapur.",
   },
   {
-    number: "3",
-    title: "Pesanan per meja",
+    label: "Tagihan",
+    title: "Pajak dan biaya layanan dihitung",
     description:
-      "Setiap pesanan punya nomor dan meja. Bisa disimpan dulu, dibayar nanti.",
+      "Subtotal Rp102.000 + biaya layanan Rp5.100 + PB1 10% = Rp117.810. Tarifnya kamu atur sendiri.",
   },
   {
-    number: "4",
-    title: "Bayar di tempat",
+    label: "Dapur",
+    title: "Langsung muncul di layar dapur",
     description:
-      "Tunai dengan kembalian, QRIS, kartu, atau dibagi beberapa cara.",
+      "Item yang perlu dimasak masuk sebagai tiket per meja. Tambahan pesanan ditandai TAMBAHAN.",
   },
 ];
 
 export function KeteranganSection() {
   return (
-    <section className="bg-white pt-4 sm:pt-8 pb-20 sm:pb-28">
+    <section className="bg-white pt-10 sm:pt-12 pb-20 sm:pb-28">
       <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-[120px]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-8">
-          {CALLOUT_ITEMS.map((item) => (
-            <div key={item.number} className="flex flex-col items-start pt-5">
-              {/* Circular Badge 28x28 */}
-              <div className="w-[28px] h-[28px] rounded-full bg-[#ff7a45] text-white flex items-center justify-center font-bold font-mono text-[13px] mb-3 select-none">
-                {item.number}
-              </div>
-
-              {/* Title */}
-              <h3 className="text-[18px] font-semibold text-[#292e31] leading-tight">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 border-t border-[#e4e9e7] pt-10">
+          {NOTES.map((item) => (
+            <div key={item.label} className="flex flex-col items-start">
+              <span className="text-[12px] font-mono font-medium tracking-wider uppercase text-[#f1702c] mb-2">
+                {item.label}
+              </span>
+              <h3 className="text-[18px] font-semibold text-[#292e31] leading-snug">
                 {item.title}
               </h3>
-
-              {/* Description */}
-              <p className="mt-2 text-[15px] font-normal text-[#525866] leading-relaxed">
+              <p className="mt-2 text-[15px] text-[#525866] leading-relaxed">
                 {item.description}
               </p>
             </div>

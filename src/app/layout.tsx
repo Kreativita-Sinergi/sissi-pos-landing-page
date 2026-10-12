@@ -12,48 +12,49 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_TITLE = "Sissi POS · Kasir yang tetap jalan saat internet mati";
+const SITE_DESCRIPTION =
+  "Aplikasi kasir Android untuk kuliner, ritel, jasa, dan penyewaan. Jualan, stok, varian & HPP, QRIS, dan layar dapur dalam satu aplikasi. Tetap jalan offline, sinkron otomatis antarperangkat.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://sissi.id"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://kasir.sissi.id"
   ),
-  title: "Sissi · Kasir Pintar untuk Usaha yang Tumbuh",
-  description:
-    "Satu layar untuk semua yang terjadi di kasir. Untuk kuliner, toko, jasa, dan penyewaan. Pesanan, pembayaran, sampai tutup kasir tercatat di tablet dan HP Android, juga saat internet putus.",
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   keywords: [
-    "Aplikasi Kasir",
-    "POS",
-    "Point of Sale",
-    "Sissi Kasir",
-    "Kasir Pintar",
-    "Aplikasi POS Android",
-    "Software Kasir",
-    "Kasir UMKM",
-    "Aplikasi Kasir Gratis",
+    "aplikasi kasir",
+    "aplikasi kasir offline",
+    "POS Android",
+    "kasir UMKM",
+    "kasir kafe",
+    "kasir QRIS",
+    "layar dapur",
+    "HPP resep",
+    "Sissi POS",
   ],
   authors: [{ name: "Sissi" }],
   openGraph: {
     type: "website",
     locale: "id_ID",
     url: "/",
-    title: "Sissi · Kasir Pintar untuk Usaha yang Tumbuh",
-    description:
-      "Satu layar untuk semua yang terjadi di kasir. Untuk kuliner, toko, jasa, dan penyewaan. Pesanan, pembayaran, sampai tutup kasir tercatat di tablet dan HP Android.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     siteName: "Sissi POS",
     images: [
       {
-        url: "/images/hero-screen.png",
+        url: "/images/og-sissi.jpg",
         width: 1200,
         height: 630,
-        alt: "Sissi - Kasir Pintar",
+        alt: "Layar Kasir Sissi di tablet",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sissi · Kasir Pintar untuk Usaha yang Tumbuh",
-    description:
-      "Satu layar untuk semua yang terjadi di kasir. Untuk kuliner, toko, jasa, dan penyewaan.",
-    images: ["/images/hero-screen.png"],
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/images/og-sissi.jpg"],
   },
   icons: {
     icon: "/logos/sissi-icon.svg",
