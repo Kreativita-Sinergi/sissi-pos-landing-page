@@ -24,7 +24,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
   {
     category: "Meja & dapur",
     items: [
-      { name: "Denah meja & QR order", gratis: false, pro: true },
+      { name: "Meja & pesanan berjalan", gratis: false, pro: true },
       { name: "Layar dapur", gratis: false, pro: true },
     ],
   },
@@ -33,7 +33,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
     items: [
       { name: "Antrean servis & status pengerjaan", gratis: false, pro: true },
       { name: "Jadwal booking, jam ramai & DP", gratis: false, pro: true },
-      { name: "Sesi per menit untuk biliar & PS", gratis: false, pro: true },
+      { name: "Sesi berjalan dengan timer", gratis: false, pro: true },
     ],
   },
   {
@@ -48,7 +48,6 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
     category: "Produk & stok",
     items: [
       { name: "Produk, varian & stok menipis", gratis: true, pro: true },
-      { name: "Barang titipan", gratis: false, pro: true },
     ],
   },
   {

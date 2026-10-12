@@ -20,14 +20,9 @@ Kode dirancang sangat modular, rapi, dan mudah di-maintain:
 ```text
 sissi-landing-page/
 ├── public/
-│   ├── images/              # Screenshot UI tablet & HP diekspor langsung dari Figma
-│   │   ├── hero-screen.png
-│   │   ├── cara-kerja-dapur.png
-│   │   ├── cara-kerja-bayar.png
-│   │   ├── cara-kerja-laporan.png
-│   │   ├── fitur-preview-kasbon.png
-│   │   ├── hp-screen-1.png
-│   │   └── hp-screen-2.png
+│   ├── images/
+│   │   ├── app/             # Layar ASLI aplikasi (render sissi-app build/shots, WebP lossless)
+│   │   └── og-sissi.jpg     # Gambar Open Graph 1200×630
 │   └── logos/               # Logo dan icon SVG resmi Sissi
 ├── src/
 │   ├── app/

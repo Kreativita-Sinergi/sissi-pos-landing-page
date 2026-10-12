@@ -2,13 +2,29 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { SectionWrapper } from "@/components/shared/SectionWrapper";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { FEATURE_TABS } from "@/constants/features";
+import { FEATURE_TABS, type FeatureTab } from "@/constants/features";
+
+function Screen({ tab, sizes }: { tab: FeatureTab; sizes: string }) {
+  return (
+    <div className="overflow-hidden rounded-[12px] border border-[#e4e9e7] bg-white shadow-[0_12px_40px_-18px_rgba(41,46,49,0.35)]">
+      <Image
+        key={tab.id}
+        src={tab.imageSrc}
+        alt={tab.imageAlt}
+        width={1280}
+        height={800}
+        className="block w-full h-auto"
+        sizes={sizes}
+      />
+    </div>
+  );
+}
 
 export function FiturSection() {
   const [activeTabId, setActiveTabId] = useState(FEATURE_TABS[0].id);
-
   const activeTab =
     FEATURE_TABS.find((tab) => tab.id === activeTabId) || FEATURE_TABS[0];
 
@@ -16,58 +32,62 @@ export function FiturSection() {
     <SectionWrapper id="fitur" bg="white">
       <SectionHeader
         tag="FITUR"
-        title="Dibuat untuk toko yang sibuk, bukan untuk demo."
-        subtitle="Dirancang intuitif agar kasir bisa langsung lancar bertransaksi dalam 5 menit tanpa pelatihan rumit."
+        title="Yang dibuka kasir dan pemilik setiap hari."
+        subtitle="Semua gambar di bagian ini adalah layar asli aplikasi, bukan ilustrasi."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        {/* Left Side: Daftar Tab - Matching Figma exactly */}
-        <div className="lg:col-span-4 flex flex-col gap-1 w-full max-w-[340px]">
+        {/* Daftar tab */}
+        <div className="lg:col-span-4 flex flex-col gap-1 w-full">
           {FEATURE_TABS.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTabId(tab.id)}
-                className={`text-left transition-all duration-150 rounded-[10px] cursor-pointer ${
-                  isActive
-                    ? "bg-[#e8f4f0] p-5 shadow-xs"
-                    : "bg-transparent px-5 py-4 hover:bg-[#f3f6f5]/80"
-                }`}
-              >
-                <h3
-                  className={`text-[17px] ${
+              <div key={tab.id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTabId(tab.id)}
+                  aria-expanded={isActive}
+                  className={`w-full text-left transition-colors rounded-[10px] cursor-pointer ${
                     isActive
-                      ? "font-semibold text-[#292e31]"
-                      : "font-medium text-[#7d8986]"
+                      ? "bg-[#fef1eb] p-5"
+                      : "px-5 py-3.5 hover:bg-[#f3f6f5]"
                   }`}
                 >
-                  {tab.name}
-                </h3>
+                  <h3
+                    className={`text-[17px] ${
+                      isActive
+                        ? "font-semibold text-[#292e31]"
+                        : "font-medium text-[#525866]"
+                    }`}
+                  >
+                    {tab.name}
+                  </h3>
+                  {isActive && (
+                    <p className="mt-2 text-[15px] text-[#525866] leading-relaxed">
+                      {tab.summary}
+                    </p>
+                  )}
+                </button>
+                {/* Di HP gambar tampil langsung di bawah tab yang aktif */}
                 {isActive && (
-                  <p className="mt-2 text-[15px] font-normal text-[#525866] leading-relaxed">
-                    {tab.summary}
-                  </p>
+                  <div className="lg:hidden mt-3 mb-4">
+                    <Screen tab={tab} sizes="100vw" />
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
+          <Link
+            href="/fitur"
+            className="mt-4 px-5 text-[15px] font-semibold text-[#be5823] hover:text-[#f1702c]"
+          >
+            Lihat semua fitur →
+          </Link>
         </div>
 
-        {/* Right Side: Pratinjau (812px x 560px, rounded-20, bg #f3f6f5) */}
-        <div className="lg:col-span-8 w-full rounded-[20px] bg-[#f3f6f5] flex items-center justify-center min-h-[420px] lg:min-h-[560px] overflow-hidden">
-          <div className="relative w-full max-w-[840px] flex items-center justify-center">
-            <Image
-              key={activeTab.id}
-              src={activeTab.imageSrc}
-              alt={activeTab.name}
-              width={2100}
-              height={1380}
-              className="w-full h-auto block drop-shadow-sm"
-              sizes="(max-width: 1024px) 100vw, 840px"
-            />
-          </div>
+        {/* Pratinjau desktop */}
+        <div className="hidden lg:block lg:col-span-8 rounded-[20px] bg-[#f3f6f5] p-8">
+          <Screen tab={activeTab} sizes="760px" />
         </div>
       </div>
     </SectionWrapper>

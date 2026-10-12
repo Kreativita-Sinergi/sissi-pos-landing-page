@@ -150,7 +150,7 @@ export default function HargaPage() {
                 {[
                   "Transaksi tanpa batas",
                   "Semua fitur Gratis",
-                  "Meja, QR order & layar dapur",
+                  "Meja, pesanan berjalan & layar dapur",
                   "Antrean servis, jadwal & sesi sewa",
                   "Kasbon, diskon, refund & void",
                   "Kehadiran, jadwal & gaji",

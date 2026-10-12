@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Minus } from "lucide-react";
 import { SectionWrapper } from "@/components/shared/SectionWrapper";
 import { FAQ_ITEMS } from "@/constants/faq";
+import { SUPPORT_WHATSAPP_URL } from "@/constants/site";
 
 export function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(1); // 2nd open in Figma
@@ -26,7 +27,7 @@ export function FaqSection() {
           </h2>
 
           <Link
-            href="https://wa.me/6281234567890"
+            href={SUPPORT_WHATSAPP_URL}
             className="mt-8 h-[38px] px-4 rounded-[8px] bg-white border border-[#e4e9e7] hover:border-[#b0b8b5] text-[#292e31] text-[14px] font-medium inline-flex items-center gap-2 transition-colors shadow-2xs cursor-pointer"
           >
             <svg

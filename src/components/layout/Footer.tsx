@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Container } from "@/components/shared/Container";
 import { FOOTER_SECTIONS } from "@/constants/navigation";
+import { SUPPORT_WHATSAPP_URL } from "@/constants/site";
 
 export function Footer() {
   return (
@@ -21,7 +22,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-[15px] text-[#525866] leading-relaxed">
-              Kasir pintar untuk usaha yang tumbuh. Kelola pesanan, pembayaran, dan pantau laporan tokomu secara rapi dalam satu aplikasi.
+              Aplikasi kasir Android untuk kuliner, ritel, jasa, dan penyewaan. Tetap jalan saat internet putus.
             </p>
           </div>
 
@@ -103,7 +104,7 @@ export function Footer() {
             </Link>
             {/* WhatsApp */}
             <Link
-              href="https://wa.me/6281234567890"
+              href={SUPPORT_WHATSAPP_URL}
               className="opacity-70 hover:opacity-100 transition-opacity"
               aria-label="WhatsApp"
             >

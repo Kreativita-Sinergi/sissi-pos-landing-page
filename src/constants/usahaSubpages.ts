@@ -1,11 +1,12 @@
 export interface UsahaSubpageData {
   slug: string;
-  categoryTag: string;
+  name: string;
   title: string;
   subtitle: string;
   suitablePills: string[];
+  image: string;
+  imageAlt: string;
   problems: {
-    number: string;
     title: string;
     description: string;
   }[];
@@ -22,250 +23,247 @@ export interface UsahaSubpageData {
 export const USAHA_SUBPAGES: Record<string, UsahaSubpageData> = {
   kuliner: {
     slug: "kuliner",
-    categoryTag: "UNTUK USAHA / KULINER",
+    name: "Kuliner",
     title: "Sissi untuk usaha kuliner",
     subtitle:
-      "Pesanan per meja, langsung ke dapur. Varian dan tambahan menu tercatat tanpa ditulis ulang.",
+      "Pesanan per meja langsung ke layar dapur. Varian, catatan, dan HPP dari resep tercatat tanpa ditulis ulang.",
     suitablePills: [
-      "Restoran / Rumah Makan",
-      "Kafe / Kedai Kopi",
-      "Katering / Pesanan Besar",
+      "Kafe & kedai kopi",
+      "Rumah makan",
+      "Restoran",
+      "Katering",
       "Kuliner lainnya",
     ],
+    image: "/images/app/dapur-tablet.webp",
+    imageAlt: "Layar dapur Sissi dengan tiket per meja di kolom Masuk, Dimasak, dan Siap.",
     problems: [
       {
-        number: "01",
         title: "Pesanan bertumpuk di jam makan",
         description:
-          "Pesanan per meja tersimpan, dapur melihat urutannya di layar.",
+          "Pesanan disimpan per meja; dapur melihat tiket berurutan dan menandai item yang sudah jadi.",
       },
       {
-        number: "02",
         title: "Varian dan tambahan",
         description:
-          "Ukuran, level pedas, extra shot. Harga tambahan dihitung otomatis.",
+          "Kopi Susu ukuran L, es, extra shot. Harga tambahan dan modalnya dihitung otomatis.",
       },
       {
-        number: "03",
-        title: "Tagihan meja dipisah",
+        title: "Satu meja minta bayar terpisah",
         description:
-          "Satu meja bisa bayar per orang, sisanya tetap tercatat.",
+          "Pisah pesanan ke tagihan baru; tiket dapurnya ikut pindah.",
       },
     ],
     screens: [
       {
-        title: "Transaksi cepat",
-        description: "Pilih menu dan meja dalam 2 ketukan saat antrean ramai.",
+        title: "Kasir",
+        description: "Pilih menu, varian, dan catatan, lalu simpan ke meja atau langsung bayar.",
       },
       {
-        title: "Denah meja",
-        description: "Lihat meja mana yang terisi, kosong, atau siap bayar.",
+        title: "Meja",
+        description: "Meja kosong dan terisi, lama duduk, dan total tagihannya.",
       },
       {
         title: "Layar dapur",
-        description: "Pesanan masuk berurutan ke koki tanpa kertas terbang.",
+        description: "Tiket per ronde. Tambahan pesanan ditandai TAMBAHAN.",
       },
     ],
     devices: [
       {
         title: "Tablet di meja kasir",
-        description: "Layar utama kasir paling nyaman untuk memilih menu.",
+        description: "Menu dan pesanan berdampingan dalam satu layar.",
       },
       {
-        title: "HP Android untuk pelayan",
-        description: "Pelayan mencatat pesanan langsung di sisi meja pelanggan.",
+        title: "Tablet atau HP untuk dapur",
+        description: "Atur perangkat sebagai layar dapur, lalu masuk dengan PIN karyawan dapur.",
       },
       {
-        title: "Printer thermal 58 mm atau 80 mm",
-        description: "Cetak struk pelanggan dan orderan dapur secara terpisah.",
+        title: "Printer thermal jaringan",
+        description: "Kertas 58 atau 80 mm untuk struk dan tiket dapur.",
       },
     ],
   },
   ritel: {
     slug: "ritel",
-    categoryTag: "UNTUK USAHA / RITEL",
+    name: "Ritel",
     title: "Sissi untuk usaha ritel",
     subtitle:
-      "Langsung bayar tanpa meja dan dapur. Barcode, harga modal, dan stok yang selalu terpantau.",
+      "Pindai barcode, bayar, stok berkurang sendiri. Harga modal tersimpan, laba kotor terlihat di laporan.",
     suitablePills: [
-      "Minimarket / Toko Kelontong",
-      "Fashion / Pakaian",
-      "Apotek / Toko Obat",
-      "Konter Pulsa & Kuota",
+      "Toko kelontong",
+      "Minimarket",
+      "Toko sembako",
+      "Fashion",
       "Ritel lainnya",
     ],
+    image: "/images/app/kasir-ritel-tablet.webp",
+    imageAlt: "Kasir ritel Sissi: kolom pindai barcode, daftar produk dengan stok, dan keranjang Rp161.500.",
     problems: [
       {
-        number: "01",
         title: "Ratusan barang",
         description:
-          "Cari dengan nama atau scan barcode, tidak perlu hafal harga.",
+          "Ketik nama atau pindai barcode; tidak perlu hafal harga.",
       },
       {
-        number: "02",
-        title: "Harga modal berubah",
+        title: "Modal berubah-ubah",
         description:
-          "HPP tersimpan per produk, margin terlihat di laporan.",
+          "Harga modal tersimpan per produk dan varian, laba kotor dihitung dari situ.",
       },
       {
-        number: "03",
-        title: "Stok tiba-tiba habis",
+        title: "Barang tiba-tiba habis",
         description:
-          "Peringatan stok menipis sebelum barang kosong di rak.",
+          "Daftar stok menipis dan saran belanja, langsung jadi draf PO ke supplier.",
       },
     ],
     screens: [
       {
-        title: "Kasir dengan scan barcode",
-        description: "Arahkan scanner atau kamera, barang langsung masuk keranjang.",
+        title: "Kasir ritel",
+        description: "Kolom pindai di atas, stok tampil di setiap baris produk.",
       },
       {
         title: "Stok & harga modal",
-        description: "Lacak jumlah barang dan margin keuntungan per kategori produk.",
+        description: "Stok masuk, penyesuaian, minimum, dan riwayat per barang.",
       },
       {
-        title: "Jam ramai",
-        description: "Analisis jam sibuk tokomu untuk jadwal staf yang efisien.",
+        title: "Stok opname",
+        description: "Hitung fisik dengan pindai barcode, lihat selisih dan nilainya.",
       },
     ],
     devices: [
       {
         title: "Tablet atau HP Android",
-        description: "Fleksibel dipakai di kasir meja atau toko berukuran kecil.",
+        description: "Tablet untuk meja kasir, HP cukup untuk toko kecil.",
       },
       {
-        title: "Scanner barcode Bluetooth",
-        description: "Pemindaian super cepat untuk kasir ritel bervolume tinggi.",
+        title: "Scanner barcode mode keyboard",
+        description: "Kode langsung masuk ke kolom pindai. Di HP bisa memakai kamera.",
       },
       {
-        title: "Printer thermal 58 mm",
-        description: "Struk belanja rapi dengan rincian item dan footer toko.",
+        title: "Printer thermal jaringan",
+        description: "Kertas 58 atau 80 mm, dengan header dan footer toko.",
       },
     ],
   },
   jasa: {
     slug: "jasa",
-    categoryTag: "UNTUK USAHA / JASA",
+    name: "Jasa",
     title: "Sissi untuk usaha jasa",
     subtitle:
-      "Order masuk antrean, dikerjakan, lalu siap diambil. Pelanggan dikabari lewat WhatsApp saat selesai.",
+      "Order servis masuk antrean, dikerjakan, lalu diambil. Pelanggan bisa dikabari lewat WhatsApp saat siap.",
     suitablePills: [
-      "Bengkel Kendaraan",
-      "Konter & Servis HP",
+      "Bengkel",
+      "Servis HP",
       "Laundry",
-      "Salon & Barbershop",
-      "Percetakan & Fotokopi",
+      "Salon & barbershop",
+      "Percetakan",
       "Jasa lainnya",
     ],
+    image: "/images/app/servis-tablet.webp",
+    imageAlt: "Antrean servis Sissi dengan kolom Diterima, Dikerjakan, dan Siap diambil.",
     problems: [
       {
-        number: "01",
         title: "Order menumpuk di meja depan",
         description:
-          "Setiap order punya nomor, status, dan teknisi. Tidak ada lagi kertas yang hilang.",
+          "Setiap order punya nomor, status, teknisi, dan estimasi selesai.",
       },
       {
-        number: "02",
         title: "Data unit pelanggan",
         description:
-          "Plat nomor, tipe HP, atau berat kiloan tercatat bersama ordernya.",
+          "Plat nomor, IMEI, atau data lain sesuai jenis jasa tercatat bersama ordernya.",
       },
       {
-        number: "03",
         title: "Pelanggan bolak-balik bertanya",
         description:
-          "Kirim kabar \"sudah selesai\" lewat WhatsApp dalam satu ketukan.",
+          "Kabari lewat WhatsApp dari detail order; pesannya sudah disiapkan.",
       },
     ],
     screens: [
       {
         title: "Antrean servis",
-        description: "Lacak status pengerjaan: Antre, Dikerjakan, dan Siap Ambil.",
+        description: "Diterima, dikerjakan, siap diambil. Yang terlambat tampil paling atas.",
       },
       {
-        title: "Order servis baru",
-        description: "Catat keluhan kerusakan, estimasi biaya, dan tanda terima unit.",
+        title: "Order baru",
+        description: "Pelanggan, layanan, teknisi, dan estimasi selesai dari durasi layanan.",
       },
       {
-        title: "Detail & kabari pelanggan",
-        description: "Kirim update WhatsApp otomatis saat pengerjaan beres.",
+        title: "Detail order",
+        description: "Linimasa status, DP dan sisa bayar, nota ambil.",
       },
     ],
     devices: [
       {
         title: "Tablet di meja depan",
-        description: "Pusat penerimaan pesanan dan administrasi pengambilan.",
+        description: "Papan antrean tiga kolom dalam satu layar.",
       },
       {
-        title: "HP untuk teknisi (opsional)",
-        description: "Teknisi memperbarui progres pengerjaan langsung dari workstation.",
+        title: "HP Android",
+        description: "Cukup untuk usaha jasa kecil; antrean tampil per status.",
       },
       {
-        title: "Printer 58 mm untuk tanda terima",
-        description: "Cetak nota bukti tanda terima servis untuk pelanggan.",
+        title: "Printer thermal jaringan",
+        description: "Cetak nota ambil untuk pelanggan.",
       },
     ],
   },
   penyewaan: {
     slug: "penyewaan",
-    categoryTag: "UNTUK USAHA / PENYEWAAN",
+    name: "Penyewaan",
     title: "Sissi untuk usaha penyewaan",
     subtitle:
-      "Booking per jam dengan harga jam ramai, DP tercatat, dan sesi berjalan yang dihitung per menit.",
+      "Booking per unit dengan tarif jam ramai, DP tercatat, dan sesi berjalan dengan timer.",
     suitablePills: [
-      "Lapangan Padel",
-      "Mini Soccer / Futsal",
-      "Lapangan Badminton",
+      "Lapangan padel",
+      "Futsal & mini soccer",
+      "Badminton",
       "Biliar",
       "Rental PlayStation",
       "Penyewaan lainnya",
     ],
+    image: "/images/app/jadwal-sewa-tablet.webp",
+    imageAlt: "Jadwal sewa Sissi: kisi unit lapangan dan meja biliar per jam.",
     problems: [
       {
-        number: "01",
         title: "Jadwal bentrok",
         description:
-          "Jadwal per lapangan terlihat dalam satu layar. Jam yang terisi tidak bisa dipesan dua kali.",
+          "Semua unit terlihat per jam. Jam yang sudah terisi tidak bisa dipesan dua kali.",
       },
       {
-        number: "02",
         title: "DP dan pelunasan",
         description:
-          "Uang muka dan sisa bayar tercatat per booking.",
+          "Uang muka dan sisa bayar tercatat per booking. Batal atau tidak datang punya aturan sendiri.",
       },
       {
-        number: "03",
-        title: "Hitung waktu main manual",
+        title: "Hitung waktu main",
         description:
-          "Timer per meja atau unit, tarif dihitung per menit, pesanan minuman masuk tagihan yang sama.",
+          "Timer per unit, tarif meter atau paket, dan pesanan minuman masuk tagihan yang sama.",
       },
     ],
     screens: [
       {
-        title: "Jadwal lapangan",
-        description: "Kalender visual per jam untuk slot booking dan lapangan.",
+        title: "Jadwal",
+        description: "Kisi unit × jam di tablet; di HP per hari dan per unit.",
       },
       {
-        title: "Booking baru",
-        description: "Input nama penyewa, durasi sewa, dan nominal uang muka (DP).",
+        title: "Booking",
+        description: "Nama penyewa, unit, jam, dan DP.",
       },
       {
         title: "Sesi berjalan",
-        description: "Timer otomatis yang menghitung overtime sewa per menit.",
+        description: "Timer per detik, perpanjang, lalu hentikan dan tagih.",
       },
     ],
     devices: [
       {
         title: "Tablet di meja kasir",
-        description: "Pantau seluruh status booking lapangan dan rental dalam satu layar.",
+        description: "Jadwal semua unit terlihat sekaligus.",
       },
       {
-        title: "HP untuk penjaga lapangan (opsional)",
-        description: "Penjaga mengecek jadwal kedatangan pemain di lapangan.",
+        title: "HP Android",
+        description: "Cek jadwal hari ini dan sesi yang sedang berjalan.",
       },
       {
-        title: "Printer 58 mm",
-        description: "Cetak tanda bukti sewa dan rincian durasi waktu bermain.",
+        title: "Printer thermal jaringan",
+        description: "Bukti booking dan struk sewa dengan durasi dan tarif.",
       },
     ],
   },

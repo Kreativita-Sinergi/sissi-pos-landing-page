@@ -7,36 +7,46 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Jenis usaha apa saja yang bisa memakai Sissi?",
     answer:
-      "Empat kategori: kuliner (restoran, kafe, katering), ritel (minimarket, fashion, apotek, konter pulsa), jasa (bengkel, servis HP, laundry, salon, percetakan), dan penyewaan (lapangan padel, futsal, badminton, biliar, rental PS).",
+      "Empat jenis: kuliner (kafe, kedai kopi, rumah makan, restoran), ritel (toko kelontong, minimarket), jasa (bengkel, servis HP, laundry, salon, percetakan), dan penyewaan (lapangan padel, futsal, badminton, biliar, rental PS). Jenis usaha dipilih saat daftar; menu dan istilah di aplikasi menyesuaikan.",
   },
   {
-    question: "Bisa dipakai tanpa internet?",
+    question: "Benar-benar bisa dipakai tanpa internet?",
     answer:
-      "Bisa. Transaksi, struk, dan laporan tetap jalan saat offline. Data dikirim otomatis begitu internet kembali terhubung.",
+      "Bisa. Penjualan, pesanan, stok, dan shift dicatat di perangkat lebih dulu. Begitu online, data dikirim ke server dan perangkat lain di outlet ikut terbarui. Kalau dua perangkat mengubah data yang sama, versi di server yang dipakai dan aplikasi memberi tahu perubahan mana yang tidak tersimpan.",
   },
   {
     question: "Perangkat apa yang didukung?",
     answer:
-      "Tablet dan HP Android versi 8.0 ke atas. Tidak perlu membeli perangkat keras atau mesin kasir khusus.",
+      "HP dan tablet Android 7.0 atau lebih baru. Tampilan menyesuaikan: HP tegak, tablet mendatar dengan daftar dan detail berdampingan. Saat ini belum tersedia untuk iPhone dan iPad.",
+  },
+  {
+    question: "Bagaimana cara menerima QRIS?",
+    answer:
+      "Di Pengaturan › Metode pembayaran, unggah gambar QRIS statis tokomu atau pindai stikernya dengan kamera. Sissi memeriksa kodenya dan mengisi nama merchant. Saat pelanggan membayar, QR tampil di layar dan kasir menekan \"Sudah dibayar\" setelah dana masuk di aplikasi bank.",
   },
   {
     question: "Printer apa yang bisa dipakai?",
     answer:
-      "Printer thermal Bluetooth dengan ukuran kertas 58 mm atau 80 mm. Struk dapat dicetak dengan logo toko Anda.",
+      "Printer thermal yang tersambung lewat jaringan (LAN/Wi-Fi), kertas 58 mm atau 80 mm, untuk struk dan tiket dapur. Printer Bluetooth belum didukung. Struk juga bisa dikirim ke pelanggan lewat WhatsApp.",
   },
   {
-    question: "Kalau tablet hilang, datanya?",
+    question: "Bagaimana akses karyawan diatur?",
     answer:
-      "Data Anda tersimpan aman di cloud server dan bisa langsung diakses kembali saat Anda masuk menggunakan perangkat baru.",
+      "Ada tiga peran: pemilik, kasir, dan dapur. Setiap karyawan masuk ke perangkat kasir dengan PIN sendiri, dan menunya mengikuti perannya. Setelah 5 kali salah PIN, perangkat terkunci 15 menit.",
   },
   {
-    question: "Bisa ganti paket di tengah jalan?",
+    question: "Apa yang dikirim ke HP pemilik?",
     answer:
-      "Bisa kapan saja. Anda bisa mulai dengan paket Gratis, mencoba Pro gratis 30 hari, dan berpindah paket sesuai pertumbuhan usaha.",
+      "Notifikasi saat ada selisih kas di tutup kasir, transaksi dibatalkan atau dikembalikan (void/refund), dan saat akun dipakai masuk dari perangkat baru. Setiap jenis notifikasi bisa dinyalakan atau dimatikan.",
   },
   {
-    question: "Pindah dari aplikasi kasir lain?",
+    question: "Kalau tablet hilang atau rusak, datanya?",
     answer:
-      "Tim kami siap membantu proses migrasi data menu, stok barang, dan kontak pelanggan tanpa biaya tambahan.",
+      "Data yang sudah tersinkron tersimpan di server. Masuk di perangkat baru, data outlet ditarik kembali. Transaksi yang belum sempat terkirim dari perangkat yang hilang tidak bisa dipulihkan, jadi sambungkan internet sesekali.",
+  },
+  {
+    question: "Bagaimana cara menghapus akun?",
+    answer:
+      "Pemilik bisa meminta penghapusan lewat halaman Hapus akun di situs ini, dengan kode konfirmasi yang dikirim ke email akun. Akun dan seluruh data usaha dihapus permanen setelah masa tunggu 30 hari; masuk lagi sebagai pemilik selama masa itu membatalkan penghapusan.",
   },
 ];

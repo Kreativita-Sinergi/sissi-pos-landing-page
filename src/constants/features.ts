@@ -2,87 +2,74 @@ export interface FeatureTab {
   id: string;
   name: string;
   summary: string;
-  bullets: string[];
   imageSrc: string;
+  imageAlt: string;
 }
 
+/** Tab fitur di beranda. Semua gambar = layar asli aplikasi (render 1280×800). */
 export const FEATURE_TABS: FeatureTab[] = [
   {
     id: "kasir",
     name: "Kasir & pembayaran",
     summary:
-      "Bayar sebagian, kasbon dengan pengingat, diskon, pajak, dan catatan per pesanan.",
-    bullets: [
-      "Mendukung pembayaran tunai, QRIS otomatis, kartu debit/kredit, transfer bank",
-      "Pencatatan kasbon pelanggan lengkap dengan nomor kontak & batas waktu",
-      "Split bill berdasarkan item atau nominal pesanan",
-      "Perhitungan diskon promo, pajak PPN, dan biaya layanan instan",
-    ],
-    imageSrc: "/images/fitur-preview-kasbon.png",
+      "Tunai dengan kembalian, QRIS statis tokomu, kartu, transfer, atau dibagi beberapa cara. Sisa tagihan bisa dicatat sebagai kasbon pelanggan.",
+    imageSrc: "/images/app/bayar-tablet.webp",
+    imageAlt: "Layar Pembayaran Sissi dengan pilihan Tunai, QRIS, Kartu, Transfer, dan Kasbon.",
   },
   {
     id: "meja",
-    name: "Meja & QR",
+    name: "Meja & dapur",
     summary:
-      "Kelola denah meja dan biarkan pelanggan memesan langsung dari meja lewat scan QR.",
-    bullets: [
-      "Visualisasi status meja (kosong, terisi, menunggu tagihan)",
-      "QR Code unik untuk setiap meja tanpa perlu aplikasi tambahan oleh tamu",
-      "Pesanan dari meja otomatis diteruskan ke kasir dan layar dapur",
-      "Pindahkan pesanan atau gabung meja dalam satu ketukan",
-    ],
-    imageSrc: "/images/hero-screen.png",
-  },
-  {
-    id: "tim",
-    name: "Tim & kehadiran",
-    summary:
-      "Atur hak akses staf, pantau shift kasir, dan catat absensi langsung di tablet kasir.",
-    bullets: [
-      "Hak akses bertingkat: Kasir, Supervisor, Manajer, Pemilik",
-      "Absensi kehadiran menggunakan PIN atau verifikasi foto wajah",
-      "Laporan buka kasir dan serah terima shift antar staf",
-      "Perhitungan komisi dan performa penjualan per karyawan",
-    ],
-    imageSrc: "/images/cara-kerja-laporan.png",
+      "Pesanan disimpan per meja dan dikirim ke layar dapur. Pesanan bisa ditambah atau dipisah; tiket dapurnya ikut pindah.",
+    imageSrc: "/images/app/dapur-tablet.webp",
+    imageAlt: "Layar dapur Sissi dengan tiket per meja di kolom Masuk, Dimasak, dan Siap.",
   },
   {
     id: "produk",
-    name: "Produk & stok",
+    name: "Varian & HPP",
     summary:
-      "Katalog produk dengan variasi harga, resep bahan baku, dan pengingat stok menipis.",
-    bullets: [
-      "Dukungan varian ukuran, rasa, topping, atau atribut kustom",
-      "Manajemen bahan baku otomatis terpotong saat menu terjual",
-      "Pemberitahuan real-time ketika stok mencapai batas minimum",
-      "Impor & ekspor katalog via Excel / CSV sekali klik",
-    ],
-    imageSrc: "/images/cara-kerja-bayar.png",
+      "Varian bertingkat seperti Ukuran × Suhu dengan isi massal. HPP diisi manual atau dihitung dari resep, per varian dan per pilihan tambahan.",
+    imageSrc: "/images/app/varian-tablet.webp",
+    imageAlt: "Form produk Sissi: pilihan varian Ukuran (S, M, L) dan Suhu (Panas, Es) dengan daftar kombinasi.",
   },
   {
-    id: "titipan",
-    name: "Barang titipan",
+    id: "stok",
+    name: "Stok & pembelian",
     summary:
-      "Kelola titipan barang konsinyasi mitra dengan laporan bagi hasil transparan.",
-    bullets: [
-      "Pencatatan vendor konsinyasi beserta kontak & perjanjian bagi hasil",
-      "Stok titipan terpisah rapi dari stok modal sendiri",
-      "Laporan penjualan konsinyasi yang siap dibagikan ke penitip barang",
-      "Proses retur sisa barang titipan yang mudah dan tercatat",
-    ],
-    imageSrc: "/images/fitur-preview-kasbon.png",
+      "Bahan baku berkurang tiap ada penjualan. Ada stok opname, PO ke supplier, transfer antar-outlet, dan saran belanja dari stok yang menipis.",
+    imageSrc: "/images/app/inventori-tablet.webp",
+    imageAlt: "Halaman Inventori Sissi: stok barang, bahan baku, opname, pembelian, supplier, transfer stok, dan saran belanja.",
+  },
+  {
+    id: "shift",
+    name: "Shift & kas",
+    summary:
+      "Buka kasir dengan modal awal, catat kas masuk dan keluar, lalu tutup kasir dengan hitungan per pecahan. Selisihnya langsung terlihat.",
+    imageSrc: "/images/app/tutup-kasir-tablet.webp",
+    imageAlt: "Layar Tutup Kasir Sissi dengan hitungan uang per pecahan.",
   },
   {
     id: "laporan",
     name: "Laporan",
     summary:
-      "Analisis omzet, produk terlaris, jam paling ramai, dan ekspor data akuntansi.",
-    bullets: [
-      "Grafik penjualan real-time yang bisa dipantau langsung dari HP",
-      "Identifikasi jam sibuk (peak hours) untuk optimasi jumlah staf",
-      "Laporan laba rugi kotor berdasarkan HPP (Harga Pokok Penjualan)",
-      "Ekspor laporan penjualan harian & bulanan ke format Excel atau PDF",
-    ],
-    imageSrc: "/images/cara-kerja-laporan.png",
+      "Omzet, laba kotor, produk terjual, jam ramai, dan penjualan per kasir. Bisa diekspor ke CSV.",
+    imageSrc: "/images/app/laporan-tablet.webp",
+    imageAlt: "Laporan Sissi tab Jam ramai: grafik transaksi per jam dan per hari.",
+  },
+  {
+    id: "tim",
+    name: "Tim & absensi",
+    summary:
+      "Karyawan masuk dengan PIN, aksesnya sesuai peran pemilik, kasir, atau dapur. Absen masuk dan pulang di perangkat kasir, gaji jadi slip.",
+    imageSrc: "/images/app/kehadiran-tablet.webp",
+    imageAlt: "Layar Kehadiran Sissi dengan tombol Absen masuk dan Absen pulang.",
+  },
+  {
+    id: "pelanggan",
+    name: "Pelanggan & member",
+    summary:
+      "Poin dan tingkat member berjalan otomatis, diskon per tingkat, dan kasbon yang bisa diingatkan lewat WhatsApp.",
+    imageSrc: "/images/app/pelanggan-tablet.webp",
+    imageAlt: "Detail pelanggan Sissi: total belanja, kunjungan, poin, dan tingkat member.",
   },
 ];

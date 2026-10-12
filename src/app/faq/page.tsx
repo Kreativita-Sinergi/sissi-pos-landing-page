@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/shared/Container";
 import { FAQ_ITEMS } from "@/constants/faq";
 import { Plus, Minus } from "lucide-react";
+import { SUPPORT_WHATSAPP_URL } from "@/constants/site";
 
 export default function FaqPage() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -32,7 +33,7 @@ export default function FaqPage() {
                 Pertanyaan yang sering ditanyakan
               </h1>
               <p className="mt-4 text-base sm:text-[18px] text-[#525866] leading-relaxed">
-                Jawaban lengkap seputar cara kerja aplikasi, dukungan perangkat, fitur paket, dan keamanan data tokomu.
+                Cara kerja offline, perangkat dan printer yang didukung, QRIS, akses karyawan, dan data tokomu.
               </p>
             </div>
           </Container>
@@ -89,11 +90,11 @@ export default function FaqPage() {
                   Masih punya pertanyaan lain?
                 </h3>
                 <p className="mt-2 text-white/90 text-[15px]">
-                  Tim kami siap menjawab pertanyaan tokomu langsung via WhatsApp.
+                  Tanyakan langsung lewat WhatsApp.
                 </p>
               </div>
               <Link
-                href="https://wa.me/6281234567890"
+                href={SUPPORT_WHATSAPP_URL}
                 className="h-[46px] px-6 bg-white hover:bg-[#fef1eb] text-[#292e31] font-semibold text-[14px] rounded-[8px] flex items-center justify-center transition-colors shadow-2xs cursor-pointer shrink-0"
               >
                 Chat WhatsApp

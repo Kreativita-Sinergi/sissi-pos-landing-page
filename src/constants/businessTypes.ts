@@ -2,63 +2,38 @@ export interface BusinessType {
   id: string;
   name: string;
   description: string;
-  suitableForLabel: string;
   suitableFor: string;
-  badgeColor?: string;
-  features: string[];
+  /** Contoh konkret yang terjadi di kasir jenis usaha ini. */
+  example: string;
 }
 
 export const BUSINESS_TYPES: BusinessType[] = [
   {
     id: "kuliner",
     name: "Kuliner",
-    description: "Pesanan per meja, langsung ke dapur.",
-    suitableForLabel: "COCOK UNTUK",
-    suitableFor: "Restoran, rumah makan, kafe, kedai kopi, katering",
-    features: [
-      "Manajemen denah & nomor meja",
-      "Pemesanan mandiri via QR Code",
-      "Tampilan layar pesanan dapur (KDS)",
-      "Split bill & cetak pesanan dapur otomatis",
-    ],
+    description: "Pesanan per meja, langsung ke layar dapur.",
+    suitableFor: "Kafe, kedai kopi, rumah makan, restoran, katering",
+    example: "Kopi Susu L, es: Rp23.000. HPP dari resep: susu, kopi, gula aren.",
   },
   {
     id: "ritel",
     name: "Ritel",
-    description: "Langsung bayar, stok dan barcode terpantau.",
-    suitableForLabel: "COCOK UNTUK",
-    suitableFor: "Minimarket, toko kelontong, fashion, apotek, konter pulsa",
-    features: [
-      "Pemindai barcode kamera & scanner bluetooth",
-      "Notifikasi pengingat stok menipis",
-      "Variasi ukuran & warna produk",
-      "Penerimaan barang & stok opname cepat",
-    ],
+    description: "Pindai barcode, bayar, stok berkurang sendiri.",
+    suitableFor: "Toko kelontong, minimarket, toko sembako, fashion",
+    example: "Minyak Goreng 2 L dipindai, stok tinggal 4, muncul di daftar stok menipis.",
   },
   {
     id: "jasa",
     name: "Jasa",
-    description: "Order masuk antrean sampai siap diambil.",
-    suitableForLabel: "COCOK UNTUK",
+    description: "Order servis dari diterima sampai diambil.",
     suitableFor: "Bengkel, servis HP, laundry, salon, barbershop, percetakan",
-    features: [
-      "Pelacakan status pengerjaan (Antre / Dikerjakan / Selesai)",
-      "Pencatatan teknisi & komisi kerja",
-      "Notifikasi WhatsApp saat barang selesai",
-      "Pencatatan uang muka (DP) & pelunasan",
-    ],
+    example: "Honda Vario B 4521 KL: dikerjakan teknisi Andi, estimasi selesai 14.00.",
   },
   {
     id: "penyewaan",
     name: "Penyewaan",
-    description: "Booking per jam dan sesi yang dihitung per menit.",
-    suitableForLabel: "COCOK UNTUK",
+    description: "Booking per unit, sesi berjalan dengan timer.",
     suitableFor: "Lapangan padel, futsal, badminton, biliar, rental PlayStation",
-    features: [
-      "Jadwal slot booking kalender interaktif",
-      "Penghitung waktu sesi otomatis (timer)",
-      "Tagihan overtime per menit/jam",
-      "Gabung rental dengan pembelian F&B",
-    ],
+    example: "Padel 1, 19.00–21.00, tarif jam ramai, DP Rp100.000 tercatat.",
   },
 ];

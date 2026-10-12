@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Minus } from "lucide-react";
 import { SectionWrapper } from "@/components/shared/SectionWrapper";
 import { PRICING_FEATURES } from "@/constants/pricing";
+import { PLAY_STORE_URL } from "@/constants/site";
 
 export function HargaSection() {
   const [billingCycle, setBillingCycle] = useState<"yearly" | "monthly">("yearly");
@@ -87,7 +88,7 @@ export function HargaSection() {
                 </p>
               </div>
               <Link
-                href="#daftar"
+                href={PLAY_STORE_URL}
                 className="mt-6 w-full h-[38px] px-4 rounded-[8px] border border-[#c9d2cf] hover:border-[#b0b8b5] bg-white text-[#292e31] text-[14px] font-medium flex items-center justify-center transition-colors cursor-pointer"
               >
                 Mulai gratis
@@ -131,7 +132,7 @@ export function HargaSection() {
               </div>
 
               <Link
-                href="#coba-pro"
+                href={PLAY_STORE_URL}
                 className="mt-6 w-full h-[38px] px-4 rounded-[8px] bg-[#f1702c] hover:bg-[#ff7a45] text-white text-[14px] font-medium flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
               >
                 Coba gratis 30 hari

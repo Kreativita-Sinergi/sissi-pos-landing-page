@@ -6,19 +6,24 @@ export interface ComparisonRow {
 
 export const COMPARISON_DATA: ComparisonRow[] = [
   {
-    task: "Mencatat pesanan",
-    before: "Kertas dan ingatan",
-    after: "Langsung masuk ke layar dapur",
+    task: "Internet putus",
+    before: "Catat di kertas, input ulang nanti",
+    after: "Tetap jualan, data terkirim saat sinyal kembali",
   },
   {
-    task: "Pesanan meja",
-    before: "Kasir bolak-balik ke meja",
-    after: "Pelanggan pesan lewat QR",
+    task: "Pesanan ke dapur",
+    before: "Kertas pesanan dan teriak ke dapur",
+    after: "Muncul di layar dapur per meja",
+  },
+  {
+    task: "Modal per menu",
+    before: "Ditebak dari harga jual",
+    after: "HPP dari resep, per varian",
   },
   {
     task: "Kasbon pelanggan",
     before: "Buku utang terpisah",
-    after: "Tercatat di transaksi, ada pengingat",
+    after: "Tercatat di transaksi, diingatkan lewat WhatsApp",
   },
   {
     task: "Tutup kasir",
@@ -28,11 +33,11 @@ export const COMPARISON_DATA: ComparisonRow[] = [
   {
     task: "Absen karyawan",
     before: "Kertas absen di dinding",
-    after: "PIN atau wajah di tablet kasir",
+    after: "Absen dengan PIN di perangkat kasir",
   },
   {
-    task: "Laporan ke pemilik",
+    task: "Kabar ke pemilik",
     before: "Foto buku dikirim lewat chat",
-    after: "Laporan siap dibuka dari HP",
+    after: "Laporan di aplikasi, notifikasi ke HP pemilik",
   },
 ];

@@ -87,7 +87,7 @@ export const PRICING_FEATURES: FeatureComparisonItem[] = [
     proValue: true,
   },
   {
-    name: "Meja, QR order & layar dapur",
+    name: "Meja, pesanan berjalan & layar dapur",
     freeValue: false,
     proValue: true,
   },
@@ -98,11 +98,6 @@ export const PRICING_FEATURES: FeatureComparisonItem[] = [
   },
   {
     name: "Absensi, jadwal shift & gaji",
-    freeValue: false,
-    proValue: true,
-  },
-  {
-    name: "Barang titipan",
     freeValue: false,
     proValue: true,
   },
