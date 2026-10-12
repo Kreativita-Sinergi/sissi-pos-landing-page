@@ -87,7 +87,7 @@ export function Sheet({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="mx-auto mt-auto mb-0 w-full max-w-[520px] max-h-[92dvh] overflow-hidden rounded-t-[24px] bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.55)] sm:mb-auto sm:rounded-[24px]"
+      className="mx-auto mt-auto mb-0 w-full max-w-[520px] max-h-[92dvh] overflow-clip rounded-t-[24px] bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.55)] sm:mb-auto sm:rounded-[24px]"
     >
       {open && (
         <div className="relative flex max-h-[92dvh] flex-col motion-safe:animate-so-sheet">
@@ -103,7 +103,7 @@ export function Sheet({
           ) : (
             <>
               <div aria-hidden className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-so-line sm:hidden" />
-              <div className="border-b border-so-line px-5 pt-3 pb-3.5">{heading}</div>
+              <div className="shrink-0 border-b border-so-line px-5 pt-3 pb-3.5">{heading}</div>
               {/* Padding di elemen dalam (bukan di wadah gulir) agar footer `sticky bottom-0` menempel tepat di dasar. */}
               <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <div className="px-5 py-4">{children}</div>
@@ -111,7 +111,7 @@ export function Sheet({
             </>
           )}
           {footer && (
-            <div className="border-t border-so-line bg-white px-5 pt-3 pb-[max(14px,env(safe-area-inset-bottom))]">
+            <div className="shrink-0 border-t border-so-line bg-white px-5 pt-3 pb-[max(14px,env(safe-area-inset-bottom))]">
               {footer}
             </div>
           )}

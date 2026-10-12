@@ -240,8 +240,8 @@ function ProductCard({ product, quantity, onOpen }: { product: MenuProduct; quan
           name={product.name}
           src={product.image_url}
           dim={soldOut}
-          className="h-[96px] w-[96px] rounded-[16px]"
-          textClass="text-[26px]"
+          className="h-[76px] w-[76px] rounded-[14px]"
+          textClass="text-[21px]"
         />
         {soldOut && (
           <span className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-white/95 py-1 text-center text-[12px] font-bold text-text-heading shadow-so-card">
@@ -283,9 +283,9 @@ function ProductCard({ product, quantity, onOpen }: { product: MenuProduct; quan
           {!soldOut && (
             <span
               aria-hidden
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-deep text-white shadow-[0_4px_10px_rgb(160_74_29/0.3)]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-deep text-white shadow-[0_3px_8px_rgb(160_74_29/0.25)]"
             >
-              <Plus size={22} strokeWidth={2.75} />
+              <Plus size={18} strokeWidth={2.75} />
             </span>
           )}
         </span>
