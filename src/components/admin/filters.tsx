@@ -122,8 +122,9 @@ export function SearchBox({
         ref={ref}
         id={id}
         type="search"
-        className={`${inputClass} peer pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden`}
+        className={`${inputClass} peer pr-10 pl-9 text-ellipsis [&::-webkit-search-cancel-button]:hidden`}
         placeholder={placeholder}
+        title={label}
         value={input}
         maxLength={100}
         autoComplete="off"

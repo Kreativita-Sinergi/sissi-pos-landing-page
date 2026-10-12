@@ -105,11 +105,11 @@ export function BusinessListView() {
         search={
           <SearchBox
             id="biz-q"
-            label="Cari bisnis"
-            className="w-full sm:w-[260px] 2xl:w-[340px]"
+            label="Cari bisnis menurut nama, pemilik, email, HP, atau ID"
+            className="w-full sm:w-[300px] 2xl:w-[360px]"
             value={q}
             onSearch={(v) => qs.update({ q: v }, "replace")}
-            placeholder="Nama bisnis, pemilik, email, HP, atau ID"
+            placeholder="Cari bisnis, pemilik, atau HP…"
           />
         }
         trailing={

@@ -121,11 +121,11 @@ export function DeletionsView() {
         search={
           <SearchBox
             id="del-q"
-            label="Cari antrean hapus akun"
+            label="Cari menurut nama bisnis, email pemilik, atau ID bisnis"
             className="w-full sm:w-[340px]"
             value={q}
             onSearch={(v) => qs.update({ q: v }, "replace")}
-            placeholder="Nama bisnis, email pemilik, atau ID bisnis"
+            placeholder="Cari bisnis atau email…"
           />
         }
         trailing={

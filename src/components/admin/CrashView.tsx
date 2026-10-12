@@ -141,11 +141,11 @@ export function CrashListView() {
         search={
           <SearchBox
             id="crash-q"
-            label="Cari crash"
-            className="w-full sm:w-[260px] 2xl:w-[340px]"
+            label="Cari crash menurut pesan, nama file, atau sidik jari"
+            className="w-full sm:w-[300px] 2xl:w-[360px]"
             value={q}
             onSearch={(v) => qs.update({ q: v }, "replace")}
-            placeholder="Pesan, nama file, atau sidik jari"
+            placeholder="Cari pesan atau file…"
           />
         }
         trailing={
