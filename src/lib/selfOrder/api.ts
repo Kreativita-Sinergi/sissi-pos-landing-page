@@ -11,7 +11,8 @@ import type {
 } from "./types";
 
 export interface SelfOrderApi {
-  getMenu(code: string, signal?: AbortSignal): Promise<Menu>;
+  /** `fresh` = validasi ulang ke server (abaikan cache 30 dtk), mis. setelah PRICE_CHANGED. */
+  getMenu(code: string, opts?: { signal?: AbortSignal; fresh?: boolean }): Promise<Menu>;
   createOrder(code: string, body: CreateOrderBody, idempotencyKey: string): Promise<CreateOrderResponse>;
   getOrder(id: string, accessKey: string, signal?: AbortSignal): Promise<OrderStatusResponse>;
   createPayment(id: string, accessKey: string, idempotencyKey: string): Promise<PaymentResponse>;
@@ -23,7 +24,11 @@ export const SELF_ORDER_MOCK = process.env.NEXT_PUBLIC_SELF_ORDER_MOCK === "1";
 const enc = encodeURIComponent;
 
 const httpApi: SelfOrderApi = {
-  getMenu: (code, signal) => getJson<Menu>(`/public/pesan/${enc(code)}`, { signal }),
+  getMenu: (code, opts) =>
+    getJson<Menu>(`/public/pesan/${enc(code)}`, {
+      signal: opts?.signal,
+      cache: opts?.fresh ? "no-cache" : undefined,
+    }),
   createOrder: (code, body, idempotencyKey) =>
     postJson<CreateOrderResponse>(`/public/pesan/${enc(code)}/orders`, body, {
       headers: { "Idempotency-Key": idempotencyKey },
@@ -33,6 +38,7 @@ const httpApi: SelfOrderApi = {
     getJson<OrderStatusResponse>(`/public/orders/${enc(id)}`, {
       headers: { "X-Order-Key": accessKey },
       signal,
+      cache: "no-store",
     }),
   createPayment: (id, accessKey, idempotencyKey) =>
     postJson<PaymentResponse>(

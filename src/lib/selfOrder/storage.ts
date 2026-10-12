@@ -5,6 +5,9 @@ import type { CartLine } from "./cart";
 const PREFIX = "sissi-pesan:v1:";
 const ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Jam dinding saat ini (dipakai dari event handler). */
+export const nowMs = (): number => Date.now();
+
 export type StoredOrder = {
   id: string;
   access_key: string;

@@ -76,6 +76,19 @@ npm run build
 npm run start
 ```
 
+### Pesan & Bayar Mandiri (QR) — `/pesan/<kode>`
+Halaman pemesanan pelanggan (scan QR meja). Mati secara bawaan; nyalakan lewat env (lihat `.env.example`):
+
+```bash
+# .env.local — coba tanpa server (data contoh kafe)
+NEXT_PUBLIC_SELF_ORDER=1
+NEXT_PUBLIC_SELF_ORDER_MOCK=1
+```
+Buka `http://localhost:3000/pesan/meja5`. Kode contoh untuk mode tiruan (bisa digabung, mis. `pilih-online`):
+`pilih` (pilih meja), `bawa` (tanpa meja), `online` (bayar QRIS), `nama` (nama wajib), `tolak`, `diam`
+(kasir tidak merespons), `kedaluwarsa`, `harga` (harga berubah), `habis` (item habis), `salah` (404),
+`tutup` (403), `limit` (429). Kontrak API: `sissi-service/docs/api.md` bagian "Pesan & Bayar Mandiri (QR)".
+
 ### Linter
 ```bash
 npm run lint

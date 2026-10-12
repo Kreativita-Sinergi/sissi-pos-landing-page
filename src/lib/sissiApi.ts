@@ -61,6 +61,8 @@ export type RequestOptions = {
   /** Sinyal batal dari pemanggil (mis. saat komponen dilepas); digabung dengan batas waktu. */
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** Mode cache HTTP peramban, mis. "no-cache" untuk memvalidasi ulang (ETag) setelah data berubah. */
+  cache?: RequestCache;
 };
 
 function combineSignals(timeoutMs: number, external?: AbortSignal): AbortSignal {
@@ -102,6 +104,7 @@ async function request<T>(
       headers,
       body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
       signal: combineSignals(opts.timeoutMs ?? REQUEST_TIMEOUT_MS, opts.signal),
+      cache: opts.cache,
     });
   } catch (err) {
     if (opts.signal?.aborted) {
