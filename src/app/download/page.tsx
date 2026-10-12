@@ -7,10 +7,11 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/shared/Container";
 import { GooglePlayIcon } from "@/components/shared/GooglePlayIcon";
 import { MIN_ANDROID, PLAY_STORE_URL } from "@/constants/site";
+import { ApkRelease } from "./ApkRelease";
 
 export const metadata: Metadata = {
   title: "Unduh aplikasi · Sissi POS",
-  description: `Pasang Sissi dari Google Play di HP atau tablet Android (${MIN_ANDROID} atau lebih baru). Daftar dengan email atau akun Google, pilih jenis usaha, lalu mulai jualan.`,
+  description: `Pasang Sissi dari Google Play di HP atau tablet Android (${MIN_ANDROID} atau lebih baru), atau unduh APK langsung untuk HP tanpa Play Store. Daftar dengan email atau akun Google, pilih jenis usaha, lalu mulai jualan.`,
 };
 
 const STEPS = [
@@ -33,6 +34,18 @@ const STEPS = [
     description:
       "Tambahkan produk pertama, isi modal awal laci, lalu mulai jualan.",
   },
+];
+
+const APK_STEPS = [
+  "Ketuk “Unduh APK” di HP yang akan dipakai.",
+  "Buka berkasnya. Bila diminta, izinkan “Instal aplikasi tidak dikenal” untuk browser atau aplikasi Berkas.",
+  "Ketuk “Pasang”, lalu buka Sissi dan masuk dengan email.",
+];
+
+const NO_GOOGLE_LIMITS = [
+  "Notifikasi push tidak masuk (notifikasi di dalam aplikasi tetap ada).",
+  "Masuk dengan Google tidak bisa dipakai. Gunakan email dan password.",
+  "Tidak ada pembaruan otomatis dari Play Store.",
 ];
 
 export default function DownloadPage() {
@@ -75,7 +88,11 @@ export default function DownloadPage() {
                   </Link>
                 </div>
                 <p className="mt-4 text-[14px] text-[#7d8986]">
-                  Belum tersedia untuk iPhone dan iPad.
+                  Belum tersedia untuk iPhone dan iPad. HP tanpa Play Store?{" "}
+                  <a href="#apk" className="text-[#be5823] font-medium hover:underline">
+                    Unduh APK langsung
+                  </a>
+                  .
                 </p>
               </div>
 
@@ -119,6 +136,99 @@ export default function DownloadPage() {
                 </li>
               ))}
             </ol>
+          </Container>
+        </section>
+        <section
+          id="apk"
+          className="py-12 sm:py-16 border-t border-[#e4e9e7] scroll-mt-24"
+        >
+          <Container>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+              <div className="lg:col-span-5">
+                <span className="text-[13px] font-medium font-mono tracking-wider uppercase text-[#be5823] mb-3 block">
+                  Tanpa Play Store
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-[#292e31]">
+                  Unduh APK langsung
+                </h2>
+                <p className="mt-3 text-[16px] text-[#525866] leading-relaxed max-w-md">
+                  Untuk HP atau tablet tanpa Google Play, misalnya Huawei atau
+                  HarmonyOS yang masih bisa memasang APK. Butuh {MIN_ANDROID} atau
+                  lebih baru. Kalau ada Play Store, pasang dari sana saja.
+                </p>
+                <div className="mt-6">
+                  <ApkRelease />
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-10">
+                <div>
+                  <h3 className="text-[17px] font-semibold text-[#292e31]">
+                    Cara pasang
+                  </h3>
+                  <ol className="mt-3 space-y-3">
+                    {APK_STEPS.map((text, idx) => (
+                      <li key={text} className="flex gap-3 text-[15px] text-[#525866] leading-relaxed">
+                        <span className="font-mono text-[13px] font-medium text-[#be5823] pt-[3px]">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <span>{text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div>
+                  <h3 className="text-[17px] font-semibold text-[#292e31]">
+                    Tanpa layanan Google
+                  </h3>
+                  <ul className="mt-3 space-y-2 text-[15px] text-[#525866] leading-relaxed list-disc pl-5 marker:text-[#b0b8b5]">
+                    {NO_GOOGLE_LIMITS.map((text) => (
+                      <li key={text}>{text}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-[15px] text-[#525866] leading-relaxed">
+                    Kasir, stok, laporan, dan mode offline tetap berjalan
+                    seperti biasa.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-[17px] font-semibold text-[#292e31]">
+                    Memperbarui
+                  </h3>
+                  <p className="mt-3 text-[15px] text-[#525866] leading-relaxed">
+                    Kembali ke halaman ini, unduh APK terbaru, lalu pasang di
+                    atas versi lama. Data tetap aman selama sebelumnya juga
+                    dipasang dari APK halaman ini.
+                  </p>
+                </div>
+
+                <div className="border-l-2 border-[#f1702c] pl-4">
+                  <h3 className="text-[17px] font-semibold text-[#292e31]">
+                    Pindah antara Play Store dan APK
+                  </h3>
+                  <p className="mt-3 text-[15px] text-[#525866] leading-relaxed">
+                    Keduanya tidak bisa saling menimpa. Aplikasi lama harus
+                    dicopot dulu, dan data yang belum tersinkron ikut hilang.
+                    Buka Sissi saat online dan tunggu status{" "}
+                    <span className="text-[#292e31]">“Tersinkron”</span> sebelum
+                    mencopot.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-10 text-[14px] text-[#7d8986]">
+              Langkah lengkap ada di panduan{" "}
+              <Link
+                href="/panduan/pasang-lewat-apk"
+                className="text-[#be5823] font-medium hover:underline"
+              >
+                Pasang lewat APK
+              </Link>
+              .
+            </p>
           </Container>
         </section>
       </main>

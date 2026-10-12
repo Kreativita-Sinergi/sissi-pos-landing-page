@@ -14,3 +14,11 @@ export const SUPPORT_WHATSAPP_LABEL = "+62 851-6146-2806";
 
 /** Versi Android minimum (minSdk 24 = Android 7.0). */
 export const MIN_ANDROID = "Android 7.0";
+
+/**
+ * APK langsung untuk HP tanpa Google Play (mis. Huawei). Berkas dilayani nginx situs Sissi
+ * (`sissi-service/deploy/publish-apk.sh`); `latest.json` mengizinkan CORS dari kasir.sissi.id.
+ */
+export const APK_BASE_URL = "https://apipos.sissi.id/unduh";
+export const APK_LATEST_URL = `${APK_BASE_URL}/sissi-pos-latest.apk`;
+export const APK_LATEST_JSON_URL = `${APK_BASE_URL}/latest.json`;

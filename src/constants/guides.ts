@@ -397,6 +397,80 @@ export const GUIDES: GuideItem[] = [
     keywords: ["navigasi", "sidebar", "menu bawah", "lainnya", "pengaturan", "panel kanan", "cari"],
   },
   {
+    slug: "pasang-lewat-apk",
+    category: "mulai",
+    title: "Pasang lewat APK (HP tanpa Play Store)",
+    description: "Memasang Sissi dari berkas APK di HP tanpa Google Play, misalnya Huawei, dan cara memperbaruinya.",
+    audience: ["Pemilik", "Kasir"],
+    readMinutes: 3,
+    lastUpdated: UPDATED,
+    overview:
+      "Cara utama memasang Sissi adalah lewat Google Play. Bila HP atau tablet tokomu tidak punya Play Store (misalnya Huawei), unduh berkas APK dari halaman Unduh di kasir.sissi.id/download lalu pasang sendiri.",
+    prerequisites: ["HP atau tablet Android 7.0 atau lebih baru yang bisa memasang berkas APK."],
+    steps: [
+      {
+        id: "unduh-dan-pasang",
+        title: "Unduh dan pasang",
+        steps: [
+          "Di HP yang akan dipakai, buka kasir.sissi.id/download, lalu ketuk “Unduh APK” di bagian “Unduh APK langsung”.",
+          "Bila muncul peringatan berkas berbahaya dari browser, pastikan alamatnya apipos.sissi.id, lalu pilih unduh tetap.",
+          "Buka berkas sissi-pos-latest.apk dari notifikasi unduhan atau aplikasi Berkas.",
+          "Bila diminta, izinkan “Instal aplikasi tidak dikenal” untuk browser atau aplikasi Berkas, lalu kembali.",
+          "Ketuk “Pasang”, tunggu selesai, lalu buka Sissi dan masuk seperti biasa.",
+        ],
+        callout: {
+          type: "tip",
+          text: "Setelah terpasang, izin “Instal aplikasi tidak dikenal” boleh dimatikan lagi. Nyalakan kembali hanya saat memperbarui.",
+        },
+      },
+      {
+        id: "batasan",
+        title: "Yang tidak tersedia di HP tanpa layanan Google",
+        points: [
+          "Notifikasi push (misalnya peringatan untuk pemilik) tidak masuk. Notifikasi di dalam aplikasi tetap ada.",
+          "“Lanjut dengan Google” tidak bisa dipakai. Daftar dan masuk dengan email dan password.",
+          "Tidak ada pembaruan otomatis dari Play Store.",
+        ],
+        description: "Fitur kasir, stok, laporan, offline, dan sinkronisasi tetap berjalan normal.",
+      },
+      {
+        id: "perbarui",
+        title: "Memperbarui aplikasi",
+        description:
+          "Buka lagi kasir.sissi.id/download, unduh APK terbaru, lalu pasang di atas versi lama. Data tetap aman karena berasal dari jalur yang sama. Versi yang tersedia tertulis di halaman itu.",
+      },
+      {
+        id: "pindah-jalur",
+        title: "Pindah dari APK ke Play Store (atau sebaliknya)",
+        description:
+          "Aplikasi dari APK dan dari Play Store ditandatangani dengan kunci berbeda, jadi yang satu tidak bisa dipasang di atas yang lain. Untuk pindah, aplikasi lama harus dicopot dulu.",
+        steps: [
+          "Buka Sissi dalam keadaan online dan tunggu sampai status sinkron menjadi “Tersinkron …” (tidak ada lagi yang “menunggu dikirim”).",
+          "Copot aplikasi Sissi.",
+          "Pasang dari jalur yang baru, lalu masuk lagi dengan akun yang sama. Data yang sudah tersinkron muncul kembali.",
+        ],
+        callout: {
+          type: "warning",
+          text: "Data yang belum tersinkron saat aplikasi dicopot akan hilang. Jangan copot aplikasi saat masih offline.",
+        },
+      },
+    ],
+    faqs: [
+      {
+        question: "Muncul “Aplikasi tidak terpasang” saat memasang APK.",
+        answer:
+          "Biasanya karena Sissi dari Play Store masih terpasang. Ikuti langkah pindah jalur di atas: sinkronkan dulu, copot aplikasi lama, lalu pasang APK.",
+      },
+      {
+        question: "Apakah APK ini aman?",
+        answer:
+          "Unduh hanya dari kasir.sissi.id/download. Halaman itu juga menampilkan kode SHA-256 untuk mencocokkan berkas bila diperlukan.",
+      },
+    ],
+    relatedSlugs: ["daftar-dan-masuk", "perbarui-aplikasi", "bekerja-offline"],
+    keywords: ["apk", "huawei", "harmonyos", "appgallery", "tanpa play store", "sideload", "unduh", "install"],
+  },
+  {
     slug: "menyambungkan-printer-thermal-bluetooth",
     category: "mulai",
     title: "Menyambungkan printer struk",
