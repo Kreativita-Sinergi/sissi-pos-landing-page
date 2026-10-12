@@ -13,6 +13,7 @@ import {
   LogOut,
   Package,
   ScrollText,
+  ShieldAlert,
   Smartphone,
   Store,
   UserRoundX,
@@ -35,6 +36,7 @@ const NAV_GROUPS = [
       { href: "/admin/bisnis", label: "Bisnis", short: "Bisnis", icon: Store },
       { href: "/admin/crash", label: "Crash", short: "Crash", icon: Bug },
       { href: "/admin/hapus-akun", label: "Hapus akun", short: "Hapus akun", icon: UserRoundX },
+      { href: "/admin/keamanan", label: "Keamanan", short: "Keamanan", icon: ShieldAlert },
     ],
   },
   {

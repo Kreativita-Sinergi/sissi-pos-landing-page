@@ -343,6 +343,42 @@ export type DeletionQuery = { status?: string; q?: string; sort?: string; order?
 
 export type DeletionFacets = { status: Partial<Record<DeletionStatus, number>> };
 
+// ——— Laporan keamanan (secwatch) ———
+
+export type SecurityFlag = "auth_fail" | "rate_limited" | "bad_token" | "not_found";
+
+export type SecurityTarget = {
+  identifier: string;
+  count: number;
+  user: { id: string; name: string | null; business: { id: string; name: string } | null } | null;
+};
+
+export type SecurityIP = {
+  ip: string;
+  flags: SecurityFlag[];
+  auth_fail: number;
+  rate_limited: number;
+  bad_token: number;
+  not_found: number;
+  /** Kosong di daftar; terisi di detail. */
+  targets: SecurityTarget[];
+  paths: { path: string; count: number }[];
+};
+
+export type SecurityReport = {
+  id: string;
+  window_start: string;
+  window_end: string;
+  totals: { auth_fail: number; rate_limited: number; bad_token: number; not_found: number };
+  distributed: boolean;
+  overflow: number;
+  targets: SecurityTarget[];
+  ips_count: number;
+  ips: SecurityIP[];
+};
+
+export type SecurityQuery = { from?: string; to?: string; flag?: string; q?: string; page?: number; per_page?: number };
+
 // ——— Langganan & metrik (tahap 3) ———
 
 export type PlanId = "free" | "pro";

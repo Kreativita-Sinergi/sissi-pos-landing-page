@@ -24,6 +24,8 @@ import type {
   CreateAdminResult,
   DeletionFacets,
   DeletionQuery,
+  SecurityQuery,
+  SecurityReport,
   Features,
   FeaturesInput,
   LoginResult,
@@ -79,6 +81,8 @@ export interface AdminApi {
   crash(fingerprint: string, signal?: AbortSignal): Promise<CrashDetail>;
   setCrashStatus(fingerprint: string, body: CrashStatusInput): Promise<CrashGroup>;
   accountDeletions(q: DeletionQuery, signal?: AbortSignal): Promise<Paged<AccountDeletion, DeletionFacets>>;
+  securityReports(q: SecurityQuery, signal?: AbortSignal): Promise<Paged<SecurityReport>>;
+  securityReport(id: string, signal?: AbortSignal): Promise<SecurityReport>;
   // Tahap 3
   metrics(q: MetricsQuery, signal?: AbortSignal): Promise<Metrics>;
   subscriptions(q: SubscriptionQuery, signal?: AbortSignal): Promise<Paged<AdminSubscription, SubscriptionFacets>>;
@@ -326,6 +330,15 @@ const httpApi: AdminApi = {
     });
     return paged<AccountDeletion, DeletionFacets>(r, page, perPage);
   },
+  securityReports: async (q, signal) => {
+    const page = q.page ?? 1;
+    const perPage = q.per_page ?? 25;
+    const r = await call<SecurityReport[]>("GET", `/security-reports${qs({ ...q, page, per_page: perPage })}`, {
+      signal,
+    });
+    return paged<SecurityReport>(r, page, perPage);
+  },
+  securityReport: async (id, signal) => (await call<SecurityReport>("GET", `/security-reports/${enc(id)}`, { signal })).data,
   metrics: async (q, signal) => (await call<Metrics>("GET", `/metrics${qs({ ...q })}`, { signal })).data,
   subscriptions: async (q, signal) => {
     const page = q.page ?? 1;

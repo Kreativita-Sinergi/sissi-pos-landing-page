@@ -20,6 +20,7 @@ import {
   makeDeletions,
   makeEvents,
   makeReleases,
+  makeSecurityReports,
   makeVersion,
   PUBLIC_URL,
   refOf,
@@ -52,6 +53,7 @@ import type {
   BusinessSummary,
   CrashGroup,
   Release,
+  SecurityReport,
 } from "./types";
 
 const SESSION_KEY = "sissi-admin-mock:session";
@@ -67,6 +69,7 @@ type State = {
   admins: AdminListItem[];
   crashes: CrashRecord[];
   deletions: AccountDeletion[];
+  security: SecurityReport[];
   billing: BillingState;
 };
 
@@ -86,6 +89,7 @@ function initialState(): State {
     admins: ADMINS.map((a) => ({ ...a })),
     crashes,
     deletions,
+    security: makeSecurityReports(businesses),
     billing,
   };
 }
@@ -837,6 +841,37 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
         },
       };
       return { ...page(rows, q.page, q.per_page ?? 25), facets };
+    },
+
+    async securityReports(q) {
+      await guard();
+      if ((q.q ?? "").length > 100) throw invalid("q", "Maksimal 100 karakter");
+      const needle = (q.q ?? "").trim().toLowerCase();
+      const from = q.from ? Date.parse(q.from.length === 10 ? `${q.from}T00:00:00+07:00` : q.from) : -Infinity;
+      const to = q.to ? Date.parse(q.to.length === 10 ? `${q.to}T00:00:00+07:00` : q.to) + (q.to.length === 10 ? DAY : 0) : Infinity;
+      const rows = db().security.filter((x) => {
+        if (Date.parse(x.window_end) < from || Date.parse(x.window_start) >= to) return false;
+        if (q.flag === "distributed" && !x.distributed) return false;
+        if (q.flag && q.flag !== "distributed" && !x.ips.some((i) => (i.flags as string[]).includes(q.flag!))) return false;
+        if (!needle) return true;
+        const hasTarget = (ts: SecurityReport["targets"]) => ts.some((t) => t.identifier.toLowerCase().includes(needle));
+        return hasTarget(x.targets) || x.ips.some((i) => i.ip.includes(needle) || hasTarget(i.targets));
+      });
+      const p = page(rows, q.page, q.per_page ?? 25);
+      return {
+        ...p,
+        items: p.items.map((x) => ({
+          ...x,
+          targets: x.targets.slice(0, 5),
+          ips: x.ips.slice(0, 5).map((i) => ({ ...i, targets: [], paths: [] })),
+        })),
+      };
+    },
+    async securityReport(id) {
+      await guard();
+      const x = db().security.find((r) => r.id === id);
+      if (!x) throw new ApiError("Laporan tidak ditemukan.", 404, "NOT_FOUND");
+      return structuredClone(x);
     },
 
     // ——— Tahap 3: metrik & langganan ———

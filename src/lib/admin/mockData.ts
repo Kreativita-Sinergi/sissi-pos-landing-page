@@ -12,6 +12,10 @@ import type {
   Features,
   PaymentProvider,
   Release,
+  SecurityFlag,
+  SecurityIP,
+  SecurityReport,
+  SecurityTarget,
 } from "./types";
 
 export const NOW = Date.now();
@@ -560,4 +564,93 @@ export function tempPassword(): string {
   chars[13] = "23456789"[bytes[2] % 8];
   chars[17] = "-_."[bytes[3] % 3];
   return chars.join("");
+}
+
+// ——— Laporan keamanan ———
+
+const SCAN_PATHS = ["/.env", "/wp-admin/setup.php", "/wp-login.php", "/.git/config", "/phpmyadmin/", "/api/v1/../etc/passwd", "/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php", "/server-status", "/actuator/env", "/config.json"];
+
+/** Jendela 15 menit yang melewati ambang selama 30 hari terakhir (terbaru dulu). */
+export function makeSecurityReports(businesses: BusinessDetail[]): SecurityReport[] {
+  const r = rng(4242);
+  const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
+  const owners = businesses.filter((b) => b.owner).map((b) => ({ b, o: b.owner! }));
+  const target = (identifier: string, count: number): SecurityTarget => {
+    const hit = owners.find(({ o }) => o.email === identifier || o.phone === identifier);
+    return {
+      identifier,
+      count,
+      user: hit ? { id: hit.o.id, name: hit.o.name, business: { id: hit.b.id, name: hit.b.name } } : null,
+    };
+  };
+  const ownerTarget = (count: number) => {
+    const { o } = pick(owners);
+    return target(r() < 0.8 ? o.email : o.phone, count);
+  };
+  const ipOf = () => `${pick([114, 36, 182, 103, 45, 185, 194])}.${Math.floor(r() * 255)}.${Math.floor(r() * 255)}.${Math.floor(r() * 254) + 1}`;
+  const ip = (kind: SecurityFlag): SecurityIP => {
+    const x: SecurityIP = { ip: ipOf(), flags: [kind], auth_fail: 0, rate_limited: 0, bad_token: 0, not_found: 0, targets: [], paths: [] };
+    if (kind === "auth_fail") {
+      x.auth_fail = 10 + Math.floor(r() * 40);
+      const first = ownerTarget(Math.ceil(x.auth_fail * 0.7));
+      x.targets = [first];
+      if (r() < 0.5) x.targets.push(target(`${pick(["admin", "test", "kasir", "owner"])}@${pick(["gmail.com", "yahoo.com"])}`, x.auth_fail - first.count));
+      if (r() < 0.4) {
+        x.rate_limited = 20 + Math.floor(r() * 30);
+        x.flags.push("rate_limited");
+      }
+    } else if (kind === "not_found") {
+      x.not_found = 30 + Math.floor(r() * 200);
+      const n = 2 + Math.floor(r() * 6);
+      const paths = [...SCAN_PATHS].sort(() => r() - 0.5).slice(0, n);
+      let left = x.not_found;
+      x.paths = paths.map((path, i) => {
+        const count = i === paths.length - 1 ? left : Math.max(1, Math.floor(left * 0.5));
+        left -= count;
+        return { path, count };
+      }).filter((p) => p.count > 0);
+    } else if (kind === "rate_limited") {
+      x.rate_limited = 20 + Math.floor(r() * 80);
+    } else {
+      x.bad_token = 60 + Math.floor(r() * 120);
+    }
+    return x;
+  };
+  const out: SecurityReport[] = [];
+  const slot = 15 * 60_000;
+  const nowSlot = Math.floor(NOW / slot) * slot;
+  for (let i = 0; i < 46; i++) {
+    const end = nowSlot - Math.floor(i * i * 0.9 + i * 6 + r() * 4) * slot;
+    const kinds: SecurityFlag[] = [];
+    const n = r() < 0.75 ? 1 : 2 + Math.floor(r() * 3);
+    for (let k = 0; k < n; k++) kinds.push(pick(["auth_fail", "auth_fail", "not_found", "not_found", "not_found", "rate_limited", "bad_token"]));
+    const ips = kinds.map(ip);
+    if (i === 0) {
+      // Seperti alert contoh: satu IP, 15 gagal login ke satu akun pemilik.
+      const t = target(owners[0].o.email, 15);
+      ips.splice(0, ips.length, { ip: "114.125.52.218", flags: ["auth_fail"], auth_fail: 15, rate_limited: 0, bad_token: 0, not_found: 0, targets: [t], paths: [] });
+    }
+    const rank = (x: SecurityIP) => (x.auth_fail ? 4 : x.rate_limited ? 3 : x.bad_token ? 2 : 1) * 1e6 + x.auth_fail + x.rate_limited + x.bad_token + x.not_found;
+    ips.sort((a, b) => rank(b) - rank(a));
+    const sum = (k: "auth_fail" | "rate_limited" | "bad_token" | "not_found") => ips.reduce((a, x) => a + x[k], 0) + Math.floor(r() * 4);
+    const distributed = i === 7 || i === 23;
+    const totals = { auth_fail: sum("auth_fail"), rate_limited: sum("rate_limited"), bad_token: sum("bad_token"), not_found: sum("not_found") + 22 };
+    let targets: SecurityTarget[] = [];
+    if (distributed) {
+      totals.auth_fail += 60 + Math.floor(r() * 80);
+      targets = [ownerTarget(40 + Math.floor(r() * 30)), ownerTarget(8), target("admin@sissi.id", 5), target("(format tidak valid)", 3)];
+    }
+    out.push({
+      id: uuid("sec", i + 1),
+      window_start: new Date(end - slot).toISOString(),
+      window_end: new Date(end).toISOString(),
+      totals,
+      distributed,
+      overflow: i === 23 ? 340 : 0,
+      targets,
+      ips_count: ips.length,
+      ips,
+    });
+  }
+  return out;
 }
