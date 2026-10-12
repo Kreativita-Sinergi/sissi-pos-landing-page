@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import { ApiError } from "@/lib/sissiApi";
-import { MockBanner, safeNext } from "./AdminShell";
+import { MockBanner, passwordChangeUrl, safeNext } from "./AdminShell";
 import { btn, errorMessage, Field, focusRing, formatWait, inputClass, Notice, Spinner } from "./ui";
 
 export function LoginView() {
@@ -49,8 +49,9 @@ export function LoginView() {
     }
     setBusy(true);
     try {
-      await (await adminApi()).login(email.trim(), password);
-      router.replace(next);
+      const r = await (await adminApi()).login(email.trim(), password);
+      // Password sementara → wajib ganti dulu sebelum masuk panel.
+      router.replace(r.admin.must_change_password ? passwordChangeUrl(next) : next);
     } catch (err) {
       setBusy(false);
       setPassword("");
@@ -83,7 +84,7 @@ export function LoginView() {
 
           <div className="rounded-[16px] border border-border-subtle bg-white p-5 sm:p-6">
             <h1 className="text-[20px] font-bold tracking-tight text-text-heading">Masuk</h1>
-            <p className="mt-1 text-[14px] text-text-body">Khusus tim Sissi. Akun dibuat lewat CLI server.</p>
+            <p className="mt-1 text-[14px] text-text-body">Khusus tim Sissi. Akun dibuat oleh admin lain.</p>
 
             <form className="mt-5 flex flex-col gap-4" onSubmit={submit} noValidate>
               {lockLeft !== null && lockLeft > 0 && (

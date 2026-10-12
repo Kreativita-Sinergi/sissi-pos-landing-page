@@ -1,182 +1,309 @@
 "use client";
 
 import React, { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ScrollText, SearchX } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
-import type { AuditEntry, Paged } from "@/lib/admin/types";
-import { AUDIT_ACTIONS, labelOf, LOGIN_FAIL_REASONS, TARGET_TYPES } from "./labels";
+import type { AdminListItem, AuditEntry, AuditPage } from "@/lib/admin/types";
+import {
+  ActiveFilters,
+  Chip,
+  DateRangeFilter,
+  FilterGroup,
+  FilterPanel,
+  rangeLabel,
+  SearchBox,
+  useQueryState,
+  type ActiveFilter,
+} from "./filters";
+import { AUDIT_ACTION_GROUPS, AUDIT_ACTIONS, labelOf, LOGIN_FAIL_REASONS, TARGET_TYPES } from "./labels";
 import {
   Badge,
   btn,
+  EmptyState,
   ErrorBlock,
+  errorMessage,
   focusRing,
   formatDateTime,
-  inputClass,
-  LoadingBlock,
+  LoadingBar,
   PageHeader,
-  Pagination,
+  SkeletonList,
+  Spinner,
   useLoad,
 } from "./ui";
 
-const PER_PAGE = 50;
-
-const selectClass = `${inputClass} appearance-none bg-[length:16px] bg-[right_10px_center] bg-no-repeat pr-9 bg-[url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d8986' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")]`;
+const LIMIT = 50;
 
 function actionTone(action: string): "neutral" | "brand" | "success" | "warning" | "danger" {
   if (action === "auth.login_failed" || action === "release.delete" || action === "admin.disable") return "danger";
   if (action.startsWith("auth.")) return "neutral";
-  if (action === "release.upload") return "success";
+  if (action === "release.upload" || action === "admin.enable") return "success";
   if (action.startsWith("admin.")) return "warning";
   return "brand";
 }
 
-export function AuditView() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const action = params.get("action") ?? "";
-  const targetType = params.get("target_type") ?? "";
-  const targetId = params.get("target_id") ?? "";
-  const page = Math.max(1, Number(params.get("page")) || 1);
-  const [idInput, setIdInput] = useState(targetId);
+type More = { key: string; items: AuditEntry[]; cursor: string | null };
 
-  const navigate = (patch: Record<string, string>) => {
-    const sp = new URLSearchParams({ action, target_type: targetType, target_id: targetId, page: "1", ...patch });
-    for (const [k, v] of [...sp.entries()]) if (!v || (k === "page" && v === "1")) sp.delete(k);
-    const s = sp.toString();
-    router.replace(s ? `${pathname}?${s}` : pathname, { scroll: false });
+export function AuditView() {
+  const qs = useQueryState();
+  const adminId = qs.get("admin_id");
+  const actions = qs.list("action");
+  const targetType = qs.get("target_type");
+  const targetId = qs.get("target_id");
+  const from = qs.get("from");
+  const to = qs.get("to");
+  const filterKey = JSON.stringify([adminId, actions, targetType, targetId, from, to]);
+
+  const query = {
+    admin_id: adminId || undefined,
+    action: actions,
+    target_type: targetType || undefined,
+    target_id: targetType ? targetId || undefined : undefined,
+    from: from || undefined,
+    to: to || undefined,
+    limit: LIMIT,
+  };
+  const { state, reload } = useLoad<AuditPage>(async (signal) => (await adminApi()).auditPage(query, signal), [filterKey]);
+  const admins = useLoad<AdminListItem[] | null>(async (signal) => (await adminApi()).admins(signal).catch(() => null), []);
+
+  // Halaman berikutnya (kursor) ditumpuk di bawah; diabaikan begitu filter berubah.
+  const [more, setMore] = useState<More | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
+  const extra = more && more.key === filterKey ? more : null;
+  const items = [...(state.data?.items ?? []), ...(extra?.items ?? [])];
+  const nextCursor = extra ? extra.cursor : (state.data?.next_cursor ?? null);
+
+  async function loadMore() {
+    if (!nextCursor) return;
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const page = await (await adminApi()).auditPage({ ...query, cursor: nextCursor });
+      setMore({ key: filterKey, items: [...(extra?.items ?? []), ...page.items], cursor: page.next_cursor });
+    } catch (err) {
+      setMoreError(errorMessage(err));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  // Chip aksi per kelompok; aksi lepas (dari tautan) tampil sendiri.
+  const fullGroups = AUDIT_ACTION_GROUPS.filter((g) => g.actions.every((a) => actions.includes(a)));
+  const loose = actions.filter((a) => !fullGroups.some((g) => g.actions.includes(a)));
+  const toggleGroup = (g: (typeof AUDIT_ACTION_GROUPS)[number]) => {
+    const on = fullGroups.includes(g);
+    qs.update({ action: on ? actions.filter((a) => !g.actions.includes(a)) : [...new Set([...actions, ...g.actions])] });
   };
 
-  const { state, reload } = useLoad<Paged<AuditEntry>>(
-    async (signal) =>
-      (await adminApi()).audit(
-        { page, per_page: PER_PAGE, action: action || undefined, target_type: targetType || undefined, target_id: targetId || undefined },
-        signal
-      ),
-    [action, targetType, targetId, page]
-  );
+  const adminList = admins.state.data ?? null;
+  const adminName = (id: string) => (id === "none" ? "Tanpa admin" : (adminList?.find((a) => a.id === id)?.name ?? "Admin lain"));
 
-  const filtered = action || targetType || targetId;
+  const activeFilters: ActiveFilter[] = [
+    ...(adminId ? [{ key: "admin", label: `Oleh ${adminName(adminId)}`, onRemove: () => qs.update({ admin_id: null }) }] : []),
+    ...fullGroups.map((g) => ({ key: `g-${g.id}`, label: g.label, onRemove: () => toggleGroup(g) })),
+    ...loose.map((a) => ({
+      key: `a-${a}`,
+      label: labelOf(AUDIT_ACTIONS, a),
+      onRemove: () => qs.update({ action: actions.filter((x) => x !== a) }),
+    })),
+    ...(targetType
+      ? [
+          {
+            key: "target",
+            label: `${labelOf(TARGET_TYPES, targetType)}${targetId ? ` ${targetId.length > 14 ? `${targetId.slice(0, 8)}…` : targetId}` : ""}`,
+            onRemove: () => qs.update({ target_type: null, target_id: null }),
+          },
+        ]
+      : []),
+    ...(from || to ? [{ key: "date", label: rangeLabel(from, to), onRemove: () => qs.update({ from: null, to: null }) }] : []),
+  ];
 
   return (
     <>
       <PageHeader title="Audit" description="Catatan semua tindakan admin dan CLI. Tidak bisa diubah atau dihapus." />
 
-      <form
-        className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-[200px_180px_minmax(0,1fr)_auto] sm:items-end"
-        onSubmit={(e) => {
-          e.preventDefault();
-          navigate({ target_id: idInput.trim() });
-        }}
-      >
-        <div>
-          <label htmlFor="f-action" className="mb-1.5 block text-[13px] font-semibold">
-            Aksi
-          </label>
-          <select id="f-action" className={selectClass} value={action} onChange={(e) => navigate({ action: e.target.value })}>
-            <option value="">Semua aksi</option>
-            {Object.entries(AUDIT_ACTIONS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="f-type" className="mb-1.5 block text-[13px] font-semibold">
-            Jenis target
-          </label>
-          <select id="f-type" className={selectClass} value={targetType} onChange={(e) => navigate({ target_type: e.target.value })}>
-            <option value="">Semua</option>
-            {Object.entries(TARGET_TYPES).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="f-target" className="mb-1.5 block text-[13px] font-semibold">
-            ID target
-          </label>
-          <input
-            id="f-target"
-            className={inputClass}
-            value={idInput}
-            onChange={(e) => setIdInput(e.target.value)}
-            placeholder="ID bisnis, nama berkas APK, …"
-            spellCheck={false}
-          />
-        </div>
-        <div className="flex gap-2">
-          <button type="submit" className={btn.secondary}>
-            Terapkan
-          </button>
-          {filtered && (
-            <button
-              type="button"
-              className={btn.ghost}
-              onClick={() => {
-                setIdInput("");
-                router.replace(pathname, { scroll: false });
-              }}
-            >
-              Reset
-            </button>
-          )}
-        </div>
-      </form>
-
-      {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
-      {state.status === "loading" && !state.data && <LoadingBlock />}
-      {state.data && (
-        <div className={`rounded-[14px] border border-border-subtle bg-white ${state.status === "loading" ? "opacity-60" : ""}`} aria-busy={state.status === "loading"}>
-          {state.data.items.length === 0 ? (
-            <p className="px-5 py-10 text-center text-[14px] text-text-muted">Tidak ada catatan{filtered ? " yang cocok dengan filter" : ""}.</p>
-          ) : (
-            <ul className="divide-y divide-border-subtle">
-              {state.data.items.map((e) => (
-                <AuditRow key={e.id} entry={e} />
+      <div className="mb-3">
+        <FilterPanel activeCount={activeFilters.length}>
+          {adminList && adminList.length > 0 && (
+            <FilterGroup label="Admin">
+              {adminList.map((a) => (
+                <Chip key={a.id} active={adminId === a.id} onClick={() => qs.update({ admin_id: adminId === a.id ? null : a.id })}>
+                  {a.name}
+                </Chip>
               ))}
-            </ul>
+              <Chip active={adminId === "none"} onClick={() => qs.update({ admin_id: adminId === "none" ? null : "none" })}>
+                Tanpa admin
+              </Chip>
+            </FilterGroup>
           )}
-          <div className="border-t border-border-subtle px-4 py-2 sm:px-5">
-            <Pagination
-              page={state.data.meta.page}
-              perPage={state.data.meta.per_page}
-              total={state.data.meta.total}
-              onPage={(p) => navigate({ page: String(p) })}
+          <FilterGroup label="Aksi">
+            {AUDIT_ACTION_GROUPS.map((g) => (
+              <Chip key={g.id} active={fullGroups.includes(g)} onClick={() => toggleGroup(g)}>
+                {g.label}
+              </Chip>
+            ))}
+          </FilterGroup>
+          <FilterGroup label="Target">
+            {Object.entries(TARGET_TYPES).map(([k, v]) => (
+              <Chip key={k} active={targetType === k} onClick={() => qs.update({ target_type: targetType === k ? null : k, target_id: null })}>
+                {v}
+              </Chip>
+            ))}
+            {targetType && (
+              <SearchBox
+                id="audit-target"
+                label="ID target"
+                className="w-full sm:w-[300px]"
+                value={targetId}
+                onSearch={(v) => qs.update({ target_id: v }, "replace")}
+                placeholder="ID persis (bisnis, berkas APK, …)"
+              />
+            )}
+          </FilterGroup>
+          <FilterGroup label="Tanggal">
+            <DateRangeFilter
+              idPrefix="audit"
+              from={from}
+              to={to}
+              presets={[
+                { label: "Hari ini", days: 1 },
+                { label: "7 hari", days: 7 },
+                { label: "30 hari", days: 30 },
+              ]}
+              onChange={(f, t) => qs.update({ from: f, to: t })}
             />
+          </FilterGroup>
+        </FilterPanel>
+      </div>
+
+      <div className="mb-2 min-h-8">
+        <ActiveFilters items={activeFilters} onClearAll={() => qs.clear()} />
+      </div>
+
+      {state.status === "error" && !state.data && <ErrorBlock error={state.error} onRetry={reload} />}
+      {state.status === "loading" && !state.data && <SkeletonList rows={10} label="Memuat audit" />}
+      {state.data && (
+        <>
+          <LoadingBar active={state.status === "loading"} />
+          <div
+            className={`rounded-[14px] border border-border-subtle bg-white transition-opacity ${state.status === "loading" ? "opacity-60" : ""}`}
+            aria-busy={state.status === "loading"}
+          >
+            {items.length === 0 ? (
+              activeFilters.length > 0 ? (
+                <EmptyState
+                  icon={<SearchX size={22} aria-hidden />}
+                  title="Tidak ada catatan yang cocok"
+                  action={
+                    <button type="button" className={btn.secondary} onClick={() => qs.clear()}>
+                      Hapus semua filter
+                    </button>
+                  }
+                >
+                  Coba perluas rentang tanggal atau kurangi filter.
+                </EmptyState>
+              ) : (
+                <EmptyState icon={<ScrollText size={22} aria-hidden />} title="Belum ada catatan audit" />
+              )
+            ) : (
+              <AuditList items={items} />
+            )}
+            {items.length > 0 && (
+              <div className="flex flex-col items-center gap-2 border-t border-border-subtle px-4 py-3">
+                {moreError && <p className="text-[13px] text-danger">{moreError}</p>}
+                {nextCursor ? (
+                  <button type="button" className={btn.secondary} onClick={loadMore} disabled={loadingMore}>
+                    {loadingMore && <Spinner />}
+                    Muat lebih banyak
+                  </button>
+                ) : (
+                  <p className="text-[13px] text-text-muted">
+                    {items.length.toLocaleString("id-ID")} catatan · sudah sampai akhir
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
     </>
   );
+}
+
+const dayFmt = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+const keyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" });
+const timeFmt = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+
+function AuditList({ items }: { items: AuditEntry[] }) {
+  const [now] = useState(() => Date.now());
+  const today = keyFmt.format(now);
+  const yesterday = keyFmt.format(now - 86_400_000);
+  const groups: { day: string; label: string; items: AuditEntry[] }[] = [];
+  for (const e of items) {
+    const day = keyFmt.format(new Date(e.created_at));
+    let g = groups[groups.length - 1];
+    if (!g || g.day !== day) {
+      g = { day, label: day === today ? "Hari ini" : day === yesterday ? "Kemarin" : dayFmt.format(new Date(e.created_at)), items: [] };
+      groups.push(g);
+    }
+    g.items.push(e);
+  }
+  return (
+    <div>
+      {groups.map((g) => (
+        <section key={g.day} aria-label={g.label}>
+          <h3 className="sticky top-0 z-[1] border-b border-border-subtle bg-bg-muted/95 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-text-muted backdrop-blur sm:px-5 lg:top-0">
+            {g.label}
+          </h3>
+          <ul className="divide-y divide-border-subtle">
+            {g.items.map((e) => (
+              <AuditRow key={e.id} entry={e} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function targetHref(e: AuditEntry): string | null {
+  if (e.target_type === "business" && e.target_id) return `/admin/bisnis/${encodeURIComponent(e.target_id)}`;
+  if (e.target_type === "crash" && e.target_id) return `/admin/crash/${encodeURIComponent(e.target_id)}`;
+  return null;
 }
 
 function AuditRow({ entry: e }: { entry: AuditEntry }) {
   const [open, setOpen] = useState(false);
   const detail = e.detail && Object.keys(e.detail).length > 0 ? e.detail : null;
   const reason = e.action === "auth.login_failed" && typeof e.detail?.reason === "string" ? labelOf(LOGIN_FAIL_REASONS, e.detail.reason) : null;
-  const via = e.detail?.via === "cli";
+  const via = e.detail?.via === "cli" ? "lewat CLI" : null;
+  const href = targetHref(e);
+  // Target admin = pelaku sendiri → tampilkan nama, bukan UUID.
+  const id = e.target_type === "admin" && e.admin && e.admin.id === e.target_id ? e.admin.name : e.target_id || "—";
 
   return (
-    <li className="px-4 py-2.5 sm:px-5">
-      <div className="grid grid-cols-1 gap-x-4 gap-y-1 text-[14px] md:grid-cols-[150px_170px_minmax(0,1fr)_auto] md:items-center">
-        <time dateTime={e.created_at} className="text-[13px] tabular-nums text-text-muted">
-          {formatDateTime(e.created_at)}
+    <li className="px-4 py-2 sm:px-5">
+      <div className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 text-[14px] md:grid-cols-[52px_190px_minmax(0,1fr)_auto]">
+        <time dateTime={e.created_at} title={formatDateTime(e.created_at)} className="text-[13px] tabular-nums text-text-muted">
+          {timeFmt.format(new Date(e.created_at))}
         </time>
-        <span className="flex flex-wrap items-center gap-1.5">
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5">
           <Badge tone={actionTone(e.action)}>{labelOf(AUDIT_ACTIONS, e.action)}</Badge>
           {reason && <span className="text-[12px] text-text-muted">{reason}</span>}
         </span>
-        <span className="min-w-0">
+        <span className="col-span-2 col-start-2 row-start-2 min-w-0 text-[13px] md:col-span-1 md:col-start-3 md:row-start-1 md:text-[14px]">
           <span className="text-text-muted">{labelOf(TARGET_TYPES, e.target_type)} </span>
-          <span className="break-all font-mono text-[12.5px] text-text-body">{e.target_id || "—"}</span>
-          <span className="block text-[13px] text-text-muted">
-            oleh {e.admin ? `${e.admin.name} (${e.admin.email})` : "sistem"}
-            {via ? " · lewat CLI" : ""}
+          {href ? (
+            <Link href={href} className={`break-all font-mono text-[12.5px] text-brand-ink hover:underline ${focusRing}`}>
+              {id}
+            </Link>
+          ) : (
+            <span className="break-all font-mono text-[12.5px] text-text-body">{id}</span>
+          )}
+          <span className="block text-[12.5px] text-text-muted">
+            oleh {e.admin ? e.admin.name : "sistem"}
+            {via ? ` · ${via}` : ""}
           </span>
         </span>
         {detail ? (
@@ -184,7 +311,7 @@ function AuditRow({ entry: e }: { entry: AuditEntry }) {
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            className={`inline-flex items-center gap-1 justify-self-start rounded-[8px] px-2 py-1 text-[13px] font-semibold text-text-body hover:bg-bg-muted md:justify-self-end ${focusRing}`}
+            className={`inline-flex items-center gap-1 justify-self-end rounded-[8px] px-2 py-1 text-[13px] font-semibold text-text-body hover:bg-bg-muted ${focusRing}`}
           >
             Detail <ChevronDown size={14} aria-hidden className={`transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
