@@ -21,8 +21,10 @@ export function HeroSection() {
             <p className="text-[13px] font-mono font-medium tracking-wider uppercase text-[#fef1eb]">
               Aplikasi kasir untuk HP &amp; tablet Android
             </p>
-            <h1 className="text-[40px] leading-[1.05] sm:text-[56px] xl:text-[64px] font-semibold tracking-tight text-white">
-              Internet mati, kasir tetap jalan.
+            <h1 className="text-[38px] leading-[1.08] sm:text-[48px] xl:text-[54px] font-semibold tracking-tight text-white">
+              Internet mati,{" "}
+              <br className="hidden sm:block" />
+              kasir tetap jalan.
             </h1>
             <p className="text-[17px] sm:text-lg text-[#fef1eb] leading-relaxed max-w-[560px]">
               Catat penjualan, potong stok, hitung HPP per varian, terima QRIS,
@@ -30,19 +32,19 @@ export function HeroSection() {
               kembali, semua perangkat di outlet ikut terbarui.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-2.5">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5">
               <a
                 href={PLAY_STORE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-[52px] px-6 bg-white hover:bg-[#fef1eb] text-[#292e31] font-semibold text-[16px] rounded-[10px] inline-flex items-center justify-center gap-2.5 transition-colors"
+                className="h-[52px] px-6 whitespace-nowrap bg-white hover:bg-[#fef1eb] text-[#292e31] font-semibold text-[16px] rounded-[10px] inline-flex items-center justify-center gap-2.5 transition-colors"
               >
                 <GooglePlayIcon />
                 <span>Unduh di Google Play</span>
               </a>
               <Link
                 href="/panduan"
-                className="h-[52px] px-6 text-white font-medium text-[16px] rounded-[10px] inline-flex items-center justify-center border border-white/60 hover:bg-white/10 transition-colors"
+                className="h-[52px] px-6 whitespace-nowrap text-white font-medium text-[16px] rounded-[10px] inline-flex items-center justify-center border border-white/60 hover:bg-white/10 transition-colors"
               >
                 Lihat panduan
               </Link>
