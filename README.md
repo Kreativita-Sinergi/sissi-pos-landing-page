@@ -89,6 +89,21 @@ Buka `http://localhost:3000/pesan/meja5`. Kode contoh untuk mode tiruan (bisa di
 (kasir tidak merespons), `kedaluwarsa`, `harga` (harga berubah), `habis` (item habis), `salah` (404),
 `tutup` (403), `limit` (429). Kontrak API: `sissi-service/docs/api.md` bagian "Pesan & Bayar Mandiri (QR)".
 
+### Admin platform — `/admin`
+Panel tim Sissi (rilis aplikasi, APK langsung, fitur per bisnis, audit) di `https://kasir.sissi.id/admin`.
+Tidak ditautkan dari landing, `noindex`. Halaman memanggil API langsung dari browser (`credentials: 'include'`
++ header `X-Sissi-Admin: 1`); unggah APK langsung ke API (bukan lewat Vercel). Kontrak:
+`sissi-service/docs/api.md` bagian "Admin platform".
+
+```bash
+# .env.local — coba tanpa server (data contoh)
+NEXT_PUBLIC_ADMIN_MOCK=1
+```
+Buka `http://localhost:3000/admin/login`. Mode tiruan: email & password apa saja; password `salah` → galat,
+email memuat `kunci` → terkunci 15 menit; nama APK memuat `rusak` → ditolak server.
+Dengan server dev (`:8080`): `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1` dan `ADMIN_ORIGINS`
+server memuat `http://localhost:3000`.
+
 ### Linter
 ```bash
 npm run lint
