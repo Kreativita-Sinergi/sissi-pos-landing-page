@@ -7,7 +7,8 @@ import { adminApi } from "@/lib/admin/api";
 import type { BusinessFacets, BusinessSummary, Paged } from "@/lib/admin/types";
 import { SearchBox, useQueryState } from "./filters";
 import { ClearFiltersButton, DateFilter, FilterBar, FilterSelect } from "./FilterMenu";
-import { BUSINESS_TYPES, labelOf, PROVIDERS } from "./labels";
+import { BUSINESS_TYPES, labelOf, PROVIDERS, SUB_STATUS } from "./labels";
+import { StatusBadge } from "./subscriptionUi";
 import {
   Badge,
   btn,
@@ -55,6 +56,7 @@ export function BusinessListView() {
   const createdFrom = qs.get("created_from");
   const createdTo = qs.get("created_to");
   const deletion = qs.get("deletion");
+  const planStatus = qs.list("plan_status");
   const sort = qs.get("sort") || "created";
   const order = (qs.get("order") || defaultOrder(sort)) as "asc" | "desc";
   const page = Math.max(1, Number(qs.get("page")) || 1);
@@ -70,6 +72,7 @@ export function BusinessListView() {
           created_from: createdFrom || undefined,
           created_to: createdTo || undefined,
           deletion: deletion || undefined,
+          plan_status: planStatus,
           sort: sort === "created" ? undefined : sort,
           order: qs.get("order") || undefined,
           page,
@@ -77,7 +80,7 @@ export function BusinessListView() {
         },
         signal
       ),
-    [q, types.join(","), active, features.join(","), createdFrom, createdTo, deletion, sort, order, page]
+    [q, types.join(","), active, features.join(","), createdFrom, createdTo, deletion, planStatus.join(","), sort, order, page]
   );
   const facets = state.data?.facets ?? null;
 
@@ -89,7 +92,7 @@ export function BusinessListView() {
     });
   };
 
-  const hasFilters = !!(types.length || active || features.length || createdFrom || createdTo || deletion);
+  const hasFilters = !!(types.length || active || features.length || createdFrom || createdTo || deletion || planStatus.length);
   const filtered = hasFilters || !!q;
   const clearAll = () => qs.clear(["sort", "order"]);
   const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? sort;
@@ -132,6 +135,17 @@ export function BusinessListView() {
           options={ACTIVE_OPTIONS.map((o) => ({ ...o, count: facets?.active?.[o.value] }))}
           selected={active ? [active] : []}
           onChange={(n) => qs.update({ active: n[0] ?? null })}
+        />
+        <FilterSelect
+          label="Paket"
+          multiple
+          options={(["active", "trial", "grace", "free"] as const).map((v) => ({
+            value: v,
+            label: labelOf(SUB_STATUS, v),
+            count: facets?.plan_status?.[v],
+          }))}
+          selected={planStatus}
+          onChange={(n) => qs.update({ plan_status: n })}
         />
         <FilterSelect
           label="Fitur"
@@ -270,9 +284,12 @@ function BusinessTable({
                   >
                     {b.name}
                   </Link>
-                  <p className="truncate text-[13px] text-text-muted">
-                    {labelOf(BUSINESS_TYPES, b.type)}
-                    {b.category ? ` · ${b.category}` : ""}
+                  <p className="flex min-w-0 items-center gap-1.5 text-[13px] text-text-muted">
+                    {b.subscription && <StatusBadge status={b.subscription.status} />}
+                    <span className="min-w-0 truncate">
+                      {labelOf(BUSINESS_TYPES, b.type)}
+                      {b.category ? ` · ${b.category}` : ""}
+                    </span>
                   </p>
                   {b.deletion && (
                     <span className="mt-1 inline-block">
@@ -313,7 +330,10 @@ function BusinessTable({
           <li key={b.id}>
             <Link href={`/admin/bisnis/${encodeURIComponent(b.id)}`} className={`flex items-center gap-3 px-4 py-3 active:bg-bg-muted ${focusRing}`}>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-semibold text-text-heading">{b.name}</p>
+                <p className="flex items-center gap-1.5">
+                  <span className="min-w-0 truncate text-[15px] font-semibold text-text-heading">{b.name}</span>
+                  {b.subscription && <StatusBadge status={b.subscription.status} />}
+                </p>
                 <p className="flex items-center gap-1 truncate text-[13px] text-text-muted">
                   {labelOf(BUSINESS_TYPES, b.type)} · {b.devices_count} perangkat · <ActivityDot at={b.last_active_at} />
                 </p>

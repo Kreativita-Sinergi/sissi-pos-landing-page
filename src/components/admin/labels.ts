@@ -66,7 +66,7 @@ export const SUB_STATUS: Record<string, string> = {
 export const SUB_STATUS_HINT: Record<string, string> = {
   trial: "Pro gratis 30 hari",
   active: "Pro dibayar",
-  grace: "Pro 3 hari setelah berakhir",
+  grace: "Pro +3 hari setelah habis",
   free: "50 transaksi/bulan",
 };
 

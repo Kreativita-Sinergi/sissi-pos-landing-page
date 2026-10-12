@@ -638,7 +638,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       const s = db();
       const b = s.businesses.find((x) => x.id === id);
       if (!b) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
-      return { ...b, audit: s.audit.filter((e) => e.target_type === "business" && e.target_id === id).slice(0, 20) };
+      return { ...b, subscription: briefOf(b), audit: s.audit.filter((e) => e.target_type === "business" && e.target_id === id).slice(0, 20) };
     },
     async saveFeatures(id, body) {
       await guard();

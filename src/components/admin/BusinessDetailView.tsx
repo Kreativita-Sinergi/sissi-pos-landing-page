@@ -24,6 +24,7 @@ import { ActivityDot } from "./BusinessListView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useQueryState } from "./filters";
 import { AUDIT_ACTIONS, BUSINESS_TYPES, DEVICE_MODES, labelOf, OUTLET_STATUS, PROVIDERS, ROLES } from "./labels";
+import { SubscriptionTab } from "./SubscriptionTab";
 import { useToast } from "./toast";
 import {
   Badge,
@@ -59,8 +60,8 @@ const backLink = (
   </Link>
 );
 
-type TabId = "ringkasan" | "perangkat" | "karyawan" | "fitur" | "hapus-akun" | "aktivitas";
-const TAB_IDS: TabId[] = ["ringkasan", "perangkat", "karyawan", "fitur", "hapus-akun", "aktivitas"];
+type TabId = "ringkasan" | "langganan" | "perangkat" | "karyawan" | "fitur" | "hapus-akun" | "aktivitas";
+const TAB_IDS: TabId[] = ["ringkasan", "langganan", "perangkat", "karyawan", "fitur", "hapus-akun", "aktivitas"];
 
 type Data = { business: BusinessDetail; version: AppVersionConfig | null };
 
@@ -151,6 +152,7 @@ export function BusinessDetailView() {
         onChange={setTab}
         tabs={[
           { id: "ringkasan", label: "Ringkasan" },
+          { id: "langganan", label: "Langganan" },
           { id: "perangkat", label: "Outlet & perangkat", count: b.devices.length },
           { id: "karyawan", label: "Karyawan", count: b.employees_count ?? b.users.filter((u) => u.role !== "owner").length },
           { id: "fitur", label: "Fitur" },
@@ -161,6 +163,7 @@ export function BusinessDetailView() {
 
       <div role="tabpanel" aria-label={tab}>
         {tab === "ringkasan" && <OverviewTab b={b} outdated={outdated} onTab={setTab} />}
+        {tab === "langganan" && <SubscriptionTab businessId={b.id} businessName={b.name} />}
         {tab === "perangkat" && <DevicesTab b={b} version={version} />}
         {tab === "karyawan" && <EmployeesTab b={b} />}
         {tab === "fitur" && (
