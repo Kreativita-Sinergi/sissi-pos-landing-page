@@ -50,6 +50,16 @@ export function HeroSection() {
               </Link>
             </div>
 
+            <p className="-mt-2 text-[14px] text-[#fef1eb]">
+              HP tanpa Play Store (mis. Huawei)?{" "}
+              <Link
+                href="/download#apk"
+                className="font-medium text-white underline decoration-white/40 underline-offset-4 hover:decoration-white"
+              >
+                Unduh APK
+              </Link>
+            </p>
+
             <p className="text-[14px] text-[#fef1eb] leading-relaxed">
               <span className="font-medium text-white">Untuk usaha</span>{" "}
               {BUSINESS_LINKS.map((biz, idx) => (
