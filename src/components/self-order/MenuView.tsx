@@ -230,11 +230,36 @@ function ProductCard({ product, quantity, onOpen }: { product: MenuProduct; quan
       type="button"
       onClick={onOpen}
       disabled={soldOut}
-      className={`flex w-full items-stretch gap-3.5 rounded-[20px] bg-white p-3 pl-4 text-left shadow-so-card transition-shadow ${focusRing} ${
+      className={`flex w-full items-stretch gap-3.5 rounded-[20px] bg-white p-3 text-left shadow-so-card transition-shadow ${focusRing} ${
         inCart ? "ring-2 ring-brand-primary" : "ring-1 ring-transparent hover:ring-so-line"
       } disabled:cursor-not-allowed disabled:shadow-none disabled:ring-so-line`}
     >
-      <div className="flex min-w-0 flex-1 flex-col py-1">
+      {/* Foto di kiri (permintaan pemilik) */}
+      <div className="relative shrink-0 self-start">
+        <Thumb
+          name={product.name}
+          src={product.image_url}
+          dim={soldOut}
+          className="h-[96px] w-[96px] rounded-[16px]"
+          textClass="text-[26px]"
+        />
+        {soldOut && (
+          <span className="absolute inset-x-1.5 bottom-1.5 rounded-full bg-white/95 py-1 text-center text-[12px] font-bold text-text-heading shadow-so-card">
+            Habis
+          </span>
+        )}
+        {!soldOut && inCart && (
+          <span
+            key={quantity}
+            aria-hidden
+            className="absolute -top-2 -left-2 flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-brand-deep px-1.5 text-[13px] font-bold text-white tabular-nums motion-safe:animate-so-bump"
+          >
+            {quantity}
+          </span>
+        )}
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col py-0.5">
         <span
           className={`text-[17px] font-bold leading-snug tracking-tight ${soldOut ? "text-text-muted" : "text-text-heading"}`}
         >
@@ -245,49 +270,26 @@ function ProductCard({ product, quantity, onOpen }: { product: MenuProduct; quan
             {product.description}
           </span>
         )}
-        <span className="mt-auto flex flex-wrap items-baseline gap-x-1.5 pt-2.5">
-          {from && <span className="text-[13px] font-medium text-text-muted">mulai</span>}
-          <span
-            className={`text-[17px] font-extrabold tabular-nums ${soldOut ? "text-text-muted line-through decoration-1" : "text-text-heading"}`}
-          >
-            {formatRupiah(price)}
-          </span>
-        </span>
         {soldOut && <span className="mt-1 text-[13px] font-medium text-text-body">Sedang habis, coba menu lain dulu</span>}
-        {inCart && <span className="sr-only">, {quantity} di keranjang</span>}
-      </div>
-
-      <div className="relative shrink-0 self-start">
-        <Thumb
-          name={product.name}
-          src={product.image_url}
-          dim={soldOut}
-          className="h-[104px] w-[104px] rounded-[16px]"
-          textClass="text-[28px]"
-        />
-        {soldOut ? (
-          <span className="absolute inset-x-2 bottom-2 rounded-full bg-white/95 py-1 text-center text-[13px] font-bold text-text-heading shadow-so-card">
-            Habis
+        <span className="mt-auto flex items-end justify-between gap-2 pt-2">
+          <span className="flex flex-wrap items-baseline gap-x-1.5">
+            {from && <span className="text-[13px] font-medium text-text-muted">mulai</span>}
+            <span
+              className={`text-[17px] font-extrabold tabular-nums ${soldOut ? "text-text-muted line-through decoration-1" : "text-text-heading"}`}
+            >
+              {formatRupiah(price)}
+            </span>
           </span>
-        ) : (
-          <>
-            {inCart && (
-              <span
-                key={quantity}
-                aria-hidden
-                className="absolute -top-2 -left-2 flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-white bg-brand-deep px-1.5 text-[13px] font-bold text-white tabular-nums motion-safe:animate-so-bump"
-              >
-                {quantity}
-              </span>
-            )}
+          {!soldOut && (
             <span
               aria-hidden
-              className="absolute -right-1 -bottom-1 flex h-11 w-11 items-center justify-center rounded-full border-[3px] border-white bg-brand-deep text-white shadow-[0_4px_10px_rgb(160_74_29/0.3)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-deep text-white shadow-[0_4px_10px_rgb(160_74_29/0.3)]"
             >
               <Plus size={22} strokeWidth={2.75} />
             </span>
-          </>
-        )}
+          )}
+        </span>
+        {inCart && <span className="sr-only">, {quantity} di keranjang</span>}
       </div>
     </button>
   );
