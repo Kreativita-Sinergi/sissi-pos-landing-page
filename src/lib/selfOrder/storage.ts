@@ -72,3 +72,32 @@ export function loadOrders(code: string): StoredOrder[] {
 export function saveOrders(code: string, orders: StoredOrder[]): void {
   write(`${code}:orders`, orders.length ? orders.slice(-20) : null);
 }
+
+// Layar yang sedang dibuka disimpan di sessionStorage (per tab): muat ulang kembali ke layar yang sama,
+// sedangkan pindai QR di tab baru tetap membuka pesanan terakhir.
+export type SessionView = {
+  view: { name: "menu" } | { name: "order"; id: string };
+  addTo: { group_key: string; order_no: string; order_type: string } | null;
+};
+
+export function loadSessionView(code: string): SessionView | null {
+  try {
+    const raw = window.sessionStorage.getItem(`${PREFIX}${code}:view`);
+    const v = raw ? (JSON.parse(raw) as SessionView) : null;
+    if (!v || !v.view || (v.view.name !== "menu" && !(v.view.name === "order" && typeof v.view.id === "string"))) return null;
+    const a = v.addTo;
+    const addTo =
+      a && typeof a.group_key === "string" && typeof a.order_no === "string" && typeof a.order_type === "string" ? a : null;
+    return { view: v.view, addTo };
+  } catch {
+    return null;
+  }
+}
+
+export function saveSessionView(code: string, value: SessionView): void {
+  try {
+    window.sessionStorage.setItem(`${PREFIX}${code}:view`, JSON.stringify(value));
+  } catch {
+    // Diabaikan: penyimpanan diblokir.
+  }
+}

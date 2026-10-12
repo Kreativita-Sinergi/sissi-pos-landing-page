@@ -13,7 +13,16 @@ import {
   type CartLine,
 } from "@/lib/selfOrder/cart";
 import { computeBreakdown, formatRate, formatRupiah } from "@/lib/selfOrder/pricing";
-import { loadCart, loadOrders, nowMs, saveCart, saveOrders, type StoredOrder } from "@/lib/selfOrder/storage";
+import {
+  loadCart,
+  loadOrders,
+  loadSessionView,
+  nowMs,
+  saveCart,
+  saveOrders,
+  saveSessionView,
+  type StoredOrder,
+} from "@/lib/selfOrder/storage";
 import type { CreateOrderBody, Menu, OrderStatusResponse, OrderType } from "@/lib/selfOrder/types";
 import { CartBar, CartSheet, type CartFieldErrors } from "./CartSheet";
 import { ItemSheet } from "./ItemSheet";
@@ -85,8 +94,17 @@ function SelfOrder({ code }: { code: string }) {
       setCart(loadCart(code));
       setOrders(storedOrders);
       setHydrated(true);
+      const saved = loadSessionView(code);
       const latest = storedOrders[storedOrders.length - 1];
-      if (latest && Date.now() - latest.saved_at < REOPEN_ORDER_MS) setView({ name: "order", id: latest.id });
+      if (saved && (saved.view.name === "menu" || storedOrders.some((o) => o.id === (saved.view as { id: string }).id))) {
+        // Muat ulang di tab yang sama: kembali ke layar terakhir (termasuk mode "Pesan lagi").
+        setView(saved.view);
+        if (saved.addTo && storedOrders.some((o) => o.group_key === saved.addTo!.group_key)) {
+          setAddTo(saved.addTo as AddMoreTarget);
+        }
+      } else if (latest && Date.now() - latest.saved_at < REOPEN_ORDER_MS) {
+        setView({ name: "order", id: latest.id });
+      }
       void fetchMenu(a, false);
     });
     return () => {
@@ -97,6 +115,10 @@ function SelfOrder({ code }: { code: string }) {
   useEffect(() => {
     if (hydrated) saveCart(code, cart);
   }, [code, cart, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) saveSessionView(code, { view, addTo });
+  }, [code, view, addTo, hydrated]);
 
   const menu = menuState.status === "ready" ? menuState.menu : null;
 
