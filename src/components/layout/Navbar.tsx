@@ -180,11 +180,11 @@ export function Navbar({ isLight = false }: { isLight?: boolean }) {
                   : "bg-white hover:bg-[#fef1eb] text-[#292e31]"
               }`}
             >
-              Coba Sissi
+              Coba Sekarang
             </Link>
           </div>
 
-          {/* Mobile Right: Coba Sissi + Hamburger */}
+          {/* Mobile Right: Coba Sekarang + Hamburger */}
           <div className="flex md:hidden items-center gap-2">
             <Link
               href="/download"
@@ -194,7 +194,7 @@ export function Navbar({ isLight = false }: { isLight?: boolean }) {
                   : "bg-white text-[#292e31]"
               }`}
             >
-              Coba Sissi
+              Coba Sekarang
             </Link>
             <button
               type="button"
@@ -276,7 +276,7 @@ export function Navbar({ isLight = false }: { isLight?: boolean }) {
               onClick={() => setMobileMenuOpen(false)}
               className="w-full text-center py-2.5 text-sm font-medium text-white bg-[#f1702c] rounded-[8px] hover:bg-[#ff7a45]"
             >
-              Coba Sissi
+              Coba Sekarang
             </Link>
           </div>
         </div>
