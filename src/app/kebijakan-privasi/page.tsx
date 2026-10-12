@@ -174,8 +174,8 @@ export default function KebijakanPrivasiPage() {
                   </h2>
                   <p>
                     Untuk pertanyaan seputar perlindungan data pribadi Anda, hubungi petugas kepatuhan data kami melalui email{" "}
-                    <a href="mailto:privacy@sissikasir.com" className="text-[#f1702c]">
-                      privacy@sissikasir.com
+                    <a href="mailto:sissikreatifteknologi@gmail.com" className="text-[#f1702c]">
+                      sissikreatifteknologi@gmail.com
                     </a>
                     .
                   </p>

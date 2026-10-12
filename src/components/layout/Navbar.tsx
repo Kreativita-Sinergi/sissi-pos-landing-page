@@ -163,7 +163,7 @@ export function Navbar({ isLight = false }: { isLight?: boolean }) {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-2.5">
             <Link
-              href="/#masuk"
+              href="/masuk"
               className={`text-sm font-medium px-4 py-2 rounded-[8px] transition-colors cursor-pointer ${
                 showDark
                   ? "text-[#292e31] hover:bg-black/5"
@@ -265,7 +265,7 @@ export function Navbar({ isLight = false }: { isLight?: boolean }) {
           </nav>
           <div className="pt-4 border-t border-[#e4e9e7] flex flex-col gap-2.5">
             <Link
-              href="/#masuk"
+              href="/masuk"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full text-center py-2.5 text-sm font-medium text-[#292e31] border border-[#e4e9e7] rounded-[8px] hover:bg-[#f3f6f5]"
             >

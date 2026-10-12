@@ -141,10 +141,10 @@ export default function TentangPage() {
                     Email
                   </h3>
                   <a
-                    href="mailto:halo@sissikasir.com"
+                    href="mailto:sissikreatifteknologi@gmail.com"
                     className="mt-2 block text-[20px] font-semibold text-[#292e31] hover:text-[#be5823] break-all"
                   >
-                    halo@sissikasir.com
+                    sissikreatifteknologi@gmail.com
                   </a>
                   <p className="mt-2 text-[15px] text-[#525866] leading-relaxed">
                     Untuk kerja sama atau pertanyaan yang butuh lampiran.

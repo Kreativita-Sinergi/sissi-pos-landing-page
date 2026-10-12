@@ -182,12 +182,12 @@ export default function SyaratKetentuanPage() {
                   </h2>
                   <p>
                     Pertanyaan seputar ketentuan ini dapat disampaikan melalui email ke{" "}
-                    <a href="mailto:legal@sissikasir.com" className="text-[#f1702c]">
-                      legal@sissikasir.com
+                    <a href="mailto:sissikreatifteknologi@gmail.com" className="text-[#f1702c]">
+                      sissikreatifteknologi@gmail.com
                     </a>{" "}
                     atau melalui WhatsApp dukungan resmi di{" "}
-                    <a href="https://wa.me/6281234567890" className="text-[#f1702c]">
-                      +62 812-3456-7890
+                    <a href="https://wa.me/6285161462806" className="text-[#f1702c]">
+                      0851-6146-2806
                     </a>
                     .
                   </p>

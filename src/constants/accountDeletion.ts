@@ -13,4 +13,4 @@ export const ACCOUNT_DELETION_GRACE_DAYS = 30;
 export const ACCOUNT_DELETION_REASON_MAX = 300;
 
 // Jalur cadangan bila layanan hapus akun sedang tidak tersedia.
-export const PRIVACY_EMAIL = "privacy@sissikasir.com";
+export const PRIVACY_EMAIL = "sissikreatifteknologi@gmail.com";
