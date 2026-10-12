@@ -260,6 +260,24 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
+/** Nomor halaman yang ditampilkan: ujung (3 pertama/terakhir bila dekat ujung) + halaman aktif ±1; celah ≥ 2 jadi elipsis. */
+export function pageItems(page: number, pages: number): (number | "gap")[] {
+  const set = new Set([1, pages, page - 1, page, page + 1]);
+  if (page <= 3 || page >= pages - 2) [1, 2, 3, pages - 2, pages - 1, pages].forEach((n) => set.add(n));
+  const nums = [...set].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const out: (number | "gap")[] = [];
+  nums.forEach((n, i) => {
+    const prev = nums[i - 1];
+    if (prev !== undefined && n - prev === 2) out.push(prev + 1);
+    else if (prev !== undefined && n - prev > 2) out.push("gap");
+    out.push(n);
+  });
+  return out;
+}
+
+const pageBtn = `inline-flex h-9 min-w-9 items-center justify-center rounded-[8px] px-2 text-[13.5px] font-semibold tabular-nums transition-colors disabled:cursor-default disabled:opacity-35 ${focusRing}`;
+
+/** Paginasi bernomor `‹ 1 2 3 … 8 9 10 ›`; di HP ringkas `‹ 3 / 10 ›`. */
 export function Pagination({
   page,
   perPage,
@@ -274,21 +292,53 @@ export function Pagination({
   const pages = Math.max(1, Math.ceil(total / perPage));
   const from = total === 0 ? 0 : (page - 1) * perPage + 1;
   const to = Math.min(total, page * perPage);
+  const prev = (
+    <button type="button" className={`${pageBtn} text-text-body hover:bg-bg-muted`} disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Halaman sebelumnya">
+      <ChevronLeft size={18} aria-hidden />
+    </button>
+  );
+  const next = (
+    <button type="button" className={`${pageBtn} text-text-body hover:bg-bg-muted`} disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Halaman berikutnya">
+      <ChevronRight size={18} aria-hidden />
+    </button>
+  );
   return (
     <nav aria-label="Halaman" className="flex items-center justify-between gap-3 text-[13px] text-text-body">
       <p className="tabular-nums">
         {from}–{to} dari {total.toLocaleString("id-ID")}
       </p>
-      <div className="flex items-center gap-1">
-        <button type="button" className={iconBtn} disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Halaman sebelumnya">
-          <ChevronLeft size={18} aria-hidden />
-        </button>
-        <span className="min-w-14 text-center tabular-nums">
-          {page} / {pages}
+      {/* HP */}
+      <div className="flex items-center gap-1 sm:hidden">
+        {prev}
+        <span className="min-w-14 text-center font-semibold tabular-nums text-text-heading">
+          {page} <span className="font-normal text-text-muted">/ {pages}</span>
         </span>
-        <button type="button" className={iconBtn} disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Halaman berikutnya">
-          <ChevronRight size={18} aria-hidden />
-        </button>
+        {next}
+      </div>
+      {/* Layar lebar */}
+      <div className="hidden items-center gap-0.5 sm:flex">
+        {prev}
+        {pageItems(page, pages).map((n, i) =>
+          n === "gap" ? (
+            <span key={`gap-${i}`} aria-hidden className="inline-flex h-9 min-w-7 items-center justify-center text-text-muted">
+              …
+            </span>
+          ) : (
+            <button
+              key={n}
+              type="button"
+              aria-label={`Halaman ${n}`}
+              aria-current={n === page ? "page" : undefined}
+              onClick={() => n !== page && onPage(n)}
+              className={`${pageBtn} ${
+                n === page ? "bg-brand-tint text-brand-ink shadow-[inset_0_0_0_1px_var(--color-brand-primary)]" : "text-text-body hover:bg-bg-muted hover:text-text-heading"
+              }`}
+            >
+              {n}
+            </button>
+          )
+        )}
+        {next}
       </div>
     </nav>
   );

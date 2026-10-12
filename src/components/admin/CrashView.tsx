@@ -9,17 +9,8 @@ import type { CrashDetail, CrashEvent, CrashFacets, CrashGroup, CrashStatus, Pag
 import { ApiError } from "@/lib/sissiApi";
 import { DailyBars, Meter, Sparkline } from "./charts";
 import { ConfirmDialog, Modal } from "./ConfirmDialog";
-import {
-  ActiveFilters,
-  Chip,
-  DateRangeFilter,
-  FilterGroup,
-  FilterPanel,
-  rangeLabel,
-  SearchBox,
-  useQueryState,
-  type ActiveFilter,
-} from "./filters";
+import { SearchBox, useQueryState } from "./filters";
+import { compactRange, ClearFiltersButton, DateFilter, FilterBar, FilterInput, FilterSelect } from "./FilterMenu";
 import { CRASH_STATUS, labelOf, ROLES } from "./labels";
 import { useToast } from "./toast";
 import {
@@ -94,12 +85,6 @@ export function CrashListView() {
   const sort = qs.get("sort") || "last_seen";
   const order = (qs.get("order") || "desc") as "asc" | "desc";
   const page = Math.max(1, Number(qs.get("page")) || 1);
-  const [buildInput, setBuildInput] = useState(build);
-  const [syncedBuild, setSyncedBuild] = useState(build);
-  if (build !== syncedBuild) {
-    setSyncedBuild(build);
-    setBuildInput(build);
-  }
   const [now] = useState(() => Date.now());
 
   const { state, reload } = useLoad<Paged<CrashGroup, CrashFacets>>(
@@ -128,14 +113,10 @@ export function CrashListView() {
     qs.update({ sort: field === "last_seen" ? null : field, order: next === "desc" ? null : next });
   };
 
-  const activeFilters: ActiveFilter[] = [
-    ...(platform ? [{ key: "platform", label: platform === "ios" ? "iOS" : "Android", onRemove: () => qs.update({ platform: null }) }] : []),
-    ...(build ? [{ key: "build", label: `Build ${build}`, onRemove: () => qs.update({ build: null }) }] : []),
-    ...(from || to ? [{ key: "date", label: rangeLabel(from, to), onRemove: () => qs.update({ from: null, to: null }) }] : []),
-  ];
-  const filtered = activeFilters.length > 0 || !!q;
+  const hasFilters = !!(platform || build || from || to);
+  const filtered = hasFilters || !!q;
   const clearAll = () => qs.clear(["status", "sort", "order"]);
-  const rangeText = from || to ? rangeLabel(from, to) : "14 hari";
+  const rangeText = from || to ? compactRange(from, to) : "14 hari";
 
   return (
     <>
@@ -156,74 +137,57 @@ export function CrashListView() {
         ]}
       />
 
-      <SearchBox
-        id="crash-q"
-        label="Cari crash"
-        className="mb-3 sm:max-w-[440px]"
-        value={q}
-        onSearch={(v) => qs.update({ q: v }, "replace")}
-        placeholder="Pesan, nama file, atau sidik jari"
-      />
-
-      <div className="mb-3">
-        <FilterPanel activeCount={activeFilters.length}>
-          <FilterGroup label="Platform">
-            <Chip active={platform === "android"} onClick={() => qs.update({ platform: platform === "android" ? null : "android" })}>
-              Android
-            </Chip>
-            <Chip active={platform === "ios"} onClick={() => qs.update({ platform: platform === "ios" ? null : "ios" })}>
-              iOS
-            </Chip>
-          </FilterGroup>
-          <FilterGroup label="Build">
-            <form
-              className="flex items-center gap-1.5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                qs.update({ build: buildInput.trim() });
-              }}
-            >
-              <label htmlFor="crash-build" className="sr-only">
-                Build
-              </label>
-              <input
-                id="crash-build"
-                inputMode="numeric"
-                placeholder="mis. 42"
-                className={`${inputClass} min-h-8 max-w-[110px] rounded-full px-3 text-[13px] tabular-nums`}
-                value={buildInput}
-                onChange={(e) => setBuildInput(e.target.value.replace(/\D/g, ""))}
-                onBlur={() => buildInput.trim() !== build && qs.update({ build: buildInput.trim() })}
-              />
-              <span className="whitespace-nowrap text-[12px] text-text-muted">ada kejadian di build ini</span>
-            </form>
-          </FilterGroup>
-          <FilterGroup label="Rentang">
-            <DateRangeFilter
-              idPrefix="crash"
-              from={from}
-              to={to}
-              presets={[
-                { label: "24 jam", days: 1 },
-                { label: "7 hari", days: 7 },
-                { label: "30 hari", days: 30 },
-                { label: "90 hari", days: 90 },
-              ]}
-              onChange={(f, t) => qs.update({ from: f, to: t })}
-            />
-          </FilterGroup>
-        </FilterPanel>
-      </div>
-
-      <div className="mb-2 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <ActiveFilters items={activeFilters} onClearAll={clearAll} />
-        {state.data && (
-          <p className="ml-auto text-[13px] text-text-muted" aria-live="polite">
-            <strong className="font-semibold tabular-nums text-text-heading">{state.data.meta.total.toLocaleString("id-ID")}</strong> grup ·
-            hitungan {rangeText}
-          </p>
-        )}
-      </div>
+      <FilterBar
+        search={
+          <SearchBox
+            id="crash-q"
+            label="Cari crash"
+            className="w-full sm:w-[260px] 2xl:w-[340px]"
+            value={q}
+            onSearch={(v) => qs.update({ q: v }, "replace")}
+            placeholder="Pesan, nama file, atau sidik jari"
+          />
+        }
+        trailing={
+          state.data && (
+            <p className="text-[13px] text-text-muted" aria-live="polite">
+              <strong className="font-semibold tabular-nums text-text-heading">{state.data.meta.total.toLocaleString("id-ID")}</strong> grup ·
+              hitungan {rangeText}
+            </p>
+          )
+        }
+      >
+        <FilterSelect
+          label="Platform"
+          options={[
+            { value: "android", label: "Android" },
+            { value: "ios", label: "iOS" },
+          ]}
+          selected={platform ? [platform] : []}
+          onChange={(n) => qs.update({ platform: n[0] ?? null })}
+        />
+        <FilterInput
+          label="Build"
+          numeric
+          value={build}
+          placeholder="mis. 42"
+          hint="Grup yang punya kejadian di build ini."
+          onApply={(v) => qs.update({ build: v })}
+        />
+        <DateFilter
+          label="Rentang"
+          from={from}
+          to={to}
+          presets={[
+            { label: "24 jam", days: 1 },
+            { label: "7 hari", days: 7 },
+            { label: "30 hari", days: 30 },
+            { label: "90 hari", days: 90 },
+          ]}
+          onChange={(f, t) => qs.update({ from: f, to: t })}
+        />
+        {hasFilters && <ClearFiltersButton onClick={clearAll} />}
+      </FilterBar>
 
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
       {state.status === "loading" && !state.data && <SkeletonList rows={8} label="Memuat crash" />}

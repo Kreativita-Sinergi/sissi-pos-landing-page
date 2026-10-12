@@ -6,6 +6,7 @@ import { Info, SearchX, ShieldCheck } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import type { AccountDeletion, DeletionFacets, DeletionStatus, Paged } from "@/lib/admin/types";
 import { SearchBox, useQueryState } from "./filters";
+import { FilterBar } from "./FilterMenu";
 import { DELETION_STATUS, labelOf } from "./labels";
 import {
   Badge,
@@ -116,13 +117,24 @@ export function DeletionsView() {
         ]}
       />
 
-      <SearchBox
-        id="del-q"
-        label="Cari antrean hapus akun"
-        className="mb-3 sm:max-w-[440px]"
-        value={q}
-        onSearch={(v) => qs.update({ q: v }, "replace")}
-        placeholder="Nama bisnis, email pemilik, atau ID bisnis"
+      <FilterBar
+        search={
+          <SearchBox
+            id="del-q"
+            label="Cari antrean hapus akun"
+            className="w-full sm:w-[340px]"
+            value={q}
+            onSearch={(v) => qs.update({ q: v }, "replace")}
+            placeholder="Nama bisnis, email pemilik, atau ID bisnis"
+          />
+        }
+        trailing={
+          state.data && (
+            <p className="text-[13px] text-text-muted" aria-live="polite">
+              <strong className="font-semibold tabular-nums text-text-heading">{state.data.meta.total.toLocaleString("id-ID")}</strong> permintaan
+            </p>
+          )
+        }
       />
 
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}

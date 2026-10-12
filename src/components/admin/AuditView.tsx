@@ -5,17 +5,8 @@ import Link from "next/link";
 import { ChevronDown, ScrollText, SearchX } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import type { AdminListItem, AuditEntry, AuditPage } from "@/lib/admin/types";
-import {
-  ActiveFilters,
-  Chip,
-  DateRangeFilter,
-  FilterGroup,
-  FilterPanel,
-  rangeLabel,
-  SearchBox,
-  useQueryState,
-  type ActiveFilter,
-} from "./filters";
+import { useQueryState } from "./filters";
+import { ClearFiltersButton, DateFilter, FilterBar, FilterSelect } from "./FilterMenu";
 import { AUDIT_ACTION_GROUPS, AUDIT_ACTIONS, labelOf, LOGIN_FAIL_REASONS, TARGET_TYPES } from "./labels";
 import {
   Badge,
@@ -25,6 +16,7 @@ import {
   errorMessage,
   focusRing,
   formatDateTime,
+  inputClass,
   LoadingBar,
   PageHeader,
   SkeletonList,
@@ -88,98 +80,65 @@ export function AuditView() {
     }
   }
 
-  // Chip aksi per kelompok; aksi lepas (dari tautan) tampil sendiri.
+  // Aksi dipilih per kelompok; aksi lepas (dari tautan) tampil sebagai pilihan tersendiri agar bisa dilepas.
   const fullGroups = AUDIT_ACTION_GROUPS.filter((g) => g.actions.every((a) => actions.includes(a)));
   const loose = actions.filter((a) => !fullGroups.some((g) => g.actions.includes(a)));
-  const toggleGroup = (g: (typeof AUDIT_ACTION_GROUPS)[number]) => {
-    const on = fullGroups.includes(g);
-    qs.update({ action: on ? actions.filter((a) => !g.actions.includes(a)) : [...new Set([...actions, ...g.actions])] });
+  const actionOptions = [
+    ...AUDIT_ACTION_GROUPS.map((g) => ({ value: `g:${g.id}`, label: g.label })),
+    ...loose.map((a) => ({ value: `a:${a}`, label: labelOf(AUDIT_ACTIONS, a) })),
+  ];
+  const actionSelected = [...fullGroups.map((g) => `g:${g.id}`), ...loose.map((a) => `a:${a}`)];
+  const onActions = (next: string[]) => {
+    const list = next.flatMap((v) =>
+      v.startsWith("g:") ? (AUDIT_ACTION_GROUPS.find((g) => `g:${g.id}` === v)?.actions ?? []) : [v.slice(2)]
+    );
+    qs.update({ action: [...new Set(list)] });
   };
 
   const adminList = admins.state.data ?? null;
-  const adminName = (id: string) => (id === "none" ? "Tanpa admin" : (adminList?.find((a) => a.id === id)?.name ?? "Admin lain"));
-
-  const activeFilters: ActiveFilter[] = [
-    ...(adminId ? [{ key: "admin", label: `Oleh ${adminName(adminId)}`, onRemove: () => qs.update({ admin_id: null }) }] : []),
-    ...fullGroups.map((g) => ({ key: `g-${g.id}`, label: g.label, onRemove: () => toggleGroup(g) })),
-    ...loose.map((a) => ({
-      key: `a-${a}`,
-      label: labelOf(AUDIT_ACTIONS, a),
-      onRemove: () => qs.update({ action: actions.filter((x) => x !== a) }),
-    })),
-    ...(targetType
-      ? [
-          {
-            key: "target",
-            label: `${labelOf(TARGET_TYPES, targetType)}${targetId ? ` ${targetId.length > 14 ? `${targetId.slice(0, 8)}…` : targetId}` : ""}`,
-            onRemove: () => qs.update({ target_type: null, target_id: null }),
-          },
-        ]
-      : []),
-    ...(from || to ? [{ key: "date", label: rangeLabel(from, to), onRemove: () => qs.update({ from: null, to: null }) }] : []),
-  ];
+  const hasFilters = !!(adminId || actions.length || targetType || from || to);
 
   return (
     <>
       <PageHeader title="Audit" description="Catatan semua tindakan admin dan CLI. Tidak bisa diubah atau dihapus." />
 
-      <div className="mb-3">
-        <FilterPanel activeCount={activeFilters.length}>
-          {adminList && adminList.length > 0 && (
-            <FilterGroup label="Admin">
-              {adminList.map((a) => (
-                <Chip key={a.id} active={adminId === a.id} onClick={() => qs.update({ admin_id: adminId === a.id ? null : a.id })}>
-                  {a.name}
-                </Chip>
-              ))}
-              <Chip active={adminId === "none"} onClick={() => qs.update({ admin_id: adminId === "none" ? null : "none" })}>
-                Tanpa admin
-              </Chip>
-            </FilterGroup>
-          )}
-          <FilterGroup label="Aksi">
-            {AUDIT_ACTION_GROUPS.map((g) => (
-              <Chip key={g.id} active={fullGroups.includes(g)} onClick={() => toggleGroup(g)}>
-                {g.label}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup label="Target">
-            {Object.entries(TARGET_TYPES).map(([k, v]) => (
-              <Chip key={k} active={targetType === k} onClick={() => qs.update({ target_type: targetType === k ? null : k, target_id: null })}>
-                {v}
-              </Chip>
-            ))}
-            {targetType && (
-              <SearchBox
-                id="audit-target"
-                label="ID target"
-                className="w-full sm:w-[300px]"
-                value={targetId}
-                onSearch={(v) => qs.update({ target_id: v }, "replace")}
-                placeholder="ID persis (bisnis, berkas APK, …)"
-              />
-            )}
-          </FilterGroup>
-          <FilterGroup label="Tanggal">
-            <DateRangeFilter
-              idPrefix="audit"
-              from={from}
-              to={to}
-              presets={[
-                { label: "Hari ini", days: 1 },
-                { label: "7 hari", days: 7 },
-                { label: "30 hari", days: 30 },
-              ]}
-              onChange={(f, t) => qs.update({ from: f, to: t })}
-            />
-          </FilterGroup>
-        </FilterPanel>
-      </div>
-
-      <div className="mb-2 min-h-8">
-        <ActiveFilters items={activeFilters} onClearAll={() => qs.clear()} />
-      </div>
+      <FilterBar>
+        {adminList && adminList.length > 0 && (
+          <FilterSelect
+            label="Admin"
+            options={[...adminList.map((a) => ({ value: a.id, label: a.name })), { value: "none", label: "Tanpa admin" }]}
+            selected={adminId ? [adminId] : []}
+            summary={adminId && !adminList.some((a) => a.id === adminId) && adminId !== "none" ? "Admin lain" : undefined}
+            onChange={(n) => qs.update({ admin_id: n[0] ?? null })}
+          />
+        )}
+        <FilterSelect label="Aksi" multiple options={actionOptions} selected={actionSelected} onChange={onActions} />
+        <FilterSelect
+          label="Target"
+          options={Object.entries(TARGET_TYPES).map(([value, label]) => ({ value, label }))}
+          selected={targetType ? [targetType] : []}
+          summary={
+            targetType
+              ? `${labelOf(TARGET_TYPES, targetType)}${targetId ? ` · ${targetId.length > 14 ? `${targetId.slice(0, 8)}…` : targetId}` : ""}`
+              : undefined
+          }
+          onChange={(n) => qs.update({ target_type: n[0] ?? null, target_id: null })}
+        >
+          {targetType && <TargetIdInput key={targetType} value={targetId} onApply={(v) => qs.update({ target_id: v }, "replace")} />}
+        </FilterSelect>
+        <DateFilter
+          label="Tanggal"
+          from={from}
+          to={to}
+          presets={[
+            { label: "Hari ini", days: 1 },
+            { label: "7 hari", days: 7 },
+            { label: "30 hari", days: 30 },
+          ]}
+          onChange={(f, t) => qs.update({ from: f, to: t })}
+        />
+        {hasFilters && <ClearFiltersButton onClick={() => qs.clear()} />}
+      </FilterBar>
 
       {state.status === "error" && !state.data && <ErrorBlock error={state.error} onRetry={reload} />}
       {state.status === "loading" && !state.data && <SkeletonList rows={10} label="Memuat audit" />}
@@ -191,7 +150,7 @@ export function AuditView() {
             aria-busy={state.status === "loading"}
           >
             {items.length === 0 ? (
-              activeFilters.length > 0 ? (
+              hasFilters ? (
                 <EmptyState
                   icon={<SearchX size={22} aria-hidden />}
                   title="Tidak ada catatan yang cocok"
@@ -325,5 +284,35 @@ function AuditRow({ entry: e }: { entry: AuditEntry }) {
         </pre>
       )}
     </li>
+  );
+}
+
+/** ID target persis — Enter / keluar dari isian menerapkan. */
+function TargetIdInput({ value, onApply }: { value: string; onApply: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  const apply = () => draft.trim() !== value && onApply(draft.trim());
+  return (
+    <div className="border-t border-border-subtle px-3 pt-2.5 pb-3">
+      <label htmlFor="audit-target-id" className="mb-1 block text-[12.5px] font-semibold text-text-body">
+        ID target (opsional)
+      </label>
+      <input
+        id="audit-target-id"
+        className={`${inputClass} min-h-9 font-mono text-[13px]`}
+        placeholder="ID persis (bisnis, berkas APK, …)"
+        value={draft}
+        maxLength={100}
+        autoComplete="off"
+        spellCheck={false}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={apply}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            apply();
+          }
+        }}
+      />
+    </div>
   );
 }

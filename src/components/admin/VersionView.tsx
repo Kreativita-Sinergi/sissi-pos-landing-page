@@ -7,7 +7,7 @@ import type { AppVersionConfig, AppVersionInput, VersionDistribution, VersionImp
 import { ApiError } from "@/lib/sissiApi";
 import { Meter } from "./charts";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { Chip } from "./filters";
+import { FilterSelect } from "./FilterMenu";
 import { useToast } from "./toast";
 import {
   Badge,
@@ -544,13 +544,14 @@ function DistributionPanel({ config, previewMin }: { config: AppVersionConfig; p
         )
       }
       actions={
-        <div className="flex gap-1.5" role="group" aria-label="Rentang aktif">
-          {DAY_OPTIONS.map((n) => (
-            <Chip key={n} active={days === n} onClick={() => setDays(n)}>
-              {n} hari
-            </Chip>
-          ))}
-        </div>
+        <FilterSelect
+          label="Aktif"
+          required
+          highlight={false}
+          options={DAY_OPTIONS.map((n) => ({ value: String(n), label: `${n} hari` }))}
+          selected={[String(days)]}
+          onChange={(n) => setDays(Number(n[0]))}
+        />
       }
       bodyClass="px-4 py-3 sm:px-5"
     >

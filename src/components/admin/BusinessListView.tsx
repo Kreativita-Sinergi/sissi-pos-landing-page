@@ -5,17 +5,8 @@ import Link from "next/link";
 import { ChevronRight, SearchX, Store } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import type { BusinessFacets, BusinessSummary, Paged } from "@/lib/admin/types";
-import {
-  ActiveFilters,
-  Chip,
-  DateRangeFilter,
-  FilterGroup,
-  FilterPanel,
-  rangeLabel,
-  SearchBox,
-  useQueryState,
-  type ActiveFilter,
-} from "./filters";
+import { SearchBox, useQueryState } from "./filters";
+import { ClearFiltersButton, DateFilter, FilterBar, FilterSelect } from "./FilterMenu";
 import { BUSINESS_TYPES, labelOf, PROVIDERS } from "./labels";
 import {
   Badge,
@@ -90,9 +81,6 @@ export function BusinessListView() {
   );
   const facets = state.data?.facets ?? null;
 
-  const toggle = (key: string, list: string[], value: string) =>
-    qs.update({ [key]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value] });
-
   const onSort = (field: string) => {
     const nextOrder = field === sort ? (order === "asc" ? "desc" : "asc") : defaultOrder(field);
     qs.update({
@@ -101,35 +89,10 @@ export function BusinessListView() {
     });
   };
 
-  const activeFilters: ActiveFilter[] = [
-    ...types.map((t) => ({ key: `type-${t}`, label: labelOf(BUSINESS_TYPES, t), onRemove: () => toggle("type", types, t) })),
-    ...(active
-      ? [
-          {
-            key: "active",
-            label: ACTIVE_OPTIONS.find((o) => o.value === active)?.label ?? active,
-            onRemove: () => qs.update({ active: null }),
-          },
-        ]
-      : []),
-    ...features.map((f) => ({
-      key: `feature-${f}`,
-      label: FEATURE_OPTIONS.find((o) => o.value === f)?.label ?? f,
-      onRemove: () => toggle("feature", features, f),
-    })),
-    ...(createdFrom || createdTo
-      ? [
-          {
-            key: "created",
-            label: `Daftar ${rangeLabel(createdFrom, createdTo)}`,
-            onRemove: () => qs.update({ created_from: null, created_to: null }),
-          },
-        ]
-      : []),
-    ...(deletion ? [{ key: "deletion", label: "Hapus akun terjadwal", onRemove: () => qs.update({ deletion: null }) }] : []),
-  ];
-  const filtered = activeFilters.length > 0 || !!q;
+  const hasFilters = !!(types.length || active || features.length || createdFrom || createdTo || deletion);
+  const filtered = hasFilters || !!q;
   const clearAll = () => qs.clear(["sort", "order"]);
+  const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? sort;
 
   return (
     <>
@@ -138,91 +101,76 @@ export function BusinessListView() {
         description="Semua bisnis pengguna Sissi. Saring, urutkan, lalu buka untuk melihat perangkat, karyawan, dan fitur."
       />
 
-      <SearchBox
-        id="biz-q"
-        label="Cari bisnis"
-        className="mb-3 sm:max-w-[440px]"
-        value={q}
-        onSearch={(v) => qs.update({ q: v }, "replace")}
-        placeholder="Nama bisnis, pemilik, email, HP, atau ID"
-      />
-
-      <div className="mb-3">
-        <FilterPanel activeCount={activeFilters.length}>
-          <FilterGroup label="Jenis">
-            {Object.entries(BUSINESS_TYPES).map(([value, label]) => (
-              <Chip key={value} active={types.includes(value)} count={facets?.type?.[value]} onClick={() => toggle("type", types, value)}>
-                {label}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup label="Aktivitas">
-            {ACTIVE_OPTIONS.map((o) => (
-              <Chip
-                key={o.value}
-                active={active === o.value}
-                count={facets?.active?.[o.value]}
-                onClick={() => qs.update({ active: active === o.value ? null : o.value })}
-              >
-                {o.label}
-              </Chip>
-            ))}
-          </FilterGroup>
-          <FilterGroup label="Fitur">
-            {FEATURE_OPTIONS.map((o) => (
-              <Chip
-                key={o.value}
-                active={features.includes(o.value)}
-                count={facets?.feature?.[o.value]}
-                onClick={() => toggle("feature", features, o.value)}
-              >
-                {o.label}
-              </Chip>
-            ))}
-            <Chip
-              tone="danger"
-              active={deletion === "scheduled"}
-              count={facets?.deletion?.scheduled}
-              onClick={() => qs.update({ deletion: deletion ? null : "scheduled" })}
-            >
-              Hapus akun terjadwal
-            </Chip>
-          </FilterGroup>
-          <FilterGroup label="Terdaftar">
-            <DateRangeFilter
-              idPrefix="biz-created"
-              from={createdFrom}
-              to={createdTo}
-              presets={[
-                { label: "7 hari", days: 7 },
-                { label: "30 hari", days: 30 },
-                { label: "90 hari", days: 90 },
-              ]}
-              onChange={(from, to) => qs.update({ created_from: from, created_to: to })}
-            />
-          </FilterGroup>
-        </FilterPanel>
-      </div>
-
-      <div className="mb-2 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <ActiveFilters items={activeFilters} onClearAll={clearAll} />
-        {state.data && (
-          <p className="ml-auto text-[13px] text-text-muted" aria-live="polite">
-            <strong className="font-semibold tabular-nums text-text-heading">{state.data.meta.total.toLocaleString("id-ID")}</strong> bisnis
-          </p>
-        )}
-      </div>
-
-      {/* Urutan — HP (di layar lebar lewat header tabel) */}
-      <div className="mb-3 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] md:hidden" role="group" aria-label="Urutkan">
-        <span className="shrink-0 text-[12px] font-semibold uppercase tracking-wide text-text-muted">Urut</span>
-        {SORTS.map((s) => (
-          <Chip key={s.value} active={sort === s.value} onClick={() => onSort(s.value)}>
-            {s.label}
-            {sort === s.value && <span aria-hidden>{order === "asc" ? "↑" : "↓"}</span>}
-          </Chip>
-        ))}
-      </div>
+      <FilterBar
+        search={
+          <SearchBox
+            id="biz-q"
+            label="Cari bisnis"
+            className="w-full sm:w-[260px] 2xl:w-[340px]"
+            value={q}
+            onSearch={(v) => qs.update({ q: v }, "replace")}
+            placeholder="Nama bisnis, pemilik, email, HP, atau ID"
+          />
+        }
+        trailing={
+          state.data && (
+            <p className="text-[13px] text-text-muted" aria-live="polite">
+              <strong className="font-semibold tabular-nums text-text-heading">{state.data.meta.total.toLocaleString("id-ID")}</strong> bisnis
+            </p>
+          )
+        }
+      >
+        <FilterSelect
+          label="Jenis"
+          multiple
+          options={Object.entries(BUSINESS_TYPES).map(([value, label]) => ({ value, label, count: facets?.type?.[value] }))}
+          selected={types}
+          onChange={(n) => qs.update({ type: n })}
+        />
+        <FilterSelect
+          label="Aktivitas"
+          options={ACTIVE_OPTIONS.map((o) => ({ ...o, count: facets?.active?.[o.value] }))}
+          selected={active ? [active] : []}
+          onChange={(n) => qs.update({ active: n[0] ?? null })}
+        />
+        <FilterSelect
+          label="Fitur"
+          multiple
+          options={FEATURE_OPTIONS.map((o) => ({ ...o, count: facets?.feature?.[o.value] }))}
+          selected={features}
+          onChange={(n) => qs.update({ feature: n })}
+        />
+        <FilterSelect
+          label="Hapus akun"
+          options={[{ value: "scheduled", label: "Terjadwal", count: facets?.deletion?.scheduled, tone: "danger" }]}
+          selected={deletion ? [deletion] : []}
+          onChange={(n) => qs.update({ deletion: n[0] ?? null })}
+        />
+        <DateFilter
+          label="Terdaftar"
+          from={createdFrom}
+          to={createdTo}
+          presets={[
+            { label: "7 hari", days: 7 },
+            { label: "30 hari", days: 30 },
+            { label: "90 hari", days: 90 },
+          ]}
+          onChange={(from, to) => qs.update({ created_from: from, created_to: to })}
+        />
+        {/* Urutan — HP (di layar lebar lewat header tabel) */}
+        <div className="shrink-0 md:hidden">
+          <FilterSelect
+            label="Urut"
+            required
+            highlight={false}
+            options={SORTS}
+            selected={[sort]}
+            summary={`${sortLabel} ${order === "asc" ? "↑" : "↓"}`}
+            onChange={(n) => onSort(n[0])}
+          />
+        </div>
+        {hasFilters && <ClearFiltersButton onClick={clearAll} />}
+      </FilterBar>
 
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
       {state.status === "loading" && !state.data && <SkeletonList rows={10} label="Memuat bisnis" />}

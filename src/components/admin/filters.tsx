@@ -2,8 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
-import { focusRing, iconBtn, inputClass } from "./ui";
+import { Search, X } from "lucide-react";
+import { iconBtn, inputClass } from "./ui";
 
 // Filter halaman daftar admin. Satu sumber kebenaran = query URL (bisa dibagikan antar admin):
 // perubahan filter eksplisit memakai router.push (tombol Kembali bekerja), ketikan cari memakai router.replace.
@@ -167,105 +167,6 @@ export function SearchBox({
   );
 }
 
-/** Chip filter yang bisa ditekan; angka facet opsional (disembunyikan bila server mengirim facets null). */
-export function Chip({
-  active,
-  onClick,
-  children,
-  count,
-  tone = "brand",
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  count?: number | null;
-  tone?: "brand" | "danger";
-}) {
-  const on = tone === "danger" ? "border-danger/40 bg-danger-tint text-danger" : "border-brand-primary/50 bg-brand-tint text-brand-ink";
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[13px] font-semibold transition-colors ${
-        active ? on : "border-border-subtle bg-white text-text-body hover:border-border-active hover:text-text-heading"
-      } ${focusRing}`}
-    >
-      {children}
-      {count !== undefined && count !== null && (
-        <span className={`tabular-nums font-medium ${active ? "opacity-80" : "text-text-muted"}`}>{count.toLocaleString("id-ID")}</span>
-      )}
-    </button>
-  );
-}
-
-export function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-      <p className="w-[92px] shrink-0 text-[12px] font-semibold uppercase tracking-wide text-text-muted">{label}</p>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
-    </div>
-  );
-}
-
-export type ActiveFilter = { key: string; label: string; onRemove: () => void };
-
-/** Baris chip filter aktif (bisa dihapus satu per satu) + "Hapus semua filter". */
-export function ActiveFilters({ items, onClearAll }: { items: ActiveFilter[]; onClearAll: () => void }) {
-  if (items.length === 0) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-1.5" aria-label="Filter aktif">
-      {items.map((f) => (
-        <span
-          key={f.key}
-          className="inline-flex min-h-7 items-center gap-0.5 rounded-full bg-brand-dark py-0.5 pr-0.5 pl-2.5 text-[12.5px] font-semibold text-white"
-        >
-          {f.label}
-          <button
-            type="button"
-            onClick={f.onRemove}
-            aria-label={`Hapus filter ${f.label}`}
-            className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-white/70 hover:bg-white/15 hover:text-white ${focusRing}`}
-          >
-            <X size={13} aria-hidden />
-          </button>
-        </span>
-      ))}
-      <button
-        type="button"
-        onClick={onClearAll}
-        className={`ml-1 rounded-[6px] px-1.5 py-1 text-[13px] font-semibold text-brand-ink hover:underline ${focusRing}`}
-      >
-        Hapus semua filter
-      </button>
-    </div>
-  );
-}
-
-/** Panel filter: selalu terbuka di layar lebar, dilipat di HP di balik tombol "Filter". */
-export function FilterPanel({ activeCount, children }: { activeCount: number; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className={`inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-border-subtle bg-white px-3.5 text-[14px] font-semibold text-text-heading md:hidden ${focusRing}`}
-      >
-        <SlidersHorizontal size={16} aria-hidden />
-        Filter
-        {activeCount > 0 && (
-          <span className="rounded-full bg-brand-deep px-1.5 text-[12px] tabular-nums text-white">{activeCount}</span>
-        )}
-      </button>
-      <div className={`${open ? "mt-3 flex" : "hidden"} flex-col gap-2.5 rounded-[14px] border border-border-subtle bg-white p-3.5 md:mt-0 md:flex md:p-4`}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ——— Tanggal (zona Asia/Jakarta) ———
 
 /** `YYYY-MM-DD` di WIB untuk hari ini dikurangi `daysBack`. */
@@ -278,55 +179,4 @@ export function formatDay(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const d = new Date(`${value}T00:00:00+07:00`);
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" }).format(d);
-}
-
-export function rangeLabel(from: string, to: string): string {
-  if (from && to) return from === to ? formatDay(from) : `${formatDay(from)} – ${formatDay(to)}`;
-  if (from) return `Sejak ${formatDay(from)}`;
-  return `Sampai ${formatDay(to)}`;
-}
-
-/** Pilihan rentang cepat + isian tanggal bebas. */
-export function DateRangeFilter({
-  from,
-  to,
-  presets,
-  onChange,
-  idPrefix,
-}: {
-  from: string;
-  to: string;
-  presets: { label: string; days: number }[];
-  onChange: (from: string, to: string) => void;
-  idPrefix: string;
-}) {
-  const today = jakartaDate(0);
-  const activePreset = presets.find((p) => to === "" && from === jakartaDate(p.days - 1));
-  const dateInput = `${inputClass} min-h-8 w-[150px] rounded-full px-3 py-0 text-[13px]`;
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {presets.map((p) => (
-        <Chip
-          key={p.days}
-          active={activePreset === p}
-          onClick={() => (activePreset === p ? onChange("", "") : onChange(jakartaDate(p.days - 1), ""))}
-        >
-          {p.label}
-        </Chip>
-      ))}
-      <span className="flex items-center gap-1.5">
-        <label htmlFor={`${idPrefix}-from`} className="sr-only">
-          Dari tanggal
-        </label>
-        <input id={`${idPrefix}-from`} type="date" className={dateInput} value={from} max={to || today} onChange={(e) => onChange(e.target.value, to)} />
-        <span aria-hidden className="text-text-muted">
-          –
-        </span>
-        <label htmlFor={`${idPrefix}-to`} className="sr-only">
-          Sampai tanggal
-        </label>
-        <input id={`${idPrefix}-to`} type="date" className={dateInput} value={to} min={from || undefined} max={today} onChange={(e) => onChange(from, e.target.value)} />
-      </span>
-    </div>
-  );
 }
