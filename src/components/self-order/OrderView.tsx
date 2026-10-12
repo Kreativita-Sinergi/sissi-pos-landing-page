@@ -1,7 +1,23 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, CircleCheck, Clock, WifiOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Ban,
+  BellRing,
+  ChefHat,
+  CircleCheck,
+  CircleX,
+  ClipboardCheck,
+  Clock,
+  Receipt,
+  SearchX,
+  Send,
+  TimerOff,
+  Wallet,
+  WifiOff,
+  type LucideIcon,
+} from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 import { newUuid, type SelfOrderApi } from "@/lib/selfOrder/api";
 import { formatRate, formatRupiah } from "@/lib/selfOrder/pricing";
@@ -10,7 +26,7 @@ import { FINAL_STATUSES, type OrderStatus, type OrderStatusResponse, type OrderT
 import { ORDER_TYPE_LABEL } from "./CartSheet";
 import { PaymentView } from "./PaymentView";
 import { Sheet } from "./Sheet";
-import { Notice, dangerButton, focusRing, primaryButton, secondaryButton, useNow } from "./ui";
+import { EmptyState, Frame, Notice, cardClass, dangerButton, focusRing, primaryButton, secondaryButton, useNow } from "./ui";
 
 const DEFAULT_POLL_S = 10;
 const NO_RESPONSE_MS = 3 * 60 * 1000;
@@ -38,6 +54,53 @@ function steps(order: PublicOrder): { title: string; at: string | null }[] {
     { title: ready, at: order.ready_at },
     { title: "Selesai", at: order.completed_at },
   ];
+}
+
+const STEP_ICONS: LucideIcon[] = [Send, ClipboardCheck, ChefHat, BellRing, CircleCheck];
+
+type Mood = { icon: LucideIcon; tone: "brand" | "success" | "danger"; message: string; alert?: boolean };
+
+// Pesan ramah per status untuk kartu nomor pesanan.
+function moodOf(order: PublicOrder): Mood {
+  switch (order.status) {
+    case "awaiting_payment":
+      return { icon: Wallet, tone: "brand", message: "Selesaikan pembayaran QRIS di bawah agar pesanan langsung diproses." };
+    case "pending":
+      return { icon: Clock, tone: "brand", message: "Pesananmu sudah masuk. Kasir akan mengonfirmasinya sebentar lagi." };
+    case "accepted":
+      return { icon: ClipboardCheck, tone: "brand", message: "Kasir sudah mengonfirmasi. Sebentar lagi pesananmu mulai disiapkan." };
+    case "preparing":
+      return { icon: ChefHat, tone: "brand", message: "Pesananmu sedang disiapkan. Tunggu sebentar, ya." };
+    case "ready":
+      return {
+        icon: BellRing,
+        tone: "success",
+        message: order.table
+          ? `Pesananmu segera diantar ke ${order.table.name}.`
+          : `Silakan ambil pesanan di konter dengan nomor ${order.order_no}.`,
+      };
+    case "completed":
+      return { icon: CircleCheck, tone: "success", message: "Selamat menikmati. Terima kasih sudah memesan!" };
+    case "rejected":
+      return {
+        icon: CircleX,
+        tone: "danger",
+        alert: true,
+        message: `Maaf, pesanan ditolak kasir. ${order.reject_reason ? `Alasan: ${order.reject_reason}` : "Silakan tanyakan ke kasir."}`,
+      };
+    case "canceled":
+      return { icon: Ban, tone: "danger", message: "Pesanan ini sudah dibatalkan." };
+    case "expired":
+      return {
+        icon: TimerOff,
+        tone: "danger",
+        alert: true,
+        message:
+          order.pay_mode === "online"
+            ? "Waktu pembayaran habis, jadi pesanan dibatalkan otomatis. Kamu bisa memesan ulang dari menu."
+            : "Pesanan tidak dikonfirmasi kasir tepat waktu. Silakan pesan ulang atau hubungi kasir.",
+      };
+  }
 }
 
 function clock(iso: string | null): string | null {
@@ -216,12 +279,12 @@ export function OrderView({
   };
 
   const backBar = (
-    <div className="sticky top-0 z-10 border-b border-border-subtle bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[640px] items-center px-2 py-1.5">
+    <div className="sticky top-0 z-10 border-b border-so-line bg-so-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-so-canvas/85">
+      <div className="flex items-center px-2 py-1.5">
         <button
           type="button"
           onClick={onBackToMenu}
-          className={`inline-flex min-h-[44px] items-center gap-2 rounded-[10px] px-3 text-[16px] font-semibold text-text-heading hover:bg-bg-muted ${focusRing}`}
+          className={`inline-flex min-h-[44px] items-center gap-2 rounded-[12px] px-3 text-[16px] font-bold text-text-heading hover:bg-white ${focusRing}`}
         >
           <ArrowLeft size={20} aria-hidden /> Menu
         </button>
@@ -231,38 +294,60 @@ export function OrderView({
 
   if (gone) {
     return (
-      <div className="min-h-dvh bg-bg-muted">
+      <Frame>
         {backBar}
-        <main className="mx-auto flex max-w-[640px] flex-col gap-4 px-4 py-8">
-          <h1 className="text-[22px] font-bold">Pesanan tidak dapat ditampilkan</h1>
-          <p className="text-[16px] leading-relaxed text-text-body">
-            Pesanan {entry.order_no} tidak ditemukan lagi — kemungkinan QR meja sudah diganti. Bila pesananmu
-            sudah dikirim, sebutkan nomor <strong className="text-text-heading">{entry.order_no}</strong> ke kasir.
-          </p>
-          <button type="button" className={primaryButton} onClick={() => onForget(entry.id)}>
-            Kembali ke menu
-          </button>
+        <main className="px-6 py-14">
+          <EmptyState
+            icon={<SearchX size={36} aria-hidden />}
+            tone="muted"
+            headingLevel={1}
+            title="Pesanan tidak dapat ditampilkan"
+            body={
+              <>
+                Pesanan {entry.order_no} tidak ditemukan lagi — kemungkinan QR meja sudah diganti. Bila pesananmu
+                sudah dikirim, sebutkan nomor <strong className="text-text-heading">{entry.order_no}</strong> ke kasir.
+              </>
+            }
+          >
+            <button type="button" className={primaryButton} onClick={() => onForget(entry.id)}>
+              Kembali ke menu
+            </button>
+          </EmptyState>
         </main>
-      </div>
+      </Frame>
     );
   }
 
   if (!order) {
     return (
-      <div className="min-h-dvh bg-bg-muted">
+      <Frame>
         {backBar}
-        <main className="mx-auto max-w-[640px] px-4 py-10 text-center" aria-busy={!loadError && !offline}>
+        <main className="flex flex-col gap-4 px-4 pt-4" aria-busy={!loadError && !offline}>
           {offline ? (
-            <Notice tone="warning" role="status">
+            <Notice tone="warning" role="status" icon={<WifiOff size={18} aria-hidden />}>
               Koneksi terputus. Status pesanan {entry.order_no} dimuat otomatis saat tersambung.
             </Notice>
           ) : loadError ? (
             <Notice tone="danger" role="alert">{loadError}</Notice>
           ) : (
-            <p className="text-[16px] text-text-body">Memuat status pesanan…</p>
+            <p className="sr-only" role="status">Memuat status pesanan…</p>
           )}
+          <div className={`${cardClass} flex flex-col items-center gap-3 p-6`} aria-hidden>
+            <div className="h-4 w-32 animate-pulse rounded-[6px] bg-so-line" />
+            <div className="h-16 w-36 animate-pulse rounded-[12px] bg-so-line" />
+            <div className="h-4 w-48 animate-pulse rounded-[6px] bg-so-line" />
+            <div className="mt-3 h-14 w-full animate-pulse rounded-[14px] bg-so-line" />
+          </div>
+          <div className={`${cardClass} flex flex-col gap-4 p-5`} aria-hidden>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-10 w-10 animate-pulse rounded-full bg-so-line" />
+                <div className="h-4 w-40 animate-pulse rounded-[6px] bg-so-line" />
+              </div>
+            ))}
+          </div>
         </main>
-      </div>
+      </Frame>
     );
   }
 
@@ -273,66 +358,89 @@ export function OrderView({
   const group = data?.group;
   const canAdd = !!group?.can_add && allowAdditional;
   const where = order.table ? [order.table.name, order.table.area_name].filter(Boolean).join(" · ") : null;
+  const mood = moodOf(order);
+  const MoodIcon = mood.icon;
+  const moodColors = {
+    brand: { icon: "bg-brand-tint text-brand-deep", pill: "bg-brand-tint text-brand-ink" },
+    success: { icon: "bg-success-tint text-success", pill: "bg-success-tint text-success" },
+    danger: { icon: "bg-danger-tint text-danger", pill: "bg-danger-tint text-danger" },
+  }[mood.tone];
+  const cashierStrip =
+    order.pay_mode === "cashier" && (status === "pending" || status === "accepted" || status === "preparing" || status === "ready")
+      ? status === "pending"
+        ? { title: "Tunjukkan nomor ini ke kasir", body: "Pembayaran dilakukan di kasir." }
+        : { title: `Pembayaran di kasir — sebutkan nomor ${order.order_no}.`, body: null }
+      : null;
 
   return (
-    <div className="min-h-dvh bg-bg-muted pb-10">
+    <Frame className="pb-12">
       {backBar}
-      <main className="mx-auto flex max-w-[640px] flex-col gap-4 px-4 pt-4">
+      <main className="flex flex-col gap-4 px-4 pt-4">
         {offline && (
-          <Notice tone="warning" role="status">
-            <span className="inline-flex items-center gap-2">
-              <WifiOff size={16} aria-hidden /> Koneksi terputus. Status diperbarui otomatis saat tersambung.
-            </span>
+          <Notice tone="warning" role="status" icon={<WifiOff size={18} aria-hidden />}>
+            Koneksi terputus. Status diperbarui otomatis saat tersambung.
           </Notice>
         )}
 
-        <section aria-labelledby="nomor-pesanan" className="rounded-[20px] border border-border-subtle bg-white p-5 text-center">
-          <p id="nomor-pesanan" className="text-[15px] font-medium text-text-body">
-            Nomor pesanan{order.round > 1 ? ` · tambahan ke-${order.round - 1}` : ""}
-          </p>
-          <p className="mt-1 text-[56px] font-bold leading-none tracking-tight text-text-heading tabular-nums">
-            {order.order_no}
-          </p>
-          <p className="mt-3 text-[15px] text-text-body">
-            {[where, ORDER_TYPE_LABEL[order.order_type], order.customer_name].filter(Boolean).join(" · ")}
-          </p>
-          <p
-            role="status"
-            aria-live="polite"
-            className={`mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[17px] font-semibold ${
-              status === "rejected" || status === "canceled" || status === "expired"
-                ? "bg-danger-tint text-danger"
-                : status === "ready" || status === "completed"
-                  ? "bg-success-tint text-success"
-                  : "bg-brand-tint text-text-heading"
-            }`}
-          >
-            {order.status_label}
-          </p>
+        {/* Kartu nomor pesanan (gaya tiket) */}
+        <section aria-labelledby="nomor-pesanan" className={`${cardClass} overflow-hidden`}>
+          {cashierStrip && (
+            <div className="flex items-center gap-3 bg-brand-deep px-5 py-3 text-white">
+              <Receipt size={22} aria-hidden className="shrink-0" />
+              <p className="text-[15px] leading-snug">
+                <span className="block text-[16px] font-bold">{cashierStrip.title}</span>
+                {cashierStrip.body && <span className="text-white/90">{cashierStrip.body}</span>}
+              </p>
+            </div>
+          )}
+          <div className="px-5 pt-5 pb-4 text-center">
+            <p id="nomor-pesanan" className="text-[13px] font-bold uppercase tracking-[0.1em] text-text-muted">
+              Nomor pesanan{order.round > 1 ? ` · tambahan ke-${order.round - 1}` : ""}
+            </p>
+            <p className="mt-1.5 text-[76px] font-extrabold leading-none tracking-tight text-text-heading tabular-nums">
+              {order.order_no}
+            </p>
+            <p className="mt-3 flex flex-wrap justify-center gap-1.5 text-[14px] font-semibold text-text-body">
+              {[where, ORDER_TYPE_LABEL[order.order_type], order.customer_name].filter(Boolean).map((t) => (
+                <span key={t} className="rounded-full bg-so-canvas px-3 py-1">
+                  {t}
+                </span>
+              ))}
+            </p>
+          </div>
+          <div aria-hidden className="relative mx-5 border-t-2 border-dashed border-so-line">
+            <span className="absolute -top-[11px] -left-[30px] h-5 w-5 rounded-full bg-so-canvas" />
+            <span className="absolute -top-[11px] -right-[30px] h-5 w-5 rounded-full bg-so-canvas" />
+          </div>
+          <div className="flex items-start gap-3.5 px-5 pt-4 pb-5">
+            <span className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${moodColors.icon}`}>
+              {!isFinal && status !== "awaiting_payment" && (
+                <span aria-hidden className="absolute inset-0 rounded-full bg-current opacity-20 motion-safe:animate-so-ping" />
+              )}
+              <MoodIcon size={24} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p
+                role="status"
+                aria-live="polite"
+                className={`inline-flex rounded-full px-3 py-1 text-[15px] font-bold ${moodColors.pill}`}
+              >
+                {order.status_label}
+              </p>
+              <p role={mood.alert ? "alert" : undefined} className="mt-1.5 text-[16px] leading-relaxed text-text-heading">
+                {mood.message}
+              </p>
+            </div>
+          </div>
         </section>
 
-        {/* Langkah berikutnya untuk pelanggan */}
-        {status === "pending" && (
-          <Notice tone="info">
-            <span className="block text-[17px] font-semibold text-text-heading">
-              Tunjukkan nomor {order.order_no} ke kasir
-            </span>
-            Kasir akan mengonfirmasi pesananmu. Pembayaran dilakukan di kasir.
-          </Notice>
-        )}
         {noResponse && (
-          <Notice tone="warning" role="status">
-            <span className="inline-flex items-start gap-2">
-              <Clock size={18} aria-hidden className="mt-0.5 shrink-0" />
-              <span>
-                Kasir belum merespons. Silakan datangi kasir dan sebutkan nomor{" "}
-                <strong>{order.order_no}</strong>.
-              </span>
-            </span>
+          <Notice tone="warning" role="status" icon={<Clock size={18} aria-hidden />}>
+            Kasir belum merespons. Silakan datangi kasir dan sebutkan nomor <strong>{order.order_no}</strong>.
           </Notice>
         )}
         {status === "awaiting_payment" && (
-          <section aria-label="Pembayaran" className="rounded-[20px] border border-border-subtle bg-white p-5">
+          <section aria-label="Pembayaran" className={`${cardClass} p-5`}>
             <PaymentView
               order={order}
               payment={data?.payment ?? null}
@@ -344,41 +452,15 @@ export function OrderView({
           </section>
         )}
         {order.pay_mode === "online" && data?.payment?.status === "paid" && !isFinal && (
-          <Notice tone="success" role="status">
-            <span className="inline-flex items-center gap-2">
-              <CircleCheck size={18} aria-hidden /> Pembayaran {formatRupiah(data.payment.amount)} berhasil. Terima kasih!
-            </span>
-          </Notice>
-        )}
-        {order.pay_mode === "cashier" && (status === "accepted" || status === "preparing" || status === "ready") && (
-          <Notice tone="info">Pembayaran di kasir — sebutkan nomor {order.order_no}.</Notice>
-        )}
-        {status === "ready" && (
-          <Notice tone="success" role="status">
-            {order.table
-              ? `Pesananmu segera diantar ke ${order.table.name}.`
-              : `Silakan ambil pesanan di konter dengan nomor ${order.order_no}.`}
-          </Notice>
-        )}
-        {status === "rejected" && (
-          <Notice tone="danger" role="alert">
-            <span className="block font-semibold">Maaf, pesanan ditolak kasir.</span>
-            {order.reject_reason ? `Alasan: ${order.reject_reason}` : "Silakan tanyakan ke kasir."}
-          </Notice>
-        )}
-        {status === "canceled" && <Notice tone="danger">Pesanan ini sudah dibatalkan.</Notice>}
-        {status === "expired" && (
-          <Notice tone="danger" role="alert">
-            {order.pay_mode === "online"
-              ? "Waktu pembayaran habis, jadi pesanan dibatalkan otomatis. Kamu bisa memesan ulang dari menu."
-              : "Pesanan tidak dikonfirmasi kasir tepat waktu. Silakan pesan ulang atau hubungi kasir."}
+          <Notice tone="success" role="status" icon={<CircleCheck size={18} aria-hidden />}>
+            Pembayaran {formatRupiah(data.payment.amount)} berhasil. Terima kasih!
           </Notice>
         )}
         {loadError && <Notice tone="danger" role="alert">{loadError}</Notice>}
 
         {stepIndex !== undefined && (
-          <section aria-labelledby="judul-progres" className="rounded-[20px] border border-border-subtle bg-white p-5">
-            <h2 id="judul-progres" className="mb-4 text-[18px] font-bold">
+          <section aria-labelledby="judul-progres" className={`${cardClass} p-5`}>
+            <h2 id="judul-progres" className="mb-4 text-[18px] font-bold tracking-tight">
               Perkembangan pesanan
             </h2>
             <ol className="flex flex-col">
@@ -386,36 +468,37 @@ export function OrderView({
                 const done = i < stepIndex || (i === stepIndex && status === "completed");
                 const current = i === stepIndex && status !== "completed";
                 const last = i === 4;
+                const Icon = STEP_ICONS[i];
                 return (
-                  <li key={i} aria-current={current ? "step" : undefined} className="flex gap-3">
+                  <li key={i} aria-current={current ? "step" : undefined} className={`flex gap-3.5 ${last ? "" : "min-h-[68px]"}`}>
                     <div className="flex flex-col items-center">
                       <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${
+                        className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                           done
-                            ? "border-success bg-success text-white"
+                            ? "bg-success text-white"
                             : current
-                              ? "border-brand-primary bg-brand-tint"
-                              : "border-border-subtle bg-white"
+                              ? "bg-brand-deep text-white shadow-[0_0_0_5px_var(--color-brand-tint)]"
+                              : "border-2 border-so-line bg-white text-text-muted"
                         }`}
                       >
-                        {done ? (
-                          <Check size={16} aria-hidden />
-                        ) : current ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-brand-primary" />
-                        ) : null}
+                        <Icon size={18} aria-hidden />
                       </span>
-                      {!last && <span className={`w-0.5 flex-1 ${done ? "bg-success" : "bg-border-subtle"}`} />}
+                      {!last && (
+                        <span className={`my-1 w-[3px] flex-1 rounded-full ${done ? "bg-success" : "bg-so-line"}`} />
+                      )}
                     </div>
-                    <div className={`pb-5 ${last ? "pb-0" : ""}`}>
+                    <div className={`min-w-0 pt-2 ${last ? "pb-0" : "pb-5"}`}>
                       <p
-                        className={`text-[16px] leading-7 ${
-                          current ? "font-semibold text-text-heading" : done ? "text-text-heading" : "text-text-muted"
+                        className={`text-[16px] leading-snug ${
+                          current ? "font-bold text-text-heading" : done ? "font-semibold text-text-heading" : "text-text-muted"
                         }`}
                       >
                         {s.title}
                         <span className="sr-only">{done ? " (selesai)" : current ? " (sekarang)" : ""}</span>
                       </p>
-                      {(done || current) && clock(s.at) && <p className="text-[14px] text-text-muted">{clock(s.at)}</p>}
+                      {(done || current) && clock(s.at) && (
+                        <p className="mt-0.5 text-[14px] tabular-nums text-text-muted">{clock(s.at)}</p>
+                      )}
                     </div>
                   </li>
                 );
@@ -424,47 +507,51 @@ export function OrderView({
           </section>
         )}
 
-        <section aria-labelledby="judul-rincian" className="rounded-[20px] border border-border-subtle bg-white p-5">
-          <h2 id="judul-rincian" className="mb-3 text-[18px] font-bold">
+        <section aria-labelledby="judul-rincian" className={`${cardClass} p-5`}>
+          <h2 id="judul-rincian" className="mb-3.5 text-[18px] font-bold tracking-tight">
             Rincian pesanan
           </h2>
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-3.5">
             {order.items.map((it, i) => {
               const details = [it.variant_name, ...it.modifiers.map((m) => m.name)].filter(Boolean).join(", ");
               const lineTotal = (it.unit_price + it.modifiers.reduce((s, m) => s + m.price, 0)) * it.quantity;
               return (
                 <li key={i} className="flex items-start gap-3 text-[15px]">
-                  <span className="w-7 shrink-0 font-semibold tabular-nums">{it.quantity}×</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium text-text-heading">{it.name}</span>
+                  <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[8px] bg-so-canvas px-1 text-[14px] font-bold tabular-nums">
+                    {it.quantity}×
+                  </span>
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    <span className="block font-semibold text-text-heading">{it.name}</span>
                     {details && <span className="block text-[14px] text-text-body">{details}</span>}
                     {it.note && <span className="block text-[14px] italic text-text-body">“{it.note}”</span>}
                   </span>
-                  <span className="tabular-nums">{formatRupiah(lineTotal)}</span>
+                  <span className="pt-0.5 font-semibold tabular-nums">{formatRupiah(lineTotal)}</span>
                 </li>
               );
             })}
           </ul>
-          {order.note && <p className="mt-3 text-[14px] text-text-body">Catatan: {order.note}</p>}
-          <dl className="mt-4 flex flex-col gap-1.5 border-t border-border-subtle pt-3 text-[15px]">
+          {order.note && (
+            <p className="mt-3.5 rounded-[12px] bg-so-canvas px-3 py-2 text-[14px] text-text-body">Catatan: {order.note}</p>
+          )}
+          <dl className="mt-4 flex flex-col gap-2 border-t border-so-line pt-3.5 text-[15px]">
             <SumRow label="Subtotal" value={order.subtotal} />
             {order.service_fee > 0 && <SumRow label="Biaya layanan" value={order.service_fee} />}
             {order.taxes.map((t, i) => (
               <SumRow key={i} label={`${t.name} (${formatRate(t.rate_bp)})`} value={t.amount} />
             ))}
-            <div className="mt-1 flex items-baseline justify-between">
+            <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-border-active pt-3">
               <dt className="text-[17px] font-bold">Total</dt>
-              <dd className="text-[19px] font-bold tabular-nums">{formatRupiah(order.total)}</dd>
+              <dd className="text-[22px] font-extrabold tabular-nums tracking-tight">{formatRupiah(order.total)}</dd>
             </div>
           </dl>
         </section>
 
         {group && group.rounds.length > 1 && (
-          <section aria-labelledby="judul-ronde" className="rounded-[20px] border border-border-subtle bg-white p-5">
-            <h2 id="judul-ronde" className="mb-3 text-[18px] font-bold">
+          <section aria-labelledby="judul-ronde" className={`${cardClass} p-5`}>
+            <h2 id="judul-ronde" className="mb-2 text-[18px] font-bold tracking-tight">
               Semua pesanan {order.order_no}
             </h2>
-            <ul className="flex flex-col divide-y divide-border-subtle">
+            <ul className="flex flex-col divide-y divide-so-line">
               {group.rounds.map((r) => {
                 const mine = r.id === order.id;
                 const known = storedIds.includes(r.id);
@@ -484,13 +571,13 @@ export function OrderView({
                       <button
                         type="button"
                         onClick={() => onSelectRound(r.id)}
-                        className={`flex min-h-[52px] w-full items-center gap-3 py-2 text-[15px] ${focusRing}`}
+                        className={`flex min-h-[56px] w-full items-center gap-3 py-2 text-[15px] ${focusRing}`}
                       >
                         {content}
                       </button>
                     ) : (
                       <div
-                        className={`flex min-h-[52px] items-center gap-3 py-2 text-[15px] ${mine ? "font-semibold" : ""}`}
+                        className={`flex min-h-[56px] items-center gap-3 py-2 text-[15px] ${mine ? "font-semibold" : ""}`}
                         aria-current={mine ? "true" : undefined}
                       >
                         {content}
@@ -524,6 +611,9 @@ export function OrderView({
             </button>
           )}
         </div>
+        <p className="pt-4 text-center text-[13px] text-text-muted">
+          Pemesanan oleh <span className="font-semibold text-text-body">Sissi POS</span>
+        </p>
       </main>
 
       <Sheet
@@ -548,7 +638,7 @@ export function OrderView({
           {cancelError && <Notice tone="danger" role="alert">{cancelError}</Notice>}
         </div>
       </Sheet>
-    </div>
+    </Frame>
   );
 }
 

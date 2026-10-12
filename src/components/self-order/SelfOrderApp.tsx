@@ -1,7 +1,7 @@
 "use client";
 
 import React, { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, QrCode as QrIcon, RefreshCw, Store, WifiOff } from "lucide-react";
+import { ChevronRight, Clock, PlusCircle, QrCode as QrIcon, RefreshCw, Store, WifiOff } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 import { newUuid, selfOrderApi, type SelfOrderApi } from "@/lib/selfOrder/api";
 import {
@@ -20,7 +20,7 @@ import { ItemSheet } from "./ItemSheet";
 import { MenuView } from "./MenuView";
 import { OrderView, type AddMoreTarget } from "./OrderView";
 import { Sheet } from "./Sheet";
-import { focusRing, primaryButton, secondaryButton, useNow } from "./ui";
+import { EmptyState, Frame, focusRing, primaryButton, secondaryButton, useNow } from "./ui";
 
 const CODE_RE = /^[A-Za-z0-9_-]{1,64}$/;
 // Pesanan tersimpan yang lebih baru dari ini langsung dibuka saat halaman dimuat ulang.
@@ -350,14 +350,17 @@ function SelfOrder({ code }: { code: string }) {
   const count = countItems(cart);
 
   const banner = addTo ? (
-    <div className="flex items-center gap-3 rounded-[14px] border border-brand-primary bg-brand-tint px-4 py-3">
-      <p className="flex-1 text-[15px] leading-snug text-text-heading">
-        <span className="font-semibold">Menambah pesanan {addTo.order_no}.</span> Pilih menu, lalu kirim dari keranjang.
+    <div className="flex items-center gap-3 rounded-[18px] border-2 border-brand-primary bg-white py-2.5 pr-2 pl-3 shadow-so-card">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-brand-tint text-brand-deep">
+        <PlusCircle size={20} aria-hidden />
+      </span>
+      <p className="flex-1 text-[15px] leading-snug text-text-body">
+        <span className="block font-bold text-text-heading">Menambah pesanan {addTo.order_no}.</span> Pilih menu, lalu kirim dari keranjang.
       </p>
       <button
         type="button"
         onClick={() => setAddTo(null)}
-        className={`min-h-[44px] shrink-0 rounded-[10px] px-3 text-[15px] font-semibold text-text-heading underline ${focusRing}`}
+        className={`min-h-[44px] shrink-0 rounded-[12px] px-3 text-[15px] font-bold text-text-heading hover:bg-so-canvas ${focusRing}`}
       >
         Batal
       </button>
@@ -366,10 +369,14 @@ function SelfOrder({ code }: { code: string }) {
     <button
       type="button"
       onClick={() => setView({ name: "order", id: latestOrder.id })}
-      className={`flex min-h-[56px] w-full items-center gap-3 rounded-[14px] border border-border-subtle bg-white px-4 text-left ${focusRing}`}
+      className={`flex min-h-[60px] w-full items-center gap-3 rounded-[18px] bg-white py-2.5 pr-3 pl-3 text-left shadow-so-card ${focusRing}`}
     >
-      <span className="flex-1 text-[15px] text-text-heading">
-        Pesanan <span className="font-bold">{latestOrder.order_no}</span> · lihat status
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-success-tint text-success">
+        <Clock size={20} aria-hidden />
+      </span>
+      <span className="flex-1 text-[15px] leading-snug text-text-body">
+        <span className="block font-bold text-text-heading">Pesanan {latestOrder.order_no}</span>
+        Ketuk untuk melihat status
       </span>
       <ChevronRight size={20} aria-hidden className="text-text-muted" />
     </button>
@@ -460,7 +467,7 @@ function SelfOrder({ code }: { code: string }) {
         }
       >
         {priceConfirm && (
-          <dl className="flex flex-col gap-1.5 text-[15px]">
+          <dl className="flex flex-col gap-2 rounded-[18px] border border-so-line bg-so-canvas px-4 py-3.5 text-[15px]">
             <div className="flex justify-between gap-3 text-text-muted">
               <dt>Total sebelumnya</dt>
               <dd className="tabular-nums line-through">{formatRupiah(priceConfirm.previous)}</dd>
@@ -483,9 +490,9 @@ function SelfOrder({ code }: { code: string }) {
                 <dd className="tabular-nums">{formatRupiah(t.amount)}</dd>
               </div>
             ))}
-            <div className="mt-1.5 flex items-baseline justify-between border-t border-border-subtle pt-2.5">
+            <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-border-active pt-3">
               <dt className="text-[17px] font-bold">Total terbaru</dt>
-              <dd className="text-[19px] font-bold tabular-nums">{formatRupiah(breakdown.total)}</dd>
+              <dd className="text-[22px] font-extrabold tabular-nums tracking-tight">{formatRupiah(breakdown.total)}</dd>
             </div>
           </dl>
         )}
@@ -495,24 +502,44 @@ function SelfOrder({ code }: { code: string }) {
 }
 
 function LoadingScreen() {
+  const bone = "animate-pulse bg-so-line";
   return (
-    <div className="min-h-dvh bg-bg-muted" aria-busy="true">
-      <div className="bg-white px-4 pt-6 pb-4">
-        <div className="mx-auto max-w-[640px]">
-          <div className="h-3 w-16 animate-pulse rounded bg-bg-muted" />
-          <div className="mt-3 h-7 w-48 animate-pulse rounded bg-bg-muted" />
-          <div className="mt-4 h-8 w-40 animate-pulse rounded-full bg-bg-muted" />
+    <Frame>
+      <div aria-busy="true">
+        <div className="bg-white px-4 pt-5 pb-4">
+          <div className="flex items-center gap-3.5">
+            <div className={`h-14 w-14 rounded-full ${bone}`} />
+            <div className="flex flex-1 flex-col gap-2">
+              <div className={`h-6 w-40 rounded-[8px] ${bone}`} />
+              <div className={`h-4 w-52 rounded-[6px] ${bone}`} />
+              <div className={`h-3.5 w-32 rounded-[6px] ${bone}`} />
+            </div>
+          </div>
+          <div className={`mt-3.5 h-11 rounded-[14px] ${bone}`} />
         </div>
-      </div>
-      <div className="mx-auto flex max-w-[640px] flex-col gap-2.5 px-4 pt-5">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-[96px] animate-pulse rounded-[16px] bg-white" />
-        ))}
+        <div className="flex h-14 items-center gap-5 border-b border-so-line px-5">
+          {[64, 80, 72].map((w) => (
+            <div key={w} className={`h-5 rounded-[6px] ${bone}`} style={{ width: w }} />
+          ))}
+        </div>
+        <div className="flex flex-col gap-3 px-4 pt-6">
+          <div className={`mb-1 h-6 w-28 rounded-[6px] ${bone}`} />
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex gap-3.5 rounded-[20px] bg-white p-3 pl-4 shadow-so-card">
+              <div className="flex flex-1 flex-col gap-2 py-1">
+                <div className={`h-5 w-3/4 rounded-[6px] ${bone}`} />
+                <div className={`h-4 w-full rounded-[6px] ${bone}`} />
+                <div className={`mt-auto h-5 w-24 rounded-[6px] ${bone}`} />
+              </div>
+              <div className={`h-[104px] w-[104px] rounded-[16px] ${bone}`} />
+            </div>
+          ))}
+        </div>
       </div>
       <p className="sr-only" role="status">
         Memuat menu…
       </p>
-    </div>
+    </Frame>
   );
 }
 
@@ -533,18 +560,18 @@ function ErrorScreen({
 }) {
   const code = error instanceof ApiError ? error.code : "BAD_RESPONSE";
   const status = error instanceof ApiError ? error.status : 0;
-  let icon = <WifiOff size={28} aria-hidden />;
+  let icon = <WifiOff size={36} aria-hidden />;
   let title = "Menu belum bisa dimuat";
   let body = "Periksa koneksi internet, lalu coba lagi.";
   let retry = true;
 
   if (code === "NOT_FOUND") {
-    icon = <QrIcon size={28} aria-hidden />;
+    icon = <QrIcon size={36} aria-hidden />;
     title = "Kode QR tidak berlaku";
     body = "QR ini sudah tidak aktif atau sudah diganti. Minta QR terbaru ke staf, lalu pindai lagi.";
     retry = false;
   } else if (code === "SELF_ORDER_CLOSED" || status === 403) {
-    icon = <Store size={28} aria-hidden />;
+    icon = <Store size={36} aria-hidden />;
     title = "Pemesanan lewat QR sedang tutup";
     body = "Outlet belum menerima pesanan dari QR saat ini. Silakan pesan langsung ke kasir.";
   } else if (code === "RATE_LIMITED") {
@@ -558,27 +585,26 @@ function ErrorScreen({
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-bg-muted px-4 py-10">
-      <div className="flex w-full max-w-[420px] flex-col items-center gap-4 rounded-[20px] border border-border-subtle bg-white p-6 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-tint text-brand-dark">
-          {icon}
-        </span>
-        <h1 className="text-[22px] font-bold leading-tight text-text-heading">{title}</h1>
-        <p className="text-[16px] leading-relaxed text-text-body">{body}</p>
-        {retry && onRetry && (
-          <button type="button" className={primaryButton} onClick={onRetry}>
-            <RefreshCw size={18} aria-hidden /> Coba lagi
-          </button>
-        )}
-        {order && onOpenOrder && (
-          <button type="button" className={secondaryButton} onClick={onOpenOrder}>
-            Lihat pesanan {order.order_no}
-          </button>
-        )}
-      </div>
-      <p className="mt-6 text-[13px] text-text-muted">
-        Pemesanan oleh <span className="font-semibold">Sissi POS</span>
-      </p>
-    </main>
+    <Frame>
+      <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[400px]">
+          <EmptyState icon={icon} title={title} body={body} headingLevel={1} tone={code === "NOT_FOUND" ? "muted" : "brand"}>
+            {retry && onRetry && (
+              <button type="button" className={primaryButton} onClick={onRetry}>
+                <RefreshCw size={18} aria-hidden /> Coba lagi
+              </button>
+            )}
+            {order && onOpenOrder && (
+              <button type="button" className={secondaryButton} onClick={onOpenOrder}>
+                Lihat pesanan {order.order_no}
+              </button>
+            )}
+          </EmptyState>
+        </div>
+        <p className="mt-12 text-[13px] text-text-muted">
+          Pemesanan oleh <span className="font-semibold text-text-body">Sissi POS</span>
+        </p>
+      </main>
+    </Frame>
   );
 }

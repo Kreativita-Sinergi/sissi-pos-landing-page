@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 
 // QR dirender sebagai satu <path> SVG. Pustaka (qrcode-generator, ±20 KB) dimuat hanya saat dibutuhkan.
-export function QrCode({ value, label, size = 248 }: { value: string; label: string; size?: number }) {
+export function QrCode({ value, label, size = 236 }: { value: string; label: string; size?: number }) {
   const [qr, setQr] = useState<{ value: string; count: number; path: string } | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ export function QrCode({ value, label, size = 248 }: { value: string; label: str
 
   return (
     <div
-      className="flex items-center justify-center rounded-[16px] border border-border-subtle bg-white p-3"
+      className="flex items-center justify-center rounded-[16px] bg-white p-2 shadow-so-card"
       style={{ width: size, height: size }}
     >
       {ready ? (
@@ -54,7 +54,7 @@ export function QrCode({ value, label, size = 248 }: { value: string; label: str
       ) : failed === value ? (
         <p className="px-4 text-center text-[14px] text-text-body">QR gagal dimuat. Muat ulang halaman.</p>
       ) : (
-        <div className="h-full w-full animate-pulse rounded-[8px] bg-bg-muted" aria-hidden />
+        <div className="h-full w-full animate-pulse rounded-[8px] bg-so-line" aria-hidden />
       )}
     </div>
   );

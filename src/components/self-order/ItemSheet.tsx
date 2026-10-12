@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, CircleAlert } from "lucide-react";
 import { MAX_QTY, NOTE_MAX, lineKey, type CartLine, type CartModifier } from "@/lib/selfOrder/cart";
 import { formatRupiah } from "@/lib/selfOrder/pricing";
 import type { MenuProduct, MenuVariant, ModifierGroup } from "@/lib/selfOrder/types";
 import { Sheet } from "./Sheet";
-import { Stepper, inputClass, primaryButton } from "./ui";
+import { Stepper, Thumb, inputClass, primaryButton } from "./ui";
 
 type Dim = { name: string; values: string[] };
 
@@ -34,10 +34,27 @@ function maxOf(group: ModifierGroup): number {
 function groupRule(group: ModifierGroup): string {
   const max = maxOf(group);
   if (group.min_select > 0) {
-    if (group.min_select === max) return `Wajib · pilih ${max}`;
-    return `Wajib · pilih ${group.min_select}–${max}`;
+    if (group.min_select === max) return `Wajib pilih ${max}`;
+    return `Wajib pilih ${group.min_select}–${max}`;
   }
-  return max === 1 ? "Opsional · pilih 1" : `Opsional · maks. ${max}`;
+  return max === 1 ? "Opsional, pilih 1" : `Opsional, maks ${max}`;
+}
+
+// Lencana aturan grup: abu (opsional), oranye (wajib, belum), hijau (wajib, terpenuhi), merah (kurang saat kirim).
+function RuleBadge({ text, state }: { text: string; state: "optional" | "required" | "met" | "error" }) {
+  const cls = {
+    optional: "bg-so-canvas text-text-body",
+    required: "bg-brand-tint text-brand-ink",
+    met: "bg-success-tint text-success",
+    error: "bg-danger-tint text-danger",
+  }[state];
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-bold ${cls}`}>
+      {state === "met" && <Check size={14} strokeWidth={3} aria-hidden />}
+      {state === "error" && <CircleAlert size={14} aria-hidden />}
+      {text}
+    </span>
+  );
 }
 
 export function ItemSheet({
@@ -57,6 +74,17 @@ export function ItemSheet({
       onClose={onClose}
       title={product?.name ?? ""}
       subtitle={product?.description || undefined}
+      media={
+        product?.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- gambar dari API (domain bebas), tanpa optimasi.
+          <img src={product.image_url} alt="" className="aspect-[4/3] w-full bg-so-canvas object-cover" />
+        ) : undefined
+      }
+      leading={
+        product && !product.image_url ? (
+          <Thumb name={product.name} src={null} className="h-14 w-14 shrink-0 rounded-[16px]" textClass="text-[20px]" />
+        ) : undefined
+      }
     >
       {product && <ItemForm key={product.id} product={product} inCart={inCart} onAdd={onAdd} />}
     </Sheet>
@@ -144,7 +172,13 @@ function ItemForm({
     if (unmet.length > 0) {
       setShowErrors(true);
       const el = groupRefs.current[unmet[0].id];
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Gulir hanya wadah lembar (scrollIntoView ikut menggeser <dialog> sehingga judul terpotong).
+      const box = el?.closest<HTMLElement>("[data-sheet-scroll]");
+      if (el && box) {
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const offset = el.getBoundingClientRect().top - box.getBoundingClientRect().top - 16;
+        box.scrollBy({ top: offset, behavior: reduce ? "auto" : "smooth" });
+      }
       el?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus({ preventScroll: true });
       return;
     }
@@ -166,21 +200,21 @@ function ItemForm({
 
   return (
     <div className="flex flex-col gap-6 pb-1">
-      {product.image_url && (
+      {variant?.image_url && variant.image_url !== product.image_url && (
         // eslint-disable-next-line @next/next/no-img-element -- gambar dari API (domain bebas), tanpa optimasi.
         <img
-          src={variant?.image_url || product.image_url}
+          src={variant.image_url}
           alt=""
-          className="aspect-[4/3] w-full rounded-[14px] bg-bg-muted object-cover"
+          className="aspect-[16/9] w-full rounded-[16px] bg-so-canvas object-cover"
         />
       )}
 
       {hasVariants &&
         dims.map((dim) => (
           <fieldset key={dim.name}>
-            <legend className="mb-2.5 flex w-full items-baseline justify-between gap-3">
-              <span className="text-[17px] font-semibold">{dim.name}</span>
-              <span className="text-[13px] font-medium text-text-muted">Wajib · pilih 1</span>
+            <legend className="mb-3 flex w-full items-center justify-between gap-3">
+              <span className="text-[18px] font-bold tracking-tight">{dim.name}</span>
+              <RuleBadge text="Wajib pilih 1" state={selection[dim.name] ? "met" : "required"} />
             </legend>
             <div className="flex flex-wrap gap-2">
               {dim.values.map((value) => {
@@ -193,14 +227,14 @@ function ItemForm({
                 return (
                   <label
                     key={value}
-                    className={`relative inline-flex min-h-[48px] cursor-pointer items-center gap-2 rounded-[12px] border-2 px-4 text-[16px] font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-primary ${
+                    className={`relative inline-flex min-h-[52px] min-w-[96px] cursor-pointer flex-col items-start justify-center rounded-[14px] border-2 px-4 py-1.5 text-[16px] font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-primary ${
                       selected
                         ? "border-brand-primary bg-brand-tint text-text-heading"
                         : state === "none"
-                          ? "cursor-not-allowed border-border-subtle bg-bg-muted text-text-muted line-through"
+                          ? "cursor-not-allowed border-so-line bg-so-canvas text-text-muted"
                           : state === "conflict"
                             ? "border-dashed border-border-active bg-white text-text-body"
-                            : "border-border-subtle bg-white text-text-heading"
+                            : "border-so-line bg-white text-text-heading hover:border-border-active"
                     }`}
                   >
                     <input
@@ -213,12 +247,14 @@ function ItemForm({
                       onChange={() => choose(dim.name, value)}
                       aria-describedby={state === "conflict" ? `hint-${dim.name}` : undefined}
                     />
-                    {selected && <Check size={16} aria-hidden className="text-brand-dark" />}
-                    <span>{value}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      {selected && <Check size={16} strokeWidth={3} aria-hidden className="text-brand-deep" />}
+                      <span className={state === "none" ? "line-through" : ""}>{value}</span>
+                    </span>
                     {price !== undefined && state !== "none" && (
-                      <span className="text-[14px] text-text-body">{formatRupiah(price)}</span>
+                      <span className="text-[13px] font-medium tabular-nums text-text-body">{formatRupiah(price)}</span>
                     )}
-                    {state === "none" && <span className="text-[13px] no-underline">· Habis</span>}
+                    {state === "none" && <span className="text-[13px] font-medium">Habis</span>}
                   </label>
                 );
               })}
@@ -245,18 +281,23 @@ function ItemForm({
             aria-describedby={error ? `err-${group.id}` : undefined}
             aria-invalid={error || undefined}
           >
-            <legend className="mb-2.5 flex w-full items-baseline justify-between gap-3">
-              <span className="text-[17px] font-semibold">{group.name}</span>
-              <span
-                className={`shrink-0 text-[13px] font-medium ${
-                  error ? "text-danger" : group.min_select > 0 ? "text-text-heading" : "text-text-muted"
-                }`}
-              >
-                {groupRule(group)}
-              </span>
+            <legend className="mb-3 flex w-full items-center justify-between gap-3">
+              <span className="text-[18px] font-bold tracking-tight">{group.name}</span>
+              <RuleBadge
+                text={groupRule(group)}
+                state={
+                  error
+                    ? "error"
+                    : group.min_select === 0
+                      ? "optional"
+                      : chosen.length >= group.min_select
+                        ? "met"
+                        : "required"
+                }
+              />
             </legend>
             <div
-              className={`overflow-hidden rounded-[14px] border ${error ? "border-danger" : "border-border-subtle"}`}
+              className={`overflow-hidden rounded-[16px] border-2 transition-colors ${error ? "border-danger" : "border-so-line"}`}
             >
               {group.options.map((option, i) => {
                 const checked = chosen.includes(option.id);
@@ -264,9 +305,9 @@ function ItemForm({
                 return (
                   <label
                     key={option.id}
-                    className={`flex min-h-[52px] cursor-pointer items-center gap-3 px-4 has-[:focus-visible]:bg-brand-tint ${
-                      i > 0 ? "border-t border-border-subtle" : ""
-                    } ${full ? "cursor-not-allowed text-text-muted" : ""}`}
+                    className={`flex min-h-[54px] cursor-pointer items-center gap-3 px-4 transition-colors has-[:focus-visible]:bg-brand-tint ${
+                      i > 0 ? "border-t border-so-line" : ""
+                    } ${checked ? "bg-brand-tint/60" : ""} ${full ? "cursor-not-allowed text-text-muted" : ""}`}
                   >
                     <input
                       type={single ? "radio" : "checkbox"}
@@ -281,9 +322,28 @@ function ItemForm({
                           toggle(group, option.id);
                         }
                       }}
-                      className="h-5 w-5 shrink-0 accent-brand-primary"
+                      className="peer sr-only"
                     />
-                    <span className="flex-1 text-[16px]">{option.name}</span>
+                    <span
+                      aria-hidden
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center border-2 transition-colors ${
+                        single ? "rounded-full" : "rounded-[7px]"
+                      } ${
+                        checked
+                          ? "border-brand-deep bg-brand-deep text-white"
+                          : full
+                            ? "border-so-line bg-so-canvas"
+                            : "border-border-active bg-white"
+                      }`}
+                    >
+                      {checked &&
+                        (single ? (
+                          <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                        ) : (
+                          <Check size={15} strokeWidth={3.25} />
+                        ))}
+                    </span>
+                    <span className={`flex-1 text-[16px] ${checked ? "font-semibold" : ""}`}>{option.name}</span>
                     {option.price > 0 && (
                       <span className="text-[15px] tabular-nums text-text-body">+{formatRupiah(option.price)}</span>
                     )}
@@ -292,7 +352,8 @@ function ItemForm({
               })}
             </div>
             {error && (
-              <p id={`err-${group.id}`} className="mt-2 text-[14px] font-medium text-danger">
+              <p id={`err-${group.id}`} className="mt-2 flex items-center gap-1.5 text-[14px] font-semibold text-danger">
+                <CircleAlert size={16} aria-hidden />
                 {group.min_select === 1
                   ? `Pilih ${group.name.toLowerCase()} dulu.`
                   : `Pilih minimal ${group.min_select} ${group.name.toLowerCase()}.`}
@@ -306,7 +367,7 @@ function ItemForm({
       })}
 
       <div>
-        <label htmlFor={`note-${product.id}`} className="mb-2 block text-[17px] font-semibold">
+        <label htmlFor={`note-${product.id}`} className="mb-2.5 block text-[18px] font-bold tracking-tight">
           Catatan <span className="font-normal text-text-muted">(opsional)</span>
         </label>
         <textarea
@@ -316,39 +377,41 @@ function ItemForm({
           maxLength={NOTE_MAX}
           rows={2}
           placeholder="Contoh: es sedikit, tidak pedas"
-          className={`${inputClass} resize-none py-3`}
+          className={`${inputClass} resize-none bg-so-canvas py-3`}
         />
       </div>
 
-      <div className="sticky bottom-0 -mx-5 -mb-4 flex flex-col gap-3 border-t border-border-subtle bg-white px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <div className="sticky bottom-0 -mx-5 -mb-4 flex flex-col gap-2.5 border-t border-so-line bg-white px-5 pt-3 pb-[max(14px,env(safe-area-inset-bottom))]">
         {variantBlocked && !soldOut && (
-          <p role="status" className="text-[14px] font-medium text-danger">
+          <p role="status" className="text-[14px] font-semibold text-danger">
             Kombinasi ini sedang habis. Pilih yang lain.
           </p>
         )}
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[15px] text-text-body">
-            Jumlah{inCart > 0 && <span className="text-text-muted"> · {inCart} di keranjang</span>}
-          </span>
+        {showErrors && unmet.length > 0 && (
+          <p role="status" className="flex items-center gap-1.5 text-[14px] font-semibold text-danger">
+            <CircleAlert size={16} aria-hidden /> Lengkapi pilihan {unmet.map((g) => g.name.toLowerCase()).join(", ")} dulu.
+          </p>
+        )}
+        {inCart > 0 && <p className="text-[14px] text-text-body">Sudah {inCart} di keranjang</p>}
+        <div className="flex flex-wrap items-center gap-3">
           <Stepper value={quantity} max={MAX_QTY} onChange={setQuantity} label={product.name} size="lg" />
+          <button
+            type="button"
+            className={`${primaryButton} min-w-[180px] flex-1 justify-between! px-5`}
+            onClick={submit}
+            disabled={soldOut || variantBlocked}
+            aria-disabled={unmet.length > 0 || undefined}
+          >
+            {soldOut ? (
+              <span className="w-full text-center">Habis</span>
+            ) : (
+              <>
+                <span>Tambah</span>
+                <span className="tabular-nums">{formatRupiah(lineTotal)}</span>
+              </>
+            )}
+          </button>
         </div>
-        <button
-          type="button"
-          className={primaryButton}
-          onClick={submit}
-          disabled={soldOut || variantBlocked}
-          aria-disabled={unmet.length > 0 || undefined}
-        >
-          {soldOut ? (
-            "Habis"
-          ) : (
-            <>
-              <span>Tambah ke keranjang</span>
-              <span aria-hidden>·</span>
-              <span className="tabular-nums">{formatRupiah(lineTotal)}</span>
-            </>
-          )}
-        </button>
       </div>
     </div>
   );
