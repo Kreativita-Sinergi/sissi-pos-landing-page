@@ -29,7 +29,8 @@ const LIMIT = 50;
 function actionTone(action: string): "neutral" | "brand" | "success" | "warning" | "danger" {
   if (action === "auth.login_failed" || action === "release.delete" || action === "admin.disable") return "danger";
   if (action.startsWith("auth.")) return "neutral";
-  if (action === "release.upload" || action === "admin.enable") return "success";
+  if (action === "release.upload" || action === "admin.enable" || action === "subscription.payment") return "success";
+  if (action === "subscription.payment_void") return "danger";
   if (action.startsWith("admin.")) return "warning";
   return "brand";
 }
@@ -227,7 +228,11 @@ function AuditList({ items }: { items: AuditEntry[] }) {
 }
 
 function targetHref(e: AuditEntry): string | null {
-  if (e.target_type === "business" && e.target_id) return `/admin/bisnis/${encodeURIComponent(e.target_id)}`;
+  if (e.target_type === "business" && e.target_id) {
+    const tab = e.action.startsWith("subscription.") ? "?tab=langganan" : "";
+    return `/admin/bisnis/${encodeURIComponent(e.target_id)}${tab}`;
+  }
+  if (e.target_type === "billing_config") return "/admin/langganan/pengaturan";
   if (e.target_type === "crash" && e.target_id) return `/admin/crash/${encodeURIComponent(e.target_id)}`;
   return null;
 }

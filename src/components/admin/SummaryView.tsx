@@ -5,7 +5,9 @@ import Link from "next/link";
 import { ArrowRight, Bug, ExternalLink, Smartphone, Store, UserRoundX, Activity, MonitorSmartphone } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import type { AuditEntry, Summary } from "@/lib/admin/types";
+import { StackBar } from "./charts";
 import { AUDIT_ACTIONS, labelOf, TARGET_TYPES } from "./labels";
+import { PLAN_COLORS } from "./subscriptionUi";
 import {
   Badge,
   ErrorBlock,
@@ -13,6 +15,8 @@ import {
   formatBytes,
   formatDateTime,
   formatRelative,
+  formatRupiah,
+  formatRupiahShort,
   PageHeader,
   Section,
   Skeleton,
@@ -87,7 +91,7 @@ function SummaryBody({ data }: { data: Data }) {
         <StatCard
           label="Bisnis aktif"
           value={summary.businesses_active_7d}
-          hint="7 hari terakhir"
+          hint={summary.businesses_active_30d !== undefined ? `7 hari · ${summary.businesses_active_30d} dalam 30 hari` : "7 hari terakhir"}
           icon={<Activity size={14} aria-hidden />}
           href="/admin/bisnis?active=7d"
         />
@@ -134,6 +138,8 @@ function SummaryBody({ data }: { data: Data }) {
           />
         )}
       </div>
+
+      {summary.subscriptions && <SubscriptionsCard summary={summary} />}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Section
@@ -220,5 +226,67 @@ function SummaryBody({ data }: { data: Data }) {
         )}
       </Section>
     </div>
+  );
+}
+
+function SubscriptionsCard({ summary }: { summary: Summary }) {
+  const p = summary.subscriptions!;
+  const total = p.trial + p.active + p.grace + p.free;
+  const stats: { label: string; value: string; href: string; tone?: string; hint?: string }[] = [
+    { label: "Pro berbayar", value: p.active.toLocaleString("id-ID"), href: "/admin/langganan?status=active", hint: `${p.trial} uji coba · ${p.grace} tenggang` },
+    {
+      label: "Berakhir ≤ 7 hari",
+      value: p.expiring_7d.toLocaleString("id-ID"),
+      href: "/admin/langganan?expiring=7d",
+      tone: p.expiring_7d > 0 ? "text-warning" : undefined,
+      hint: "Uji coba & Pro",
+    },
+    {
+      label: "Pendapatan bulan ini",
+      value: summary.revenue_this_month !== undefined ? formatRupiahShort(summary.revenue_this_month) : "—",
+      href: "/admin/metrik",
+      hint: summary.revenue_this_month !== undefined ? formatRupiah(summary.revenue_this_month) : undefined,
+    },
+    {
+      label: "Gratis lewat batas",
+      value: p.over_limit.toLocaleString("id-ID"),
+      href: "/admin/langganan?over_limit=true",
+      tone: p.over_limit > 0 ? "text-warning" : undefined,
+      hint: "Calon Pro bulan ini",
+    },
+  ];
+  return (
+    <Section
+      title="Langganan"
+      actions={
+        <Link href="/admin/langganan" className={linkClass}>
+          Kelola <ArrowRight size={14} aria-hidden />
+        </Link>
+      }
+    >
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">
+        {stats.map((x) => (
+          <Link key={x.label} href={x.href} className={`group min-w-0 rounded-[8px] ${focusRing}`}>
+            <p className="text-[12.5px] text-text-muted group-hover:text-text-heading">{x.label}</p>
+            <p className={`mt-0.5 text-[22px] font-bold leading-tight tabular-nums ${x.tone ?? "text-text-heading"}`}>{x.value}</p>
+            {x.hint && <p className="text-[12px] text-text-muted">{x.hint}</p>}
+          </Link>
+        ))}
+      </div>
+      <div className="mt-4">
+        <StackBar
+          label={`Paket ${total} bisnis`}
+          parts={[
+            { label: "Pro", value: p.active, color: PLAN_COLORS.active },
+            { label: "Uji coba", value: p.trial, color: PLAN_COLORS.trial },
+            { label: "Tenggang", value: p.grace, color: PLAN_COLORS.grace },
+            { label: "Gratis", value: p.free, color: PLAN_COLORS.free },
+          ]}
+        />
+        <p className="mt-1.5 text-[12px] text-text-muted">
+          Pro {p.active} · Uji coba {p.trial} · Tenggang {p.grace} · Gratis {p.free}
+        </p>
+      </div>
+    </Section>
   );
 }

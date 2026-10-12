@@ -6,6 +6,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bug,
+  ChartLine,
+  CreditCard,
+  Wallet,
   LayoutDashboard,
   LogOut,
   Package,
@@ -28,9 +31,17 @@ const NAV_GROUPS = [
     label: "Pantau",
     items: [
       { href: "/admin", label: "Ringkasan", short: "Ringkasan", icon: LayoutDashboard },
+      { href: "/admin/metrik", label: "Metrik", short: "Metrik", icon: ChartLine },
       { href: "/admin/bisnis", label: "Bisnis", short: "Bisnis", icon: Store },
       { href: "/admin/crash", label: "Crash", short: "Crash", icon: Bug },
       { href: "/admin/hapus-akun", label: "Hapus akun", short: "Hapus akun", icon: UserRoundX },
+    ],
+  },
+  {
+    label: "Pendapatan",
+    items: [
+      { href: "/admin/langganan", label: "Langganan", short: "Langganan", icon: CreditCard },
+      { href: "/admin/langganan/pengaturan", label: "Cara bayar", short: "Cara bayar", icon: Wallet },
     ],
   },
   {
@@ -170,7 +181,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isActive = (href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
+  // Menu aktif = awalan terpanjang yang cocok (mis. /admin/langganan/pengaturan tidak ikut menyalakan Langganan).
+  const match = NAV.map((n) => n.href)
+    .filter((h) => (h === "/admin" ? pathname === "/admin" : pathname === h || pathname.startsWith(`${h}/`)))
+    .sort((a, b) => b.length - a.length)[0];
+  const isActive = (href: string) => href === match;
   const { admin } = session;
 
   return (

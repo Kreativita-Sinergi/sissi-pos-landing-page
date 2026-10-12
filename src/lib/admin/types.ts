@@ -78,6 +78,10 @@ export type Summary = {
   crash_groups_open?: number;
   deletions?: { scheduled: number; due_7d: number };
   devices_below_min_build?: number;
+  // Tahap 3 (aditif).
+  businesses_active_30d?: number;
+  subscriptions?: PlanCounts;
+  revenue_this_month?: number;
 };
 
 export type AuditEntry = {
@@ -116,6 +120,15 @@ export type BusinessSummary = {
   last_active_at: string | null;
   features: Features;
   deletion: { purge_after: string } | null;
+  // Tahap 3 (aditif).
+  subscription?: BusinessSubscriptionBrief;
+};
+
+export type BusinessSubscriptionBrief = {
+  plan: PlanId;
+  status: SubscriptionStatus;
+  ends_at: string | null;
+  billing_cycle: BillingCycle | null;
 };
 
 export type DeviceApp = { build: number; version: string | null; platform: string; seen_at: string };
@@ -159,6 +172,7 @@ export type BusinessFacets = {
   active: Partial<Record<"7d" | "30d" | "inactive", number>>;
   feature: Partial<Record<"self_order" | "online_payment", number>>;
   deletion: Partial<Record<"scheduled", number>>;
+  plan_status?: Partial<Record<SubscriptionStatus, number>>;
 };
 
 export type BusinessSort = "created" | "last_active" | "devices" | "name";
@@ -172,6 +186,7 @@ export type BusinessQuery = {
   created_from?: string;
   created_to?: string;
   deletion?: string;
+  plan_status?: string[];
   sort?: string;
   order?: string;
   page?: number;
@@ -327,3 +342,152 @@ export type AccountDeletion = {
 export type DeletionQuery = { status?: string; q?: string; sort?: string; order?: string; page?: number; per_page?: number };
 
 export type DeletionFacets = { status: Partial<Record<DeletionStatus, number>> };
+
+// ——— Langganan & metrik (tahap 3) ———
+
+export type PlanId = "free" | "pro";
+export type SubscriptionStatus = "trial" | "active" | "grace" | "free";
+export type BillingCycle = "monthly" | "yearly";
+export type PaymentCycle = BillingCycle | "custom";
+export type PaymentMethod = "transfer" | "qris" | "cash" | "gateway" | "other";
+
+export type PlanCounts = Record<SubscriptionStatus, number> & { expiring_7d: number; over_limit: number };
+
+export type AdminPayment = {
+  id: string;
+  cycle: PaymentCycle;
+  period_start: string;
+  period_end: string;
+  amount: number;
+  method: PaymentMethod;
+  paid_at: string;
+  provider: "manual" | "midtrans" | "xendit";
+  provider_ref: string | null;
+  note: string;
+  status: "recorded" | "void";
+  void_reason: string;
+  recorded_by: AdminRef | null;
+  voided_by: AdminRef | null;
+  voided_at: string | null;
+  created_at: string;
+};
+
+export type AdminSubscription = {
+  business: {
+    id: string;
+    name: string;
+    type: string;
+    owner: { name: string; email: string; phone: string } | null;
+  };
+  plan: PlanId;
+  status: SubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  grace_ends_at: string | null;
+  ends_at: string | null;
+  days_left: number | null;
+  billing_cycle: BillingCycle | null;
+  limits: { tx_per_month: number | null; outlets: number };
+  overrides: { outlet_quota: number | null; tx_limit: number | null; note: string };
+  usage: { month: string; tx_this_month: number; outlets: number; over_limit: boolean };
+  first_paid_at: string | null;
+  last_payment: AdminPayment | null;
+  version: number;
+  updated_at: string;
+};
+
+export type SubscriptionQuery = {
+  status?: string[];
+  expiring?: string;
+  cycle?: string;
+  over_limit?: string;
+  q?: string;
+  sort?: string;
+  order?: string;
+  page?: number;
+  per_page?: number;
+};
+
+export type SubscriptionFacets = {
+  status: Partial<Record<SubscriptionStatus, number>>;
+  expiring_7d?: number;
+};
+
+export type SubscriptionDetail = {
+  subscription: AdminSubscription;
+  payments: AdminPayment[];
+  audit: AuditEntry[];
+};
+
+export type RecordPaymentInput = {
+  id: string;
+  cycle: PaymentCycle;
+  period_start: string | null;
+  period_end: string | null;
+  amount: number;
+  method: Exclude<PaymentMethod, "gateway">;
+  paid_at: string;
+  provider_ref: string | null;
+  note: string;
+};
+
+export type SubscriptionPaymentResult = { subscription: AdminSubscription; payment: AdminPayment };
+
+export type ExtendInput = { days: number; target: "auto" | "trial" | "period"; note: string };
+
+export type OverridesInput = { outlet_quota: number | null; tx_limit: number | null; note: string };
+
+export type BankAccount = { bank: string; number: string; holder: string };
+
+export type BillingConfig = {
+  price_monthly: number;
+  price_yearly: number;
+  bank_accounts: BankAccount[];
+  whatsapp: string;
+  instructions: string;
+  updated_by: AdminRef | null;
+  updated_at: string | null;
+};
+
+export type BillingConfigInput = Omit<BillingConfig, "updated_by" | "updated_at">;
+
+export type MetricsInterval = "day" | "week" | "month";
+
+export type Kpi = { value: number | null; previous: number | null; change_pct: number | null };
+
+export type MetricsBucket = {
+  bucket: string;
+  partial: boolean;
+  signups: number;
+  active: number;
+  revenue: number;
+  payments: number;
+  trial: number | null;
+  pro: number | null;
+  grace: number | null;
+  free: number | null;
+};
+
+export type Metrics = {
+  range: { from: string; to: string; interval: MetricsInterval; tz: string };
+  generated_at: string;
+  cached: boolean;
+  kpis: {
+    signups: Kpi;
+    active_businesses: Kpi;
+    dau_avg: Kpi;
+    pro_paying: Kpi;
+    revenue: Kpi;
+    mrr_estimate: Kpi;
+    trial_conversion: Kpi;
+  };
+  series: MetricsBucket[];
+  activity: { dau: number; wau: number; mau: number; stickiness: number; as_of: string };
+  plans: PlanCounts;
+  cohorts: { week: string; size: number; retention: (number | null)[] }[];
+  revenue_monthly: { month: string; amount: number; payments: number; new: number; renewals: number }[];
+  conversion: { trials_ended: number; converted: number; rate: number | null; window_days: number };
+  business_types: { type: string; total: number; active: number; pro: number }[];
+};
+
+export type MetricsQuery = { from?: string; to?: string; interval?: MetricsInterval };

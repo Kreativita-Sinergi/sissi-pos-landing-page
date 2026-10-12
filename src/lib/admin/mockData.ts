@@ -22,7 +22,7 @@ export const PUBLIC_URL = "https://apipos.sissi.id/unduh";
 export const isoAgo = (ms: number) => new Date(NOW - ms).toISOString();
 export const daysAgo = (d: number) => isoAgo(d * DAY);
 
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;

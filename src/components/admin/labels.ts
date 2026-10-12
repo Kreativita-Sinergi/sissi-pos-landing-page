@@ -14,6 +14,12 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "admin.enable": "Aktifkan admin",
   "admin.reset_password": "Reset password admin",
   "crash.status": "Ubah status crash",
+  "subscription.payment": "Catat pembayaran",
+  "subscription.payment_void": "Batalkan pembayaran",
+  "subscription.extend": "Tambah hari langganan",
+  "subscription.override": "Ubah batas khusus",
+  "subscription.launch_trial": "Peluncuran uji coba",
+  "billing_config.update": "Ubah cara bayar",
 };
 
 /** Kelompok aksi untuk chip filter audit (memetakan ke `action=a,b`). */
@@ -27,6 +33,18 @@ export const AUDIT_ACTION_GROUPS: { id: string; label: string; actions: string[]
     actions: ["admin.create", "admin.passwd", "admin.disable", "admin.enable", "admin.reset_password"],
   },
   { id: "crash", label: "Crash", actions: ["crash.status"] },
+  {
+    id: "subscription",
+    label: "Langganan",
+    actions: [
+      "subscription.payment",
+      "subscription.payment_void",
+      "subscription.extend",
+      "subscription.override",
+      "subscription.launch_trial",
+      "billing_config.update",
+    ],
+  },
 ];
 
 export const TARGET_TYPES: Record<string, string> = {
@@ -35,6 +53,35 @@ export const TARGET_TYPES: Record<string, string> = {
   release: "Rilis APK",
   business: "Bisnis",
   crash: "Crash",
+  billing_config: "Cara bayar",
+};
+
+export const SUB_STATUS: Record<string, string> = {
+  trial: "Uji coba",
+  active: "Pro",
+  grace: "Masa tenggang",
+  free: "Gratis",
+};
+
+export const SUB_STATUS_HINT: Record<string, string> = {
+  trial: "Pro gratis 30 hari",
+  active: "Pro dibayar",
+  grace: "Pro 3 hari setelah berakhir",
+  free: "50 transaksi/bulan",
+};
+
+export const BILLING_CYCLES: Record<string, string> = {
+  monthly: "Bulanan",
+  yearly: "Tahunan",
+  custom: "Periode khusus",
+};
+
+export const PAYMENT_METHODS: Record<string, string> = {
+  transfer: "Transfer bank",
+  qris: "QRIS",
+  cash: "Tunai",
+  gateway: "Payment gateway",
+  other: "Lainnya",
 };
 
 export const LOGIN_FAIL_REASONS: Record<string, string> = {

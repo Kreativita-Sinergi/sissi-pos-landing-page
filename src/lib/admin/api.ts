@@ -36,6 +36,18 @@ import type {
   UploadApkInput,
   UploadApkResult,
   VersionDistribution,
+  AdminSubscription,
+  BillingConfig,
+  BillingConfigInput,
+  ExtendInput,
+  Metrics,
+  MetricsQuery,
+  OverridesInput,
+  RecordPaymentInput,
+  SubscriptionDetail,
+  SubscriptionFacets,
+  SubscriptionPaymentResult,
+  SubscriptionQuery,
 } from "./types";
 
 export const ADMIN_MOCK = process.env.NEXT_PUBLIC_ADMIN_MOCK === "1";
@@ -67,6 +79,17 @@ export interface AdminApi {
   crash(fingerprint: string, signal?: AbortSignal): Promise<CrashDetail>;
   setCrashStatus(fingerprint: string, body: CrashStatusInput): Promise<CrashGroup>;
   accountDeletions(q: DeletionQuery, signal?: AbortSignal): Promise<Paged<AccountDeletion, DeletionFacets>>;
+  // Tahap 3
+  metrics(q: MetricsQuery, signal?: AbortSignal): Promise<Metrics>;
+  subscriptions(q: SubscriptionQuery, signal?: AbortSignal): Promise<Paged<AdminSubscription, SubscriptionFacets>>;
+  subscription(businessId: string, signal?: AbortSignal): Promise<SubscriptionDetail>;
+  recordPayment(businessId: string, body: RecordPaymentInput): Promise<SubscriptionPaymentResult>;
+  voidPayment(businessId: string, paymentId: string, reason: string): Promise<SubscriptionPaymentResult>;
+  /** Bentuk `data` respons belum dirinci kontrak → pemanggil memuat ulang detail. */
+  extendSubscription(businessId: string, body: ExtendInput): Promise<void>;
+  saveOverrides(businessId: string, body: OverridesInput): Promise<void>;
+  billingConfig(signal?: AbortSignal): Promise<BillingConfig>;
+  saveBillingConfig(body: BillingConfigInput): Promise<BillingConfig>;
 }
 
 const ADMIN_BASE = `${API_BASE_URL}/admin`;
@@ -303,6 +326,33 @@ const httpApi: AdminApi = {
     });
     return paged<AccountDeletion, DeletionFacets>(r, page, perPage);
   },
+  metrics: async (q, signal) => (await call<Metrics>("GET", `/metrics${qs({ ...q })}`, { signal })).data,
+  subscriptions: async (q, signal) => {
+    const page = q.page ?? 1;
+    const perPage = q.per_page ?? 25;
+    const r = await call<AdminSubscription[]>("GET", `/subscriptions${qs({ ...q, page, per_page: perPage })}`, {
+      signal,
+    });
+    return paged<AdminSubscription, SubscriptionFacets>(r, page, perPage);
+  },
+  subscription: async (id, signal) =>
+    (await call<SubscriptionDetail>("GET", `/businesses/${enc(id)}/subscription`, { signal })).data,
+  recordPayment: async (id, body) =>
+    (await call<SubscriptionPaymentResult>("POST", `/businesses/${enc(id)}/subscription/payments`, { body })).data,
+  voidPayment: async (id, pid, reason) =>
+    (
+      await call<SubscriptionPaymentResult>("POST", `/businesses/${enc(id)}/subscription/payments/${enc(pid)}/void`, {
+        body: { reason },
+      })
+    ).data,
+  extendSubscription: async (id, body) => {
+    await call<unknown>("POST", `/businesses/${enc(id)}/subscription/extend`, { body });
+  },
+  saveOverrides: async (id, body) => {
+    await call<unknown>("PUT", `/businesses/${enc(id)}/subscription/overrides`, { body });
+  },
+  billingConfig: async (signal) => (await call<BillingConfig>("GET", "/billing-config", { signal })).data,
+  saveBillingConfig: async (body) => (await call<BillingConfig>("PUT", "/billing-config", { body })).data,
 };
 
 let mockApi: Promise<AdminApi> | null = null;

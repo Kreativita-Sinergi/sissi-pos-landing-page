@@ -654,3 +654,20 @@ export function SortTh({
 export function plural(n: number, word: string): string {
   return `${n.toLocaleString("id-ID")} ${word}`;
 }
+
+// ——— Tahap 3: uang ———
+
+/** `Rp59.000` (tanpa spasi, rupiah bulat). */
+export function formatRupiah(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
+  return `${n < 0 ? "-" : ""}Rp${Math.round(Math.abs(n)).toLocaleString("id-ID")}`;
+}
+
+/** Ringkas untuk sumbu/kartu: `Rp590 rb`, `Rp2,1 jt`. */
+export function formatRupiahShort(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1_000_000_000) return `Rp${(n / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} M`;
+  if (a >= 1_000_000) return `Rp${(n / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+  if (a >= 1_000) return `Rp${Math.round(n / 1_000).toLocaleString("id-ID")} rb`;
+  return formatRupiah(n);
+}

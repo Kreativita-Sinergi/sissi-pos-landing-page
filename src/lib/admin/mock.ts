@@ -27,6 +27,21 @@ import {
   VERSIONS,
   type CrashRecord,
 } from "./mockData";
+import {
+  addMonths,
+  computeMetrics,
+  currentPlans,
+  DAY as DAY_MS,
+  effective,
+  jkt,
+  makeBillingState,
+  publicPayment,
+  revenueThisMonth,
+  toAdminSubscription,
+  type BillingState,
+  type PaymentRecord,
+  type SubRecord,
+} from "./mockBilling";
 import type {
   AccountDeletion,
   Admin,
@@ -52,6 +67,7 @@ type State = {
   admins: AdminListItem[];
   crashes: CrashRecord[];
   deletions: AccountDeletion[];
+  billing: BillingState;
 };
 
 function initialState(): State {
@@ -60,6 +76,8 @@ function initialState(): State {
   const deletions = makeDeletions(businesses);
   const crashes = makeCrashes(businesses);
   const audit = makeAudit(businesses, releases, crashes);
+  const billing = makeBillingState(businesses);
+  seedBillingAudit(billing, audit);
   return {
     version: makeVersion(),
     releases,
@@ -68,7 +86,39 @@ function initialState(): State {
     admins: ADMINS.map((a) => ({ ...a })),
     crashes,
     deletions,
+    billing,
   };
+}
+
+/** Entri audit untuk pembayaran contoh 45 hari terakhir (agar tab Langganan & Audit tidak kosong). */
+function seedBillingAudit(billing: BillingState, audit: AuditEntry[]) {
+  const since = Date.now() - 45 * DAY;
+  for (const s of billing.subs.values()) {
+    for (const p of s.payments) {
+      if (Date.parse(p.created_at) < since) continue;
+      audit.push({
+        id: `s${p.id.slice(1, 8)}-0000-4000-8000-${p.id.slice(-12)}`,
+        admin: p.recorded_by,
+        action: "subscription.payment",
+        target_type: "business",
+        target_id: s.business_id,
+        detail: { payment_id: p.id, amount: p.amount, cycle: p.cycle },
+        created_at: p.created_at,
+      });
+      if (p.status === "void" && p.voided_at) {
+        audit.push({
+          id: `v${p.id.slice(1, 8)}-0000-4000-8000-${p.id.slice(-12)}`,
+          admin: p.voided_by,
+          action: "subscription.payment_void",
+          target_type: "business",
+          target_id: s.business_id,
+          detail: { payment_id: p.id, reason: p.void_reason },
+          created_at: p.voided_at,
+        });
+      }
+    }
+  }
+  audit.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
 }
 
 let state: State | null = null;
@@ -157,7 +207,40 @@ function summaryOf(b: BusinessDetail): BusinessSummary {
     last_active_at: b.last_active_at,
     features: b.features,
     deletion: b.deletion ? { purge_after: b.deletion.purge_after } : null,
+    subscription: briefOf(b),
   };
+}
+
+function briefOf(b: BusinessDetail): BusinessSummary["subscription"] {
+  const s = db().billing.subs.get(b.id);
+  if (!s) return undefined;
+  const a = toAdminSubscription(s, b);
+  return { plan: a.plan, status: a.status, ends_at: a.ends_at, billing_cycle: a.billing_cycle };
+}
+
+function subOf(id: string): { b: BusinessDetail; s: SubRecord } {
+  const b = db().businesses.find((x) => x.id === id);
+  const s = b && db().billing.subs.get(id);
+  if (!b || !s) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
+  return { b, s };
+}
+
+function snapshot(s: SubRecord) {
+  const e = effective(s);
+  return { current_period_end: s.current_period_end, trial_ends_at: s.trial_ends_at, status: e.status };
+}
+
+function touch(s: SubRecord) {
+  s.version += 1;
+  s.updated_at = new Date().toISOString();
+}
+
+/** Tanggal `YYYY-MM-DD` (WIB) atau RFC3339 → ms; null bila tidak sah. */
+function parseWhen(v: string | null | undefined): number | null {
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v === jkt(Date.now()) ? Date.now() : Date.parse(`${v}T09:00:00+07:00`);
+  const t = Date.parse(v);
+  return Number.isNaN(t) ? null : t;
 }
 
 function activeWithin(b: BusinessDetail, days: number) {
@@ -275,6 +358,9 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
           due_7d: scheduled.filter((d) => Date.parse(d.purge_after) - Date.now() <= 7 * DAY).length,
         },
         devices_below_min_build: below,
+        businesses_active_30d: s.businesses.filter((b) => activeWithin(b, 30)).length,
+        subscriptions: currentPlans(s.businesses, s.billing),
+        revenue_this_month: revenueThisMonth(s.billing),
       };
     },
     async auditPage(q) {
@@ -502,6 +588,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
         if (q.feature?.includes("self_order") && !b.features.self_order) return false;
         if (q.feature?.includes("online_payment") && !b.features.online_payment) return false;
         if (q.deletion === "scheduled" && !b.deletion) return false;
+        if (q.plan_status?.length && !q.plan_status.includes(briefOf(b)?.status ?? "")) return false;
         if (from !== null && Date.parse(b.created_at) < from) return false;
         if (to !== null && Date.parse(b.created_at) > to) return false;
         return true;
@@ -537,6 +624,12 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
           online_payment: count((b) => b.features.online_payment),
         },
         deletion: { scheduled: count((b) => !!b.deletion) },
+        plan_status: {
+          trial: count((b) => briefOf(b)?.status === "trial"),
+          active: count((b) => briefOf(b)?.status === "active"),
+          grace: count((b) => briefOf(b)?.status === "grace"),
+          free: count((b) => briefOf(b)?.status === "free"),
+        },
       };
       return { ...page(rows.map(summaryOf), q.page, q.per_page ?? 20), facets };
     },
@@ -744,6 +837,250 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
         },
       };
       return { ...page(rows, q.page, q.per_page ?? 25), facets };
+    },
+
+    // ——— Tahap 3: metrik & langganan ———
+    async metrics(q) {
+      await guard();
+      await sleep(250); // hitungan metrik sedikit lebih lambat
+      const m = computeMetrics(db().businesses, db().billing, q);
+      if ("field" in m) throw invalid(m.field, m.message);
+      return m;
+    },
+    async subscriptions(q) {
+      await guard();
+      const statuses = q.status?.filter((x) => x !== "all") ?? [];
+      for (const v of statuses) if (!["trial", "active", "grace", "free"].includes(v)) throw invalid("status", "Nilai tidak dikenal.");
+      if (q.expiring && !["7d", "30d"].includes(q.expiring)) throw invalid("expiring", "7d atau 30d.");
+      const needle = (q.q ?? "").trim().toLowerCase();
+      const digits = needle.replace(/\D/g, "").replace(/^0/, "62");
+      const all = db().businesses.map((b) => toAdminSubscription(db().billing.subs.get(b.id)!, b));
+      const base = all.filter(
+        (a) =>
+          !needle ||
+          a.business.id === needle ||
+          lower(a.business.name).includes(needle) ||
+          lower(a.business.owner?.email).includes(needle) ||
+          (digits.length >= 4 && !!a.business.owner?.phone && a.business.owner.phone.replace(/\D/g, "").includes(digits))
+      );
+      const within = (a: (typeof all)[number], days: number) =>
+        ["trial", "active", "grace"].includes(a.status) && !!a.ends_at && Date.parse(a.ends_at) - Date.now() <= days * DAY_MS;
+      const rows = base.filter((a) => {
+        if (statuses.length && !statuses.includes(a.status)) return false;
+        if (q.expiring === "7d" && !within(a, 7)) return false;
+        if (q.expiring === "30d" && !within(a, 30)) return false;
+        if (q.cycle && a.billing_cycle !== q.cycle) return false;
+        if (q.over_limit === "true" && !a.usage.over_limit) return false;
+        return true;
+      });
+      const sort = q.sort || "ends_at";
+      const dir = (q.order || (sort === "ends_at" ? "asc" : "desc")) === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        if (sort === "name") return a.business.name.localeCompare(b.business.name, "id") * dir;
+        if (sort === "last_payment") {
+          const x = a.last_payment?.paid_at ?? "";
+          const y = b.last_payment?.paid_at ?? "";
+          if (!x || !y) return x ? -1 : y ? 1 : 0;
+          return x.localeCompare(y) * dir;
+        }
+        if (sort === "created") {
+          const x = db().billing.subs.get(a.business.id)!.created_at;
+          const y = db().billing.subs.get(b.business.id)!.created_at;
+          return x.localeCompare(y) * dir;
+        }
+        if (!a.ends_at) return b.ends_at ? 1 : 0;
+        if (!b.ends_at) return -1;
+        return a.ends_at.localeCompare(b.ends_at) * dir;
+      });
+      const facets = {
+        status: {
+          trial: base.filter((a) => a.status === "trial").length,
+          active: base.filter((a) => a.status === "active").length,
+          grace: base.filter((a) => a.status === "grace").length,
+          free: base.filter((a) => a.status === "free").length,
+        },
+        expiring_7d: base.filter((a) => within(a, 7)).length,
+      };
+      return { ...page(rows, q.page, q.per_page ?? 25), facets };
+    },
+    async subscription(id) {
+      await guard();
+      const { b, s } = subOf(id);
+      return {
+        subscription: toAdminSubscription(s, b),
+        payments: [...s.payments].sort((x, y) => y.paid_at.localeCompare(x.paid_at)).slice(0, 200).map(publicPayment),
+        audit: db()
+          .audit.filter((e) => e.target_type === "business" && e.target_id === id && e.action.startsWith("subscription."))
+          .slice(0, 20),
+      };
+    },
+    async recordPayment(id, body) {
+      await guard();
+      await sleep(300);
+      const { b, s } = subOf(id);
+      const existing = s.payments.find((p) => p.id === body.id);
+      if (existing) {
+        if (existing.amount === body.amount && existing.cycle === body.cycle) {
+          return { subscription: toAdminSubscription(s, b), payment: publicPayment(existing) };
+        }
+        throw new ApiError("Pembayaran dengan ID ini sudah ada.", 409, "PAYMENT_EXISTS");
+      }
+      if (body.provider_ref && [...db().billing.subs.values()].some((x) => x.payments.some((p) => p.provider_ref === body.provider_ref))) {
+        throw new ApiError("Nomor referensi sudah dipakai pembayaran lain.", 409, "PAYMENT_EXISTS");
+      }
+      const details: { field: string; message: string }[] = [];
+      if (!Number.isInteger(body.amount) || body.amount < 0 || body.amount > 100_000_000) details.push({ field: "amount", message: "Nominal 0–100.000.000." });
+      const paid = parseWhen(body.paid_at);
+      if (paid === null) details.push({ field: "paid_at", message: "Tanggal bayar wajib." });
+      else if (paid > Date.now() + DAY_MS) details.push({ field: "paid_at", message: "Tidak boleh lebih dari besok." });
+      if (body.note.length > 500) details.push({ field: "note", message: "Maksimal 500 karakter." });
+      const now = Date.now();
+      const cpe = s.current_period_end ? Date.parse(s.current_period_end) : null;
+      const start = parseWhen(body.period_start) ?? Math.max(now, cpe ?? 0);
+      let end: number;
+      if (body.cycle === "monthly") end = addMonths(start, 1);
+      else if (body.cycle === "yearly") end = addMonths(start, 12);
+      else {
+        end = parseWhen(body.period_end) ?? NaN;
+        if (!Number.isFinite(end)) details.push({ field: "period_end", message: "Akhir periode wajib untuk periode khusus." });
+        else if (end <= start) details.push({ field: "period_end", message: "Harus setelah awal periode." });
+        else if (end - start > 400 * DAY_MS) details.push({ field: "period_end", message: "Maksimal 400 hari." });
+      }
+      if (details.length) throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", details);
+      const before = snapshot(s);
+      const rec: PaymentRecord = {
+        id: body.id,
+        business_id: id,
+        cycle: body.cycle,
+        period_start: new Date(start).toISOString(),
+        period_end: new Date(end).toISOString(),
+        prev_period_end: s.current_period_end,
+        amount: body.amount,
+        method: body.method,
+        paid_at: new Date(paid!).toISOString(),
+        provider: "manual",
+        provider_ref: body.provider_ref,
+        note: body.note,
+        status: "recorded",
+        void_reason: "",
+        recorded_by: refOf(meRecord()),
+        voided_by: null,
+        voided_at: null,
+        created_at: new Date().toISOString(),
+      };
+      s.payments.push(rec);
+      s.current_period_end = new Date(Math.max(cpe ?? 0, end)).toISOString();
+      if (body.cycle !== "custom") s.billing_cycle = body.cycle;
+      s.first_paid_at ??= rec.paid_at;
+      touch(s);
+      log("subscription.payment", "business", id, {
+        payment_id: rec.id,
+        amount: rec.amount,
+        cycle: rec.cycle,
+        before,
+        after: snapshot(s),
+      });
+      return { subscription: toAdminSubscription(s, b), payment: publicPayment(rec) };
+    },
+    async voidPayment(id, pid, reason) {
+      await guard();
+      await sleep(250);
+      const { b, s } = subOf(id);
+      const p = s.payments.find((x) => x.id === pid);
+      if (!p) throw new ApiError("Pembayaran tidak ditemukan.", 404, "NOT_FOUND");
+      if (p.status === "void") return { subscription: toAdminSubscription(s, b), payment: publicPayment(p) };
+      const r = reason.trim();
+      if (r.length < 1 || r.length > 300) throw invalid("reason", "Alasan 1–300 karakter.");
+      const latest = s.payments
+        .filter((x) => x.status === "recorded")
+        .sort((x, y) => y.created_at.localeCompare(x.created_at))[0];
+      if (latest?.id !== p.id) {
+        throw new ApiError("Hanya pembayaran sah terbaru yang bisa dibatalkan. Batalkan yang lebih baru dulu.", 409, "PAYMENT_NOT_LATEST");
+      }
+      const before = snapshot(s);
+      p.status = "void";
+      p.void_reason = r;
+      p.voided_by = refOf(meRecord());
+      p.voided_at = new Date().toISOString();
+      s.current_period_end = p.prev_period_end;
+      const prev = s.payments
+        .filter((x) => x.status === "recorded" && x.cycle !== "custom")
+        .sort((x, y) => y.created_at.localeCompare(x.created_at))[0];
+      s.billing_cycle = prev ? (prev.cycle as "monthly" | "yearly") : null;
+      s.first_paid_at =
+        s.payments.filter((x) => x.status === "recorded").sort((x, y) => x.paid_at.localeCompare(y.paid_at))[0]?.paid_at ?? null;
+      touch(s);
+      log("subscription.payment_void", "business", id, { payment_id: p.id, reason: r, before, after: snapshot(s) });
+      return { subscription: toAdminSubscription(s, b), payment: publicPayment(p) };
+    },
+    async extendSubscription(id, body) {
+      await guard();
+      await sleep(250);
+      const { s } = subOf(id);
+      const details: { field: string; message: string }[] = [];
+      if (!Number.isInteger(body.days) || body.days < 1 || body.days > 366) details.push({ field: "days", message: "1–366 hari." });
+      const note = body.note.trim();
+      if (note.length < 1 || note.length > 300) details.push({ field: "note", message: "Alasan wajib (maks. 300 karakter)." });
+      if (details.length) throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", details);
+      const e = effective(s);
+      const target =
+        body.target !== "auto" ? body.target : e.status === "active" || (e.status === "grace" && s.first_paid_at) ? "period" : "trial";
+      const before = snapshot(s);
+      const now = Date.now();
+      const add = body.days * DAY_MS;
+      if (target === "trial") {
+        s.trial_ends_at = new Date(Math.max(s.trial_ends_at ? Date.parse(s.trial_ends_at) : 0, now) + add).toISOString();
+      } else {
+        s.current_period_end = new Date(Math.max(s.current_period_end ? Date.parse(s.current_period_end) : 0, now) + add).toISOString();
+      }
+      touch(s);
+      log("subscription.extend", "business", id, { days: body.days, target, note, before, after: snapshot(s) });
+    },
+    async saveOverrides(id, body) {
+      await guard();
+      await sleep(200);
+      const { s } = subOf(id);
+      const details: { field: string; message: string }[] = [];
+      if (body.outlet_quota !== null && (!Number.isInteger(body.outlet_quota) || body.outlet_quota < 1 || body.outlet_quota > 100))
+        details.push({ field: "outlet_quota", message: "1–100 atau kosong." });
+      if (body.tx_limit !== null && (!Number.isInteger(body.tx_limit) || body.tx_limit < 1 || body.tx_limit > 1_000_000))
+        details.push({ field: "tx_limit", message: "1–1.000.000 atau kosong." });
+      if (body.note.length > 300) details.push({ field: "note", message: "Maksimal 300 karakter." });
+      if (details.length) throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", details);
+      const before = { outlet_quota: s.outlet_quota, tx_limit: s.tx_limit, note: s.override_note };
+      if (before.outlet_quota === body.outlet_quota && before.tx_limit === body.tx_limit && before.note === body.note) return;
+      s.outlet_quota = body.outlet_quota;
+      s.tx_limit = body.tx_limit;
+      s.override_note = body.note;
+      touch(s);
+      log("subscription.override", "business", id, { before, after: body });
+    },
+    async billingConfig() {
+      await guard();
+      return db().billing.config;
+    },
+    async saveBillingConfig(body) {
+      await guard();
+      await sleep(300);
+      const details: { field: string; message: string }[] = [];
+      if (!Number.isInteger(body.price_monthly) || body.price_monthly < 0) details.push({ field: "price_monthly", message: "Harga tidak valid." });
+      if (!Number.isInteger(body.price_yearly) || body.price_yearly < 0) details.push({ field: "price_yearly", message: "Harga tidak valid." });
+      if (body.bank_accounts.length > 5) details.push({ field: "bank_accounts", message: "Maksimal 5 rekening." });
+      body.bank_accounts.forEach((a, i) => {
+        if (a.bank.trim().length < 1 || a.bank.length > 40) details.push({ field: `bank_accounts[${i}].bank`, message: "Nama bank 1–40 karakter." });
+        if (!/^[\d\s-]{5,30}$/.test(a.number)) details.push({ field: `bank_accounts[${i}].number`, message: "5–30 digit (boleh spasi/-)." });
+        if (a.holder.trim().length < 1 || a.holder.length > 80) details.push({ field: `bank_accounts[${i}].holder`, message: "Atas nama 1–80 karakter." });
+      });
+      if (body.whatsapp && !/^\+[1-9]\d{7,14}$/.test(body.whatsapp)) details.push({ field: "whatsapp", message: "Format +62…" });
+      if (body.instructions.length > 2000) details.push({ field: "instructions", message: "Maksimal 2000 karakter." });
+      if (details.length) throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", details);
+      const before = db().billing.config;
+      db().billing.config = { ...body, updated_by: refOf(meRecord()), updated_at: new Date().toISOString() };
+      log("billing_config.update", "billing_config", "1", {
+        before: { price_monthly: before.price_monthly, price_yearly: before.price_yearly, bank_accounts: before.bank_accounts.length },
+        after: { price_monthly: body.price_monthly, price_yearly: body.price_yearly, bank_accounts: body.bank_accounts.length },
+      });
+      return db().billing.config;
     },
   };
 }
