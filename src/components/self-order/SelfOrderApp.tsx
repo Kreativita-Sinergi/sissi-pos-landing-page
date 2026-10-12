@@ -262,7 +262,7 @@ function SelfOrder({ code }: { code: string }) {
         return;
       case "TOO_MANY_PENDING":
         setSubmitError(
-          "Masih ada pesanan yang menunggu konfirmasi kasir. Tunggu sampai dikonfirmasi, lalu kirim lagi."
+          "Masih ada pesanan yang belum dibayar di kasir. Bayar dulu di kasir, lalu kirim lagi."
         );
         return;
       case "RATE_LIMITED":

@@ -271,7 +271,7 @@ const SEC = 1000;
 function statusLabel(status: OrderStatus, hasTable: boolean): string {
   switch (status) {
     case "awaiting_payment": return "Menunggu pembayaran";
-    case "pending": return "Menunggu konfirmasi kasir";
+    case "pending": return "Menunggu dibayar di kasir";
     case "accepted": return "Pesanan diterima";
     case "preparing": return "Sedang disiapkan";
     case "ready": return hasTable ? "Siap diantar" : "Siap, silakan ambil";

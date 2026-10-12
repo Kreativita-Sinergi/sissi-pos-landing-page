@@ -47,7 +47,7 @@ function steps(order: PublicOrder): { title: string; at: string | null }[] {
       ? { title: "Pesanan dikirim, menunggu pembayaran", at: order.created_at }
       : { title: "Pesanan dikirim", at: order.created_at },
     {
-      title: order.pay_mode === "online" ? "Lunas, pesanan diterima" : "Dikonfirmasi kasir",
+      title: order.pay_mode === "online" ? "Lunas, pesanan diterima" : "Diterima kasir",
       at: order.accepted_at,
     },
     { title: "Sedang disiapkan", at: null },
@@ -66,9 +66,9 @@ function moodOf(order: PublicOrder): Mood {
     case "awaiting_payment":
       return { icon: Wallet, tone: "brand", message: "Selesaikan pembayaran QRIS di bawah agar pesanan langsung diproses." };
     case "pending":
-      return { icon: Clock, tone: "brand", message: "Pesananmu sudah masuk. Kasir akan mengonfirmasinya sebentar lagi." };
+      return { icon: Clock, tone: "brand", message: "Pesananmu sudah masuk. Silakan bayar di kasir, lalu pesanan langsung disiapkan." };
     case "accepted":
-      return { icon: ClipboardCheck, tone: "brand", message: "Kasir sudah mengonfirmasi. Sebentar lagi pesananmu mulai disiapkan." };
+      return { icon: ClipboardCheck, tone: "brand", message: "Pesanan sudah diterima kasir dan segera disiapkan." };
     case "preparing":
       return { icon: ChefHat, tone: "brand", message: "Pesananmu sedang disiapkan. Tunggu sebentar, ya." };
     case "ready":
@@ -98,7 +98,7 @@ function moodOf(order: PublicOrder): Mood {
         message:
           order.pay_mode === "online"
             ? "Waktu pembayaran habis, jadi pesanan dibatalkan otomatis. Kamu bisa memesan ulang dari menu."
-            : "Pesanan tidak dikonfirmasi kasir tepat waktu. Silakan pesan ulang atau hubungi kasir.",
+            : "Pesanan belum dibayar di kasir sampai batas waktu. Silakan pesan ulang atau hubungi kasir.",
       };
   }
 }
@@ -368,7 +368,7 @@ export function OrderView({
   const cashierStrip =
     order.pay_mode === "cashier" && (status === "pending" || status === "accepted" || status === "preparing" || status === "ready")
       ? status === "pending"
-        ? { title: "Tunjukkan nomor ini ke kasir", body: "Pembayaran dilakukan di kasir." }
+        ? { title: "Bayar di kasir", body: "Tunjukkan nomor pesanan ini ke kasir." }
         : { title: `Pembayaran di kasir — sebutkan nomor ${order.order_no}.`, body: null }
       : null;
 
@@ -436,7 +436,7 @@ export function OrderView({
 
         {noResponse && (
           <Notice tone="warning" role="status" icon={<Clock size={18} aria-hidden />}>
-            Kasir belum merespons. Silakan datangi kasir dan sebutkan nomor <strong>{order.order_no}</strong>.
+            Pesanan belum dibayar. Silakan ke kasir dan sebutkan nomor <strong>{order.order_no}</strong>.
           </Notice>
         )}
         {status === "awaiting_payment" && (
@@ -633,7 +633,7 @@ export function OrderView({
       >
         <div className="flex flex-col gap-3">
           <p className="text-[16px] leading-relaxed text-text-body">
-            Pesanan yang sudah dikonfirmasi kasir tidak bisa dibatalkan dari sini.
+            Pesanan yang sudah diterima kasir tidak bisa dibatalkan dari sini.
           </p>
           {cancelError && <Notice tone="danger" role="alert">{cancelError}</Notice>}
         </div>
