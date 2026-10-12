@@ -4,8 +4,18 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, Package, ScrollText, Smartphone, Store } from "lucide-react";
-import { ADMIN_MOCK, adminApi, setUnauthorizedHandler } from "@/lib/admin/api";
+import {
+  Bug,
+  LayoutDashboard,
+  LogOut,
+  Package,
+  ScrollText,
+  Smartphone,
+  Store,
+  UserRoundX,
+  UsersRound,
+} from "lucide-react";
+import { ADMIN_MOCK, adminApi, setPasswordChangeHandler, setUnauthorizedHandler } from "@/lib/admin/api";
 import type { MeResult } from "@/lib/admin/types";
 import { ApiError } from "@/lib/sissiApi";
 import { ErrorBlock, focusRing, iconBtn, Spinner } from "./ui";
@@ -13,13 +23,37 @@ import { ErrorBlock, focusRing, iconBtn, Spinner } from "./ui";
 // Kerangka panel admin: memeriksa sesi (GET /admin/auth/me) sebelum menampilkan halaman,
 // mengarahkan ke /admin/login?next=… saat 401, navigasi samping (desktop) / tab atas (HP), dan tombol keluar.
 
-const NAV = [
-  { href: "/admin", label: "Ringkasan", short: "Ringkasan", icon: LayoutDashboard },
-  { href: "/admin/versi", label: "Versi aplikasi", short: "Versi", icon: Smartphone },
-  { href: "/admin/apk", label: "APK", short: "APK", icon: Package },
-  { href: "/admin/bisnis", label: "Bisnis", short: "Bisnis", icon: Store },
-  { href: "/admin/audit", label: "Audit", short: "Audit", icon: ScrollText },
+const NAV_GROUPS = [
+  {
+    label: "Pantau",
+    items: [
+      { href: "/admin", label: "Ringkasan", short: "Ringkasan", icon: LayoutDashboard },
+      { href: "/admin/bisnis", label: "Bisnis", short: "Bisnis", icon: Store },
+      { href: "/admin/crash", label: "Crash", short: "Crash", icon: Bug },
+      { href: "/admin/hapus-akun", label: "Hapus akun", short: "Hapus akun", icon: UserRoundX },
+    ],
+  },
+  {
+    label: "Rilis",
+    items: [
+      { href: "/admin/versi", label: "Versi aplikasi", short: "Versi", icon: Smartphone },
+      { href: "/admin/apk", label: "APK", short: "APK", icon: Package },
+    ],
+  },
+  {
+    label: "Tim",
+    items: [
+      { href: "/admin/tim", label: "Tim admin", short: "Tim", icon: UsersRound },
+      { href: "/admin/audit", label: "Audit", short: "Audit", icon: ScrollText },
+    ],
+  },
 ];
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
+
+export function passwordChangeUrl(next?: string): string {
+  const n = safeNext(next);
+  return n === "/admin" ? "/admin/ganti-password" : `/admin/ganti-password?next=${encodeURIComponent(n)}`;
+}
 
 /** `next` hanya boleh path relatif di bawah /admin (mencegah open redirect). */
 export function safeNext(next: string | null | undefined): string {
@@ -66,26 +100,40 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     router.replace(loginUrl(currentPath()));
   }, [router]);
 
+  const toPasswordChange = useCallback(() => {
+    router.replace(passwordChangeUrl(currentPath()));
+  }, [router]);
+
   useEffect(() => {
     setUnauthorizedHandler(toLogin);
-    return () => setUnauthorizedHandler(null);
-  }, [toLogin]);
+    setPasswordChangeHandler(toPasswordChange);
+    return () => {
+      setUnauthorizedHandler(null);
+      setPasswordChangeHandler(null);
+    };
+  }, [toLogin, toPasswordChange]);
 
   useEffect(() => {
     const ctrl = new AbortController();
     adminApi()
       .then((api) => api.me(ctrl.signal))
       .then((me) => {
+        // Login dengan password sementara → wajib ganti dulu (server menolak rute lain dengan 403).
+        if (me.admin.must_change_password) {
+          toPasswordChange();
+          return;
+        }
         setSession(me);
         setError(null);
       })
       .catch((err) => {
         if (ctrl.signal.aborted) return;
         if (err instanceof ApiError && err.status === 401) toLogin();
+        else if (err instanceof ApiError && err.code === "PASSWORD_CHANGE_REQUIRED") toPasswordChange();
         else setError(err);
       });
     return () => ctrl.abort();
-  }, [attempt, toLogin]);
+  }, [attempt, toLogin, toPasswordChange]);
 
   async function logout() {
     setLoggingOut(true);
@@ -138,30 +186,47 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <p className="text-[12px] text-text-muted">Admin platform</p>
               </div>
             </div>
-            <nav aria-label="Menu admin" className="flex flex-1 flex-col gap-0.5 px-3 pt-2">
-              {NAV.map(({ href, label, icon: Icon }) => {
-                const active = isActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={`flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
-                      active ? "bg-brand-tint text-brand-ink" : "text-text-body hover:bg-bg-muted hover:text-text-heading"
-                    } ${focusRing}`}
-                  >
-                    <Icon size={18} aria-hidden />
-                    {label}
-                  </Link>
-                );
-              })}
+            <nav aria-label="Menu admin" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pt-2">
+              {NAV_GROUPS.map((g) => (
+                <div key={g.label}>
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">{g.label}</p>
+                  <div className="flex flex-col gap-0.5">
+                    {g.items.map(({ href, label, icon: Icon }) => {
+                      const active = isActive(href);
+                      return (
+                        <Link
+                          key={href}
+                          href={href}
+                          aria-current={active ? "page" : undefined}
+                          className={`relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
+                            active
+                              ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
+                              : "text-text-body hover:bg-bg-muted hover:text-text-heading"
+                          } ${focusRing}`}
+                        >
+                          <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
+                          {label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
             <div className="border-t border-border-subtle p-3">
-              <div className="flex items-center gap-2 rounded-[10px] px-2 py-1.5">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">{admin.name}</p>
-                  <p className="truncate text-[12px] text-text-muted">{admin.email}</p>
-                </div>
+              <div className="flex items-center gap-1 rounded-[10px]">
+                <Link
+                  href="/admin/akun"
+                  aria-current={pathname === "/admin/akun" ? "page" : undefined}
+                  title="Akun saya"
+                  className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2 py-1.5 hover:bg-bg-muted ${pathname === "/admin/akun" ? "bg-brand-tint" : ""} ${focusRing}`}
+                >
+                  <Avatar name={admin.name} />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[13px] font-semibold">{admin.name}</span>
+                    <span className="block truncate text-[12px] text-text-muted">Akun saya</span>
+                  </span>
+                </Link>
                 <button type="button" className={iconBtn} onClick={logout} disabled={loggingOut} aria-label="Keluar" title="Keluar">
                   {loggingOut ? <Spinner /> : <LogOut size={17} aria-hidden />}
                 </button>
@@ -178,22 +243,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <p className="min-w-0 flex-1 truncate text-[15px] font-bold">
                   Sissi <span className="font-medium text-text-muted">Admin</span>
                 </p>
+                <Link href="/admin/akun" className={`rounded-full ${focusRing}`} aria-label={`Akun saya (${admin.email})`}>
+                  <Avatar name={admin.name} />
+                </Link>
                 <button type="button" className={iconBtn} onClick={logout} disabled={loggingOut} aria-label={`Keluar (${admin.email})`}>
                   {loggingOut ? <Spinner /> : <LogOut size={18} aria-hidden />}
                 </button>
               </div>
               <nav aria-label="Menu admin" className="-mb-px flex gap-1 overflow-x-auto px-2 [scrollbar-width:none]">
-                {NAV.map(({ href, short }) => {
+                {NAV.map(({ href, short, icon: Icon }) => {
                   const active = isActive(href);
                   return (
                     <Link
                       key={href}
                       href={href}
                       aria-current={active ? "page" : undefined}
-                      className={`shrink-0 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[14px] font-medium ${
+                      ref={active ? (el) => el?.scrollIntoView({ block: "nearest", inline: "nearest" }) : undefined}
+                      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[14px] font-medium ${
                         active ? "border-brand-deep text-brand-ink" : "border-transparent text-text-body"
                       } ${focusRing}`}
                     >
+                      <Icon size={15} aria-hidden />
                       {short}
                     </Link>
                   );
@@ -206,5 +276,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </SessionContext.Provider>
+  );
+}
+
+export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+  return (
+    <span
+      aria-hidden
+      style={{ width: size, height: size }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand-tint text-[12px] font-bold text-brand-ink"
+    >
+      {initials || "?"}
+    </span>
   );
 }

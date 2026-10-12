@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ToastProvider } from "@/components/admin/toast";
 
 // Admin platform (tim Sissi) — kasir.sissi.id/admin. Tidak ditautkan dari landing dan tidak diindeks.
 // Semua halaman = komponen klien yang memanggil API langsung (cookie sesi milik apipos.sissi.id).
@@ -15,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <ToastProvider>{children}</ToastProvider>;
 }

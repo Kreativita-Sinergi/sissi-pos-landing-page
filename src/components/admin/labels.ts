@@ -9,16 +9,32 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "release.delete": "Hapus APK",
   "business_features.update": "Ubah fitur bisnis",
   "admin.create": "Buat admin",
-  "admin.passwd": "Ganti password admin",
+  "admin.passwd": "Ganti password",
   "admin.disable": "Nonaktifkan admin",
   "admin.enable": "Aktifkan admin",
+  "admin.reset_password": "Reset password admin",
+  "crash.status": "Ubah status crash",
 };
+
+/** Kelompok aksi untuk chip filter audit (memetakan ke `action=a,b`). */
+export const AUDIT_ACTION_GROUPS: { id: string; label: string; actions: string[] }[] = [
+  { id: "auth", label: "Masuk & keluar", actions: ["auth.login", "auth.login_failed", "auth.logout"] },
+  { id: "release", label: "Versi & APK", actions: ["app_version.update", "release.upload", "release.delete"] },
+  { id: "business", label: "Fitur bisnis", actions: ["business_features.update"] },
+  {
+    id: "admin",
+    label: "Kelola admin",
+    actions: ["admin.create", "admin.passwd", "admin.disable", "admin.enable", "admin.reset_password"],
+  },
+  { id: "crash", label: "Crash", actions: ["crash.status"] },
+];
 
 export const TARGET_TYPES: Record<string, string> = {
   admin: "Admin",
   app_version: "Versi aplikasi",
   release: "Rilis APK",
   business: "Bisnis",
+  crash: "Crash",
 };
 
 export const LOGIN_FAIL_REASONS: Record<string, string> = {
@@ -35,10 +51,10 @@ export const PROVIDERS: { value: "manual" | "fake" | "midtrans" | "xendit"; labe
 ];
 
 export const BUSINESS_TYPES: Record<string, string> = {
-  kuliner: "Kuliner",
-  ritel: "Ritel",
-  jasa: "Jasa",
-  penyewaan: "Penyewaan",
+  culinary: "Kuliner",
+  retail: "Ritel",
+  service: "Jasa",
+  rental: "Penyewaan",
 };
 
 export const ROLES: Record<string, string> = {
@@ -50,7 +66,26 @@ export const ROLES: Record<string, string> = {
 export const DEVICE_MODES: Record<string, string> = {
   owner: "Pemilik",
   cashier: "Kasir",
+  main_cashier: "Kasir utama",
   kitchen: "Dapur",
+};
+
+export const CRASH_STATUS: Record<string, string> = {
+  open: "Terbuka",
+  resolved: "Selesai",
+  ignored: "Diabaikan",
+};
+
+export const DELETION_STATUS: Record<string, string> = {
+  scheduled: "Terjadwal",
+  canceled: "Dibatalkan",
+  purged: "Sudah dihapus",
+};
+
+export const OUTLET_STATUS: Record<string, string> = {
+  open: "Buka",
+  closed: "Tutup",
+  active: "Aktif",
 };
 
 export function labelOf(map: Record<string, string>, key: string | null | undefined): string {

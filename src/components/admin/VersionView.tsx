@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { CircleCheck, Info, TriangleAlert } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
-import type { AppVersionConfig, AppVersionInput } from "@/lib/admin/types";
+import type { AppVersionConfig, AppVersionInput, VersionDistribution, VersionImpact } from "@/lib/admin/types";
 import { ApiError } from "@/lib/sissiApi";
+import { Meter } from "./charts";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Chip } from "./filters";
+import { useToast } from "./toast";
 import {
   Badge,
   btn,
@@ -14,11 +17,13 @@ import {
   Field,
   fieldErrors,
   formatDateTime,
+  formatRelative,
   inputClass,
   LoadingBlock,
   Notice,
   PageHeader,
   Section,
+  Skeleton,
   Spinner,
   useLoad,
 } from "./ui";
@@ -95,6 +100,8 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [result, setResult] = useState<{ warnings: string[] } | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const toast = useToast();
 
   const errors = useMemo(() => ({ ...(touched ? validate(form) : {}), ...serverErrors }), [form, touched, serverErrors]);
   const original = useMemo(() => toForm(config), [config]);
@@ -102,6 +109,8 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
 
   const newMin = parseBuild(form.min_build);
   const minRaised = newMin !== null && newMin > config.min_build;
+  const preview = useImpactPreview(newMin !== null && newMin !== config.min_build ? newMin : null);
+  const impact = preview.impact && preview.impact.min_build === newMin ? preview.impact : null;
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -133,6 +142,7 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
     setSaveError(null);
     if (Object.keys(validate(form)).length > 0) return;
     setServerConfirm(null);
+    setConfirmText("");
     setConfirmOpen(true);
   }
 
@@ -144,6 +154,9 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
       const res = await api.saveAppVersion(body(minRaised || serverConfirm !== null));
       setConfirmOpen(false);
       setResult({ warnings: res.warnings ?? [] });
+      toast.success(
+        minRaised ? `Build minimum dinaikkan ke ${res.config.min_build}. Berlaku ±30 detik.` : "Pengaturan versi disimpan."
+      );
       onSaved(res.config);
     } catch (err) {
       if (err instanceof ApiError && err.code === "CONFIRMATION_REQUIRED") {
@@ -169,15 +182,16 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
     message: "Pesan pembaruan",
   };
   const danger = minRaised || serverConfirm !== null;
+  // Sangat berisiko (ada bisnis terdampak) → ketik angka build baru untuk konfirmasi.
+  const mustType = danger && (impact?.businesses ?? 1) > 0;
+  const typedOk = !mustType || confirmText.trim() === String(newMin);
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="xl:col-span-2">
+        <DistributionPanel config={config} previewMin={newMin !== null && newMin !== config.min_build ? newMin : null} />
+      </div>
       <form onSubmit={requestSave} noValidate className="flex flex-col gap-5">
-        {result && (
-          <Notice tone="success" role="status" icon={<CircleCheck size={18} aria-hidden />} title="Tersimpan">
-            Perubahan berlaku untuk aplikasi dalam ±30 detik.
-          </Notice>
-        )}
         {result?.warnings.map((w) => (
           <Notice key={w} tone="warning" role="status" icon={<TriangleAlert size={18} aria-hidden />}>
             {w}
@@ -230,12 +244,16 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
               />
             </Field>
           </div>
-          {minRaised && !errors.min_build && (
+          {newMin !== null && newMin !== config.min_build && !errors.min_build && (
             <div className="mt-4">
-              <Notice tone="warning" role="status" icon={<TriangleAlert size={18} aria-hidden />} title={`Build minimum naik ${config.min_build} → ${newMin}`}>
-                Pengguna build di bawah {newMin} tidak bisa sinkron sampai memperbarui aplikasi. Pastikan versi baru
-                sudah tersedia di Play Store dan sebagai APK langsung.
-              </Notice>
+              <ImpactPreview
+                from={config.min_build}
+                to={newMin}
+                impact={impact}
+                unknown={preview.unknown}
+                loading={preview.loading}
+                error={preview.error}
+              />
             </div>
           )}
         </Section>
@@ -330,18 +348,37 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
 
       <ConfirmDialog
         open={confirmOpen}
-        title={danger ? "Naikkan build minimum?" : "Simpan pengaturan versi?"}
-        confirmLabel={danger ? "Ya, naikkan & simpan" : "Simpan"}
+        title={danger ? `Naikkan build minimum ke ${newMin}?` : "Simpan pengaturan versi?"}
+        confirmLabel={danger ? "Naikkan & simpan" : "Simpan"}
         tone={danger ? "danger" : "primary"}
         busy={busy}
+        confirmDisabled={!typedOk}
         onConfirm={save}
         onClose={() => setConfirmOpen(false)}
       >
         {danger && (
-          <p className="mb-3 rounded-[10px] bg-danger-tint px-3 py-2 font-medium text-danger">
-            {serverConfirm ??
-              `Pengguna build di bawah ${newMin} tidak bisa sinkron sampai memperbarui aplikasi.`}
-          </p>
+          <div className="mb-4 rounded-[12px] bg-danger-tint px-4 py-3 text-danger">
+            {impact ? (
+              <>
+                <p className="flex flex-wrap items-baseline gap-x-2 leading-tight">
+                  <span className="text-[30px] font-bold tabular-nums">{impact.devices.toLocaleString("id-ID")}</span>
+                  <span className="font-semibold">perangkat di</span>
+                  <span className="text-[30px] font-bold tabular-nums">{impact.businesses.toLocaleString("id-ID")}</span>
+                  <span className="font-semibold">bisnis</span>
+                </p>
+                <p className="mt-1 text-[14px] font-medium">akan berhenti sinkron sampai memperbarui aplikasi.</p>
+                {impact.businesses_all_devices > 0 && (
+                  <p className="mt-1 text-[13px]">
+                    {impact.businesses_all_devices.toLocaleString("id-ID")} bisnis kehilangan semua perangkat aktifnya.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="font-medium">
+                {serverConfirm ?? `Pengguna build di bawah ${newMin} tidak bisa sinkron sampai memperbarui aplikasi.`}
+              </p>
+            )}
+          </div>
         )}
         <ul className="flex flex-col gap-1">
           {changes.map((k) => (
@@ -354,7 +391,223 @@ function VersionForm({ config, onSaved }: { config: AppVersionConfig; onSaved: (
             </li>
           ))}
         </ul>
+        {mustType && (
+          <div className="mt-4">
+            <label htmlFor="confirm-build" className="mb-1.5 block text-[13px] font-semibold text-text-heading">
+              Ketik <span className="font-mono">{newMin}</span> untuk melanjutkan
+            </label>
+            <input
+              id="confirm-build"
+              className={`${inputClass} tabular-nums`}
+              inputMode="numeric"
+              autoComplete="off"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && typedOk && !busy) save();
+              }}
+            />
+          </div>
+        )}
       </ConfirmDialog>
     </div>
+  );
+}
+
+// ——— Sebaran versi & pratinjau dampak (tahap 2) ———
+
+/** Memanggil distribution?min_build= 400 ms setelah isian berhenti berubah. */
+function useImpactPreview(min: number | null) {
+  const [debounced, setDebounced] = useState<number | null>(min);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(min), 400);
+    return () => clearTimeout(t);
+  }, [min]);
+  const { state } = useLoad<VersionDistribution | null>(
+    async (signal) => (debounced === null ? null : (await adminApi()).versionDistribution({ min_build: debounced }, signal)),
+    [debounced ?? -1]
+  );
+  return {
+    impact: state.data?.impact ?? null,
+    unknown: state.data?.totals.unknown_build_devices ?? 0,
+    loading: state.status === "loading" || debounced !== min,
+    error: state.status === "error" ? state.error : null,
+  };
+}
+
+function ImpactPreview({
+  from,
+  to,
+  impact,
+  unknown,
+  loading,
+  error,
+}: {
+  from: number;
+  to: number;
+  impact: VersionImpact | null;
+  unknown: number;
+  loading: boolean;
+  error: unknown;
+}) {
+  if (to < from) {
+    return (
+      <Notice tone="info" icon={<Info size={18} aria-hidden />} title={`Build minimum turun ${from} → ${to}`}>
+        Build {to}–{from - 1} boleh sinkron lagi. Tidak ada perangkat yang terblokir karena perubahan ini.
+      </Notice>
+    );
+  }
+  if (error && !impact) {
+    return (
+      <Notice tone="warning" icon={<TriangleAlert size={18} aria-hidden />} title={`Build minimum naik ${from} → ${to}`}>
+        Dampak belum bisa dihitung ({errorMessage(error)}). Pengguna build di bawah {to} tidak bisa sinkron sampai
+        memperbarui aplikasi.
+      </Notice>
+    );
+  }
+  const zero = impact !== null && impact.devices === 0;
+  return (
+    <div
+      role="status"
+      aria-busy={loading}
+      className={`rounded-[12px] border px-4 py-3.5 transition-opacity ${
+        zero ? "border-success/25 bg-success-tint text-success" : "border-danger/25 bg-danger-tint text-danger"
+      } ${loading && impact ? "opacity-60" : ""}`}
+    >
+      <p className="text-[13px] font-semibold">Dampak menaikkan build minimum {from} → {to}</p>
+      {impact ? (
+        zero ? (
+          <p className="mt-1 flex items-center gap-2 text-[15px] font-semibold">
+            <CircleCheck size={18} aria-hidden /> Tidak ada perangkat aktif yang terdampak.
+          </p>
+        ) : (
+          <>
+            <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 leading-none">
+              <span className="text-[32px] font-bold tabular-nums">{impact.devices.toLocaleString("id-ID")}</span>
+              <span className="text-[14px] font-semibold">perangkat</span>
+              <span aria-hidden className="px-1 text-[20px] opacity-50">·</span>
+              <span className="text-[32px] font-bold tabular-nums">{impact.businesses.toLocaleString("id-ID")}</span>
+              <span className="text-[14px] font-semibold">bisnis akan berhenti sinkron</span>
+            </p>
+            <ul className="mt-2.5 flex flex-col gap-0.5 text-[13px]">
+              {impact.businesses_all_devices > 0 && (
+                <li>
+                  <strong className="tabular-nums">{impact.businesses_all_devices.toLocaleString("id-ID")}</strong> bisnis
+                  kehilangan semua perangkat aktif.
+                </li>
+              )}
+              {unknown > 0 && (
+                <li className="opacity-80">
+                  {unknown.toLocaleString("id-ID")} perangkat dengan build tak diketahui (tidak terdampak).
+                </li>
+              )}
+            </ul>
+          </>
+        )
+      ) : (
+        <div className="mt-2 flex gap-3" aria-label="Menghitung dampak…">
+          <Skeleton className="h-8 w-24 bg-danger/15" />
+          <Skeleton className="h-8 w-32 bg-danger/15" />
+        </div>
+      )}
+      <p className="mt-2 text-[12px] opacity-80">Perangkat aktif 30 hari terakhir.</p>
+    </div>
+  );
+}
+
+const DAY_OPTIONS = [7, 30, 90];
+
+function DistributionPanel({ config, previewMin }: { config: AppVersionConfig; previewMin: number | null }) {
+  const [days, setDays] = useState(30);
+  const { state, reload } = useLoad<VersionDistribution>(
+    async (signal) => (await adminApi()).versionDistribution({ active_days: days }, signal),
+    [days, config.min_build, config.latest_build]
+  );
+  const d = state.data;
+  const max = d ? Math.max(1, ...d.builds.map((b) => b.devices)) : 1;
+  const min = previewMin ?? d?.min_build ?? config.min_build;
+  const firstBelow = d ? d.builds.findIndex((b) => b.build < min) : -1;
+
+  return (
+    <Section
+      title="Sebaran build Android"
+      description={
+        d ? (
+          <>
+            <strong className="font-semibold text-text-heading tabular-nums">{d.totals.devices.toLocaleString("id-ID")}</strong> perangkat
+            aktif di <strong className="font-semibold text-text-heading tabular-nums">{d.totals.businesses.toLocaleString("id-ID")}</strong>{" "}
+            bisnis
+            {d.totals.unknown_build_devices > 0 && ` · ${d.totals.unknown_build_devices.toLocaleString("id-ID")} perangkat build tak diketahui`}
+          </>
+        ) : (
+          "Perangkat aktif per build."
+        )
+      }
+      actions={
+        <div className="flex gap-1.5" role="group" aria-label="Rentang aktif">
+          {DAY_OPTIONS.map((n) => (
+            <Chip key={n} active={days === n} onClick={() => setDays(n)}>
+              {n} hari
+            </Chip>
+          ))}
+        </div>
+      }
+      bodyClass="px-4 py-3 sm:px-5"
+    >
+      {state.status === "error" && !d && <ErrorBlock error={state.error} onRetry={reload} />}
+      {!d && state.status === "loading" && (
+        <div className="flex flex-col gap-3 py-1" aria-label="Memuat sebaran">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="grid grid-cols-[96px_minmax(0,1fr)_88px] items-center gap-3">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-2.5" />
+              <Skeleton className="h-4 w-14 justify-self-end" />
+            </div>
+          ))}
+        </div>
+      )}
+      {d && d.builds.length === 0 && (
+        <p className="py-6 text-center text-[14px] text-text-muted">
+          Belum ada perangkat yang melaporkan build dalam {d.active_days} hari terakhir.
+        </p>
+      )}
+      {d && d.builds.length > 0 && (
+        <ul className={`flex flex-col transition-opacity ${state.status === "loading" ? "opacity-60" : ""}`} aria-label="Perangkat per build">
+          {d.builds.map((b, i) => {
+            const belowPreview = b.build < min;
+            const tone = belowPreview ? (previewMin !== null && b.build >= d.min_build ? "danger" : "warning") : b.build === d.latest_build ? "brand" : "neutral";
+            return (
+              <React.Fragment key={b.build}>
+                {i === firstBelow && (
+                  <li aria-hidden className="my-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-warning">
+                    <span className="h-px flex-1 border-t border-dashed border-warning/50" />
+                    {previewMin !== null ? `Minimum baru ${min}` : `Minimum ${min}`} — di bawah ini tidak bisa sinkron
+                    <span className="h-px flex-1 border-t border-dashed border-warning/50" />
+                  </li>
+                )}
+                <li
+                  className="grid grid-cols-[minmax(96px,auto)_minmax(0,1fr)] items-center gap-x-3 gap-y-1 py-1.5 sm:grid-cols-[150px_minmax(0,1fr)_170px]"
+                  title={`Build ${b.build}: ${b.devices} perangkat, ${b.businesses} bisnis · terakhir ${formatRelative(b.last_seen_at)}`}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5 text-[14px]">
+                    <span className="font-semibold tabular-nums text-text-heading">{b.build}</span>
+                    <span className="truncate text-[13px] text-text-muted">{b.version ? `v${b.version}` : "versi ?"}</span>
+                    {b.build === d.latest_build && <Badge tone="success">terbaru</Badge>}
+                    {belowPreview && <Badge tone={tone === "danger" ? "danger" : "warning"}>terblokir</Badge>}
+                  </span>
+                  <span className="text-right text-[13px] tabular-nums text-text-body sm:order-last">
+                    <strong className="font-semibold text-text-heading">{b.devices.toLocaleString("id-ID")}</strong> perangkat
+                    <span className="text-text-muted"> · {b.businesses.toLocaleString("id-ID")} bisnis</span>
+                  </span>
+                  <span className="col-span-2 sm:col-span-1">
+                    <Meter value={b.devices} max={max} tone={tone} />
+                  </span>
+                </li>
+              </React.Fragment>
+            );
+          })}
+        </ul>
+      )}
+    </Section>
   );
 }

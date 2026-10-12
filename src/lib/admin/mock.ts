@@ -1,232 +1,119 @@
 // Server tiruan Admin platform untuk mencoba /admin tanpa sissi-service.
 // Hanya dimuat bila NEXT_PUBLIC_ADMIN_MOCK=1 (lihat api.ts). Data hidup di memori tab; sesi di localStorage.
+// Bentuk JSON mengikuti kontrak sissi-service/docs/api.md "Admin platform" (tahap 1 + 2).
 //
-// Login contoh: email apa saja + password apa saja (≥ 1 karakter), kecuali:
-//   password "salah"        → 401 INVALID_CREDENTIALS
-//   email memuat "kunci"    → 429 terkunci 15 menit
-// Unggah APK: nama berkas memuat "rusak" → 422 INVALID_APK; versi+build yang sudah ada → 409 RELEASE_EXISTS.
+// Login contoh: email apa saja + password apa saja, kecuali:
+//   password "salah"                     → 401 INVALID_CREDENTIALS
+//   email memuat "kunci"                 → 429 terkunci 15 menit
+//   email memuat "baru" / dimas@sissi.id → login dengan password sementara (wajib ganti → /admin/ganti-password)
+//   tono@sissi.id                        → admin nonaktif (401)
+// Ganti password: password saat ini "salah" → 422. Tambah admin: email "ada@sissi.id" atau yang sudah ada → 409
+// ADMIN_EXISTS; email memuat "batas" → 429. Unggah APK: nama berkas memuat "rusak" → 422 INVALID_APK.
 import { ApiError } from "@/lib/sissiApi";
 import type { AdminApi } from "./api";
+import {
+  ADMINS,
+  hex,
+  makeAudit,
+  makeBusinesses,
+  makeCrashes,
+  makeDeletions,
+  makeEvents,
+  makeReleases,
+  makeVersion,
+  PUBLIC_URL,
+  refOf,
+  tempPassword,
+  VERSIONS,
+  type CrashRecord,
+} from "./mockData";
 import type {
+  AccountDeletion,
   Admin,
+  AdminListItem,
   AppVersionConfig,
   AuditEntry,
   BusinessDetail,
-  Features,
-  PaymentProvider,
+  BusinessSummary,
+  CrashGroup,
   Release,
 } from "./types";
 
 const SESSION_KEY = "sissi-admin-mock:session";
-const PUBLIC_URL = "https://apipos.sissi.id/unduh";
+const DAY = 86_400_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-const ME: Admin = {
-  id: "a0000000-0000-4000-8000-000000000001",
-  email: "feggy@sissi.id",
-  name: "Feggy",
-  last_login_at: "2026-10-11T09:12:00Z",
-};
-const RINA = { id: "a0000000-0000-4000-8000-000000000002", email: "rina@sissi.id", name: "Rina" };
-const meRef = { id: ME.id, email: ME.email, name: ME.name };
-
-const iso = (daysAgo: number, hour = 9) => {
-  const d = new Date(Date.UTC(2026, 9, 12, hour, 0, 0) - daysAgo * 86_400_000);
-  return d.toISOString().replace(".000Z", "Z");
-};
-
-function hex(seed: number): string {
-  let s = seed >>> 0;
-  let out = "";
-  for (let i = 0; i < 64; i++) {
-    s = (s * 1103515245 + 12345) >>> 0;
-    out += ((s >>> 16) & 15).toString(16);
-  }
-  return out;
-}
-
-function release(version: string, build: number, daysAgo: number, size: number, sha: boolean, by = meRef): Release {
-  const file = `sissi-pos-${version}+${build}-arm64.apk`;
-  return {
-    file,
-    version,
-    build,
-    abi: "arm64",
-    size_bytes: size,
-    sha256: sha ? hex(build * 7919) : null,
-    released_at: iso(daysAgo, 8),
-    is_latest: false,
-    uploaded_by: sha ? by : null,
-    url: `${PUBLIC_URL}/${file}`,
-  };
-}
-
-const NAMES = [
-  ["Kopi Senja", "kuliner", "Kafe"],
-  ["Warung Bu Ani", "kuliner", "Warung makan"],
-  ["Toko Berkah Jaya", "ritel", "Toko kelontong"],
-  ["Barbershop Rapi", "jasa", "Pangkas rambut"],
-  ["Laundry Kilat", "jasa", "Laundry"],
-  ["Sewa Kamera Bandung", "penyewaan", "Peralatan"],
-  ["Mie Ayam Pak Kumis", "kuliner", "Warung makan"],
-  ["Roti Hangat", "kuliner", "Toko roti"],
-  ["Apotek Sehat", "ritel", "Apotek"],
-  ["Kedai Teh Tarik", "kuliner", "Kafe"],
-  ["Futsal Arena 7", "penyewaan", "Lapangan"],
-  ["Bengkel Maju Motor", "jasa", "Bengkel"],
-  ["Toko Buku Pena", "ritel", "Toko buku"],
-  ["Bakso Mas Joko", "kuliner", "Warung makan"],
-  ["Salon Cantika", "jasa", "Salon"],
-  ["Ayam Geprek Juara", "kuliner", "Restoran"],
-  ["Distro Kota", "ritel", "Pakaian"],
-  ["Sate Madura Cak Mat", "kuliner", "Warung makan"],
-  ["Cuci Mobil Kinclong", "jasa", "Cuci kendaraan"],
-  ["Rental PS Gamer", "penyewaan", "Hiburan"],
-  ["Es Kopi Nusantara", "kuliner", "Kafe"],
-  ["Toko Tani Subur", "ritel", "Pertanian"],
-  ["Pecel Lele Lamongan", "kuliner", "Warung makan"],
-  ["Studio Foto Kenang", "jasa", "Fotografi"],
-  ["Martabak Bangka 88", "kuliner", "Jajanan"],
-  ["Toko Elektronik Terang", "ritel", "Elektronik"],
-  ["Kos Putri Melati", "penyewaan", "Kos"],
-  ["Soto Betawi H. Ma'ruf", "kuliner", "Restoran"],
-  ["Petshop Meong", "ritel", "Hewan peliharaan"],
-  ["Jahit Rapi Bu Sri", "jasa", "Penjahit"],
-  ["Nasi Padang Sederhana", "kuliner", "Restoran"],
-  ["Minimarket Sinar", "ritel", "Minimarket"],
-] as const;
-
-function makeBusinesses(): BusinessDetail[] {
-  return NAMES.map(([name, type, category], i) => {
-    const id = `b${String(i + 1).padStart(7, "0")}-1c2d-4e5f-8a9b-${String(100000000000 + i * 7919).slice(0, 12)}`;
-    const ownerName = ["Andi", "Ani Lestari", "Budi Santoso", "Rudi", "Sinta", "Dewi", "Joko", "Maya"][i % 8];
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
-    const devices = 1 + ((i * 3) % 4);
-    const outlets = 1 + (i % 5 === 0 ? 2 : 0);
-    const active = i % 4 !== 3;
-    const so = i % 3 === 0;
-    const provider: PaymentProvider | null = so ? (i % 2 === 0 ? "midtrans" : "manual") : null;
-    const features: Features = {
-      self_order: so,
-      online_payment: so && provider === "midtrans",
-      provider,
-      updated_at: so ? iso(i + 2) : null,
-    };
-    const outletList = Array.from({ length: outlets }, (_, k) => ({
-      id: `${id.slice(0, 8)}-o${k}`,
-      name: k === 0 ? "Outlet utama" : `Cabang ${k}`,
-      status: "active",
-      created_at: iso(120 - i * 3 + k),
-    }));
-    return {
-      id,
-      name,
-      type,
-      category,
-      created_at: iso(120 - i * 3),
-      owner: {
-        id: `${id.slice(0, 8)}-u0`,
-        name: ownerName,
-        email: `${slug}@gmail.com`,
-        phone: `62812${String(30000000 + i * 104729).slice(0, 8)}`,
-      },
-      outlets_count: outlets,
-      devices_count: devices,
-      users_count: 1 + (i % 4),
-      last_active_at: active ? iso(i % 6, 14) : i % 8 === 7 ? null : iso(20 + i),
-      features,
-      deletion: i === 6 ? { purge_after: iso(-24) } : null,
-      outlets: outletList,
-      devices: Array.from({ length: devices }, (_, k) => ({
-        id: `${id.slice(0, 8)}-d${k}`,
-        name: ["Kasir depan", "Layar dapur", "Tablet bar", "HP pemilik"][k % 4],
-        mode: ["cashier", "kitchen", "cashier", "owner"][k % 4],
-        outlet_id: outletList[0].id,
-        last_seen_at: active ? iso(k, 15) : null,
-      })),
-      users: Array.from({ length: 1 + (i % 4) }, (_, k) => ({
-        id: `${id.slice(0, 8)}-u${k}`,
-        name: k === 0 ? ownerName : ["Kasir Pagi", "Kasir Sore", "Dapur"][(k - 1) % 3],
-        email: k === 0 ? `${slug}@gmail.com` : `staf${k}.${slug}@gmail.com`,
-        role: k === 0 ? "owner" : k === 3 ? "kitchen" : "cashier",
-        created_at: iso(110 - i * 3 + k),
-      })),
-    };
-  });
-}
 
 type State = {
   version: AppVersionConfig;
   releases: Release[];
   businesses: BusinessDetail[];
   audit: AuditEntry[];
+  admins: AdminListItem[];
+  crashes: CrashRecord[];
+  deletions: AccountDeletion[];
 };
 
 function initialState(): State {
-  const releases = [
-    release("1.4.2", 42, 3, 48_213_771, true),
-    release("1.4.1", 41, 11, 48_002_115, true, RINA),
-    release("1.4.0", 40, 26, 47_690_302, false),
-    release("1.3.5", 35, 49, 46_118_870, false),
-  ];
-  releases[0].is_latest = true;
-  const version: AppVersionConfig = {
-    platform: "android",
-    latest_build: 42,
-    min_build: 35,
-    latest_version: "1.4.2",
-    store_url: "https://play.google.com/store/apps/details?id=id.sissi.pos",
-    message: "Versi baru tersedia: cetak struk lebih cepat dan perbaikan sinkron.",
-    apk_url: "https://apipos.sissi.id/unduh/sissi-pos-latest.apk",
-    source: "db",
-    updated_at: iso(3, 8),
-    updated_by: meRef,
-  };
+  const releases = makeReleases();
   const businesses = makeBusinesses();
-  const actions: [string, string, string, Record<string, unknown>][] = [
-    ["release.upload", "release", releases[0].file, { file: releases[0].file, size: releases[0].size_bytes, sha256: releases[0].sha256, make_latest: true }],
-    ["app_version.update", "app_version", "android", { before: { latest_build: 41, min_build: 35, source: "db" }, after: { latest_build: 42, min_build: 35 } }],
-    ["business_features.update", "business", businesses[0].id, { before: { self_order: false, online_payment: false, provider: null }, after: { self_order: true, online_payment: true, provider: "midtrans" } }],
-    ["auth.login", "admin", ME.id, {}],
-    ["auth.login_failed", "admin", RINA.id, { reason: "password" }],
-    ["release.delete", "release", "sissi-pos-1.3.4+34-arm64.apk", { file: "sissi-pos-1.3.4+34-arm64.apk" }],
-    ["auth.logout", "admin", RINA.id, {}],
-    ["admin.create", "admin", RINA.id, { via: "cli" }],
-  ];
-  const audit: AuditEntry[] = [];
-  for (let i = 0; i < 64; i++) {
-    const [action, target_type, target_id, detail] = actions[i % actions.length];
-    const who = action === "admin.create" ? null : i % 3 === 1 ? RINA : meRef;
-    const at = new Date(Date.UTC(2026, 9, 12, 8, 30) - i * 5.5 * 3_600_000).toISOString().replace(".000Z", "Z");
-    audit.push({ id: `e${String(i).padStart(7, "0")}-0000-4000-8000-000000000000`, admin: who, action, target_type, target_id, detail, created_at: at });
-  }
-  return { version, releases, businesses, audit };
+  const deletions = makeDeletions(businesses);
+  const crashes = makeCrashes(businesses);
+  const audit = makeAudit(businesses, releases, crashes);
+  return {
+    version: makeVersion(),
+    releases,
+    businesses,
+    audit,
+    admins: ADMINS.map((a) => ({ ...a })),
+    crashes,
+    deletions,
+  };
 }
 
 let state: State | null = null;
 const db = () => (state ??= initialState());
 
-function readSession(): boolean {
+type Session = { id: string; email: string; mcp: boolean };
+
+function readSession(): Session | null {
   try {
-    return localStorage.getItem(SESSION_KEY) === "1";
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    if (raw === "1") return { id: ADMINS[0].id, email: ADMINS[0].email, mcp: false }; // format tahap 1
+    return JSON.parse(raw) as Session;
   } catch {
-    return false;
+    return null;
   }
 }
-function writeSession(on: boolean) {
+function writeSession(s: Session | null) {
   try {
-    if (on) localStorage.setItem(SESSION_KEY, "1");
+    if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
     else localStorage.removeItem(SESSION_KEY);
   } catch {
     // Penyimpanan diblokir — sesi tiruan hanya hidup selama halaman.
   }
 }
 
+function meRecord(): AdminListItem {
+  const s = readSession();
+  return db().admins.find((a) => a.id === s?.id) ?? db().admins[0];
+}
+
+function asAdmin(a: AdminListItem, s: Session | null): Admin {
+  return {
+    id: a.id,
+    email: s?.email ?? a.email,
+    name: a.name,
+    last_login_at: a.last_login_at,
+    must_change_password: s?.mcp ?? false,
+  };
+}
+
 function log(action: string, target_type: string, target_id: string, detail: Record<string, unknown>) {
   db().audit.unshift({
     id: crypto.randomUUID?.() ?? String(Date.now()),
-    admin: meRef,
+    admin: refOf(meRecord()),
     action,
     target_type,
     target_id,
@@ -235,15 +122,90 @@ function log(action: string, target_type: string, target_id: string, detail: Rec
   });
 }
 
-const VERSION_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+const invalid = (field: string, message: string) =>
+  new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", [{ field, message }]);
 
-export function createMockApi(onUnauthorized: () => void): AdminApi {
-  async function guard() {
-    await sleep(250);
-    if (!readSession()) {
+const VERSION_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** `YYYY-MM-DD` (WIB) atau RFC3339 → ms; `end` = akhir hari untuk tanggal. */
+function parseDay(v: string | undefined, end: boolean): number | null {
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return Date.parse(`${v}T${end ? "23:59:59.999" : "00:00:00"}+07:00`);
+  const t = Date.parse(v);
+  return Number.isNaN(t) ? null : t;
+}
+
+function page<T>(rows: T[], p = 1, per = 20) {
+  const perPage = Math.min(Math.max(1, per), 100);
+  return { items: rows.slice((p - 1) * perPage, p * perPage), meta: { page: p, per_page: perPage, total: rows.length } };
+}
+
+const lower = (s: string | null | undefined) => (s ?? "").toLowerCase();
+
+function summaryOf(b: BusinessDetail): BusinessSummary {
+  return {
+    id: b.id,
+    name: b.name,
+    type: b.type,
+    category: b.category,
+    created_at: b.created_at,
+    owner: b.owner ? { id: b.owner.id, name: b.owner.name, email: b.owner.email, phone: b.owner.phone } : null,
+    outlets_count: b.outlets_count,
+    devices_count: b.devices_count,
+    users_count: b.users_count,
+    last_active_at: b.last_active_at,
+    features: b.features,
+    deletion: b.deletion ? { purge_after: b.deletion.purge_after } : null,
+  };
+}
+
+function activeWithin(b: BusinessDetail, days: number) {
+  return !!b.last_active_at && Date.parse(b.last_active_at) > Date.now() - days * DAY;
+}
+
+/** Perangkat aktif dalam `days` hari dengan info build. */
+function activeDevices(days: number) {
+  const since = Date.now() - days * DAY;
+  const out: { business: string; build: number; seen: string }[] = [];
+  let unknown = 0;
+  for (const b of db().businesses) {
+    for (const d of b.devices) {
+      if (d.app && Date.parse(d.app.seen_at) > since) out.push({ business: b.id, build: d.app.build, seen: d.app.seen_at });
+      else if (!d.app && d.last_seen_at && Date.parse(d.last_seen_at) > since) unknown++;
+    }
+  }
+  return { devices: out, unknown };
+}
+
+function startOfTodayUtc() {
+  const t = new Date();
+  return Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+}
+
+function crashInRange(rec: CrashRecord, from: number, to: number): number {
+  const day0 = startOfTodayUtc();
+  let sum = 0;
+  rec.daily90.forEach((n, i) => {
+    const day = day0 - (89 - i) * DAY;
+    if (day + DAY > from && day <= to) sum += n;
+  });
+  return sum;
+}
+
+export function createMockApi(onUnauthorized: () => void, onPasswordChange: () => void): AdminApi {
+  async function guard(opts: { allowMcp?: boolean } = {}) {
+    await sleep(220 + Math.random() * 180);
+    const s = readSession();
+    if (!s) {
       onUnauthorized();
       throw new ApiError("Sesi berakhir. Silakan masuk lagi.", 401, "UNAUTHORIZED");
     }
+    if (s.mcp && !opts.allowMcp) {
+      onPasswordChange();
+      throw new ApiError("Ganti password sementara dulu.", 403, "PASSWORD_CHANGE_REQUIRED");
+    }
+    return s;
   }
   const session = () => ({
     expires_at: new Date(Date.now() + 12 * 3_600_000).toISOString(),
@@ -253,52 +215,152 @@ export function createMockApi(onUnauthorized: () => void): AdminApi {
   return {
     async login(email, password) {
       await sleep(500);
-      if (email.toLowerCase().includes("kunci")) {
-        throw new ApiError("Terlalu banyak percobaan masuk.", 429, "RATE_LIMITED", [], 900);
-      }
-      if (password === "salah" || !password) {
-        throw new ApiError("Email atau password salah.", 401, "INVALID_CREDENTIALS");
-      }
-      writeSession(true);
-      log("auth.login", "admin", ME.id, {});
-      return { admin: { ...ME, email: email.trim().toLowerCase() || ME.email }, session: session() };
+      const e = email.trim().toLowerCase();
+      if (e.includes("kunci")) throw new ApiError("Terlalu banyak percobaan masuk.", 429, "RATE_LIMITED", [], 900);
+      if (password === "salah" || !password) throw new ApiError("Email atau password salah.", 401, "INVALID_CREDENTIALS");
+      const found = db().admins.find((a) => a.email === e);
+      if (found && !found.active) throw new ApiError("Email atau password salah.", 401, "INVALID_CREDENTIALS");
+      const rec = found ?? db().admins[0];
+      const s: Session = { id: rec.id, email: e || rec.email, mcp: e.includes("baru") || !!found?.must_change_password };
+      writeSession(s);
+      rec.last_login_at = new Date().toISOString();
+      log("auth.login", "admin", rec.id, {});
+      return { admin: asAdmin(rec, s), session: session() };
     },
     async logout() {
       await sleep(200);
-      writeSession(false);
+      writeSession(null);
     },
     async me() {
       await sleep(250);
-      if (!readSession()) throw new ApiError("Belum masuk.", 401, "UNAUTHORIZED");
-      return { admin: ME, session: session() };
+      const s = readSession();
+      if (!s) throw new ApiError("Belum masuk.", 401, "UNAUTHORIZED");
+      return { admin: asAdmin(meRecord(), s), session: session() };
+    },
+    async changeMyPassword(body) {
+      const s = await guard({ allowMcp: true });
+      await sleep(400);
+      if (body.current_password === "salah") throw invalid("current_password", "Password saat ini salah");
+      if (body.new_password.length < 12) throw invalid("new_password", "Minimal 12 karakter.");
+      if (body.new_password === body.current_password) throw invalid("new_password", "Harus berbeda dari password lama.");
+      const rec = meRecord();
+      const forced = s.mcp;
+      rec.must_change_password = false;
+      rec.active_sessions = 1;
+      const next = { ...s, mcp: false };
+      writeSession(next);
+      log("admin.passwd", "admin", rec.id, { via: "web", forced });
+      return { admin: asAdmin(rec, next), session: { expires_at: session().expires_at } };
     },
     async summary() {
       await guard();
       const s = db();
+      const crashes24 = s.crashes.filter((c) => c.daily90[89] > 0 || c.daily90[88] > 0);
+      const below = activeDevices(30).devices.filter((d) => d.build < s.version.min_build).length;
+      const scheduled = s.deletions.filter((d) => d.status === "scheduled");
       return {
         businesses_total: s.businesses.length,
-        businesses_active_7d: s.businesses.filter((b) => b.last_active_at && Date.parse(b.last_active_at) > Date.parse(iso(7))).length,
-        devices_active_7d: 61,
+        businesses_active_7d: s.businesses.filter((b) => activeWithin(b, 7)).length,
+        devices_active_7d: activeDevices(7).devices.length,
         app_version: s.version,
         latest_release: s.releases.find((r) => r.is_latest) ?? null,
+        crashes_24h: {
+          events: crashes24.reduce((a, c) => a + c.daily90[89] + Math.round(c.daily90[88] / 2), 0),
+          groups: crashes24.length,
+          new_groups: s.crashes.filter((c) => Date.parse(c.group.first_seen_at) > Date.now() - DAY).length,
+        },
+        crash_groups_open: s.crashes.filter((c) => c.group.status === "open").length,
+        deletions: {
+          scheduled: scheduled.length,
+          due_7d: scheduled.filter((d) => Date.parse(d.purge_after) - Date.now() <= 7 * DAY).length,
+        },
+        devices_below_min_build: below,
       };
     },
-    async audit(q) {
+    async auditPage(q) {
       await guard();
-      const page = q.page ?? 1;
-      const perPage = Math.min(q.per_page ?? 50, 100);
-      const rows = db().audit.filter(
+      const limit = Math.min(Math.max(1, q.limit ?? 50), 100);
+      const from = parseDay(q.from, false);
+      const to = parseDay(q.to, true);
+      if (from !== null && to !== null && from > to) throw invalid("from", "Tanggal awal setelah tanggal akhir.");
+      let rows = db().audit.filter(
         (e) =>
-          (!q.action || e.action === q.action) &&
+          (!q.action?.length || q.action.includes(e.action)) &&
           (!q.target_type || e.target_type === q.target_type) &&
-          (!q.target_id || e.target_id === q.target_id) &&
-          (!q.admin_id || e.admin?.id === q.admin_id)
+          (!q.target_type || !q.target_id || e.target_id === q.target_id) &&
+          (!q.admin_id || (q.admin_id === "none" ? e.admin === null : e.admin?.id === q.admin_id)) &&
+          (from === null || Date.parse(e.created_at) >= from) &&
+          (to === null || Date.parse(e.created_at) <= to)
       );
-      return { items: rows.slice((page - 1) * perPage, page * perPage), meta: { page, per_page: perPage, total: rows.length } };
+      if (q.cursor) {
+        let decoded: string;
+        try {
+          decoded = atob(q.cursor.replace(/-/g, "+").replace(/_/g, "/"));
+        } catch {
+          throw invalid("cursor", "Kursor tidak valid.");
+        }
+        const [at, id] = decoded.split(",");
+        rows = rows.filter((e) => e.created_at < at || (e.created_at === at && e.id < id));
+      }
+      const items = rows.slice(0, limit);
+      const last = items[items.length - 1];
+      const next_cursor =
+        rows.length > limit && last
+          ? btoa(`${last.created_at},${last.id}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+          : null;
+      return { items, next_cursor };
     },
     async appVersion() {
       await guard();
       return db().version;
+    },
+    async versionDistribution(q) {
+      await guard();
+      const s = db();
+      const days = q.active_days ?? 30;
+      if (days < 1 || days > 90) throw invalid("active_days", "1–90.");
+      const { devices, unknown } = activeDevices(days);
+      const byBuild = new Map<number, { devices: number; biz: Set<string>; last: string }>();
+      for (const d of devices) {
+        const e = byBuild.get(d.build) ?? { devices: 0, biz: new Set<string>(), last: d.seen };
+        e.devices++;
+        e.biz.add(d.business);
+        if (d.seen > e.last) e.last = d.seen;
+        byBuild.set(d.build, e);
+      }
+      let impact = null;
+      if (q.min_build !== undefined) {
+        const m = q.min_build;
+        const hit = devices.filter((d) => d.build < m);
+        const hitBiz = new Set(hit.map((d) => d.business));
+        let all = 0;
+        for (const id of hitBiz) if (devices.filter((d) => d.business === id).every((d) => d.build < m)) all++;
+        impact = { min_build: m, devices: hit.length, businesses: hitBiz.size, businesses_all_devices: all };
+      }
+      return {
+        platform: "android",
+        active_days: days,
+        generated_at: new Date().toISOString(),
+        min_build: s.version.min_build,
+        latest_build: s.version.latest_build,
+        totals: {
+          devices: devices.length,
+          businesses: new Set(devices.map((d) => d.business)).size,
+          unknown_build_devices: unknown,
+        },
+        builds: [...byBuild.entries()]
+          .sort((a, b) => b[0] - a[0])
+          .map(([build, e]) => ({
+            build,
+            // Build 33 sengaja tanpa versi (klien lama tanpa X-App-Version & tanpa rilis).
+            version: build === 33 ? null : (VERSIONS[build] ?? null),
+            devices: e.devices,
+            businesses: e.biz.size,
+            last_seen_at: e.last,
+            below_min: build < s.version.min_build,
+          })),
+        impact,
+      };
     },
     async saveAppVersion(body) {
       await guard();
@@ -310,8 +372,9 @@ export function createMockApi(onUnauthorized: () => void): AdminApi {
       if (body.apk_url && !body.apk_url.startsWith("https://")) details.push({ field: "apk_url", message: "Harus diawali https://." });
       if (details.length) throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", details);
       if (body.min_build > s.version.min_build && !body.confirm_min_raise) {
+        const hit = activeDevices(30).devices.filter((d) => d.build < body.min_build);
         throw new ApiError(
-          `Build di bawah ${body.min_build} akan berhenti sinkron sampai diperbarui.`,
+          `${hit.length} perangkat di ${new Set(hit.map((d) => d.business)).size} bisnis (aktif 30 hari) akan berhenti sinkron sampai diperbarui.`,
           409,
           "CONFIRMATION_REQUIRED"
         );
@@ -332,15 +395,17 @@ export function createMockApi(onUnauthorized: () => void): AdminApi {
         apk_url: body.apk_url,
         source: "db",
         updated_at: new Date().toISOString(),
-        updated_by: meRef,
+        updated_by: refOf(meRecord()),
       };
-      log("app_version.update", "app_version", "android", { before: { latest_build: before.latest_build, min_build: before.min_build }, after: { latest_build: body.latest_build, min_build: body.min_build } });
+      log("app_version.update", "app_version", "android", {
+        before: { latest_build: before.latest_build, min_build: before.min_build },
+        after: { latest_build: body.latest_build, min_build: body.min_build },
+      });
       return { config: s.version, warnings };
     },
     async releases() {
       await guard();
-      const s = db();
-      const releases = [...s.releases].sort((a, b) => b.released_at.localeCompare(a.released_at));
+      const releases = [...db().releases].sort((a, b) => b.released_at.localeCompare(a.released_at));
       return { latest: releases.find((r) => r.is_latest) ?? null, releases };
     },
     uploadApk(input, onProgress) {
@@ -364,9 +429,7 @@ export function createMockApi(onUnauthorized: () => void): AdminApi {
               { field: "file", message: "APK tidak bertanda tangan." },
             ]);
           }
-          if (s.releases.some((r) => r.file === file)) {
-            throw new ApiError("Versi ini sudah pernah diunggah.", 409, "RELEASE_EXISTS");
-          }
+          if (s.releases.some((r) => r.file === file)) throw new ApiError("Versi ini sudah pernah diunggah.", 409, "RELEASE_EXISTS");
           const r: Release = {
             file,
             version: input.version,
@@ -376,18 +439,24 @@ export function createMockApi(onUnauthorized: () => void): AdminApi {
             sha256: input.sha256 || hex(input.build * 131),
             released_at: new Date().toISOString(),
             is_latest: input.make_latest,
-            uploaded_by: meRef,
+            uploaded_by: refOf(meRecord()),
             url: `${PUBLIC_URL}/${file}`,
           };
           if (input.make_latest) s.releases.forEach((x) => (x.is_latest = false));
           s.releases.unshift(r);
-          // Terbaru + 3 lama.
           const keep = [...s.releases].sort((a, b) => b.released_at.localeCompare(a.released_at)).slice(0, 4);
           s.releases = keep.some((x) => x.is_latest) ? keep : [...keep, ...s.releases.filter((x) => x.is_latest)];
           log("release.upload", "release", file, { file, size: total, sha256: r.sha256, make_latest: input.make_latest });
           let app_version: AppVersionConfig | null = null;
           if (input.update_app_version) {
-            s.version = { ...s.version, latest_build: input.build, latest_version: input.version, updated_at: r.released_at, updated_by: meRef, source: "db" };
+            s.version = {
+              ...s.version,
+              latest_build: input.build,
+              latest_version: input.version,
+              updated_at: r.released_at,
+              updated_by: refOf(meRecord()),
+              source: "db",
+            };
             app_version = s.version;
           }
           resolve({ release: r, app_version });
@@ -412,48 +481,269 @@ export function createMockApi(onUnauthorized: () => void): AdminApi {
     },
     async businesses(q) {
       await guard();
-      const page = q.page ?? 1;
-      const perPage = Math.min(q.per_page ?? 20, 100);
       const needle = (q.q ?? "").trim().toLowerCase();
-      const rows = db()
-        .businesses.filter(
-          (b) =>
-            !needle ||
-            b.id === needle ||
-            b.name.toLowerCase().includes(needle) ||
-            b.owner?.email.toLowerCase().includes(needle) ||
-            b.owner?.name.toLowerCase().includes(needle) ||
-            b.owner?.phone.includes(needle.replace(/^0/, "62"))
-        )
-        .sort((a, b) => b.created_at.localeCompare(a.created_at));
-      const items = rows.slice((page - 1) * perPage, page * perPage).map((b) => {
-        const { outlets, devices, users, ...summary } = b;
-        void outlets;
-        void devices;
-        void users;
-        return summary;
+      const digits = needle.replace(/\D/g, "").replace(/^0/, "62");
+      const matchQ = (b: BusinessDetail) =>
+        !needle ||
+        b.id === needle ||
+        lower(b.name).includes(needle) ||
+        lower(b.owner?.email).includes(needle) ||
+        lower(b.owner?.name).includes(needle) ||
+        (digits.length >= 4 && !!b.owner?.phone && b.owner.phone.replace(/\D/g, "").includes(digits));
+      const base = db().businesses.filter(matchQ);
+      const from = parseDay(q.created_from, false);
+      const to = parseDay(q.created_to, true);
+      if (from !== null && to !== null && from > to) throw invalid("created_from", "Tanggal awal setelah tanggal akhir.");
+      const rows = base.filter((b) => {
+        if (q.type?.length && !q.type.includes(b.type)) return false;
+        if (q.active === "7d" && !activeWithin(b, 7)) return false;
+        if (q.active === "30d" && !activeWithin(b, 30)) return false;
+        if (q.active === "inactive" && activeWithin(b, 30)) return false;
+        if (q.feature?.includes("self_order") && !b.features.self_order) return false;
+        if (q.feature?.includes("online_payment") && !b.features.online_payment) return false;
+        if (q.deletion === "scheduled" && !b.deletion) return false;
+        if (from !== null && Date.parse(b.created_at) < from) return false;
+        if (to !== null && Date.parse(b.created_at) > to) return false;
+        return true;
       });
-      return { items, meta: { page, per_page: perPage, total: rows.length } };
+      const sort = q.sort || "created";
+      const order = q.order || (sort === "name" ? "asc" : "desc");
+      const dir = order === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        if (sort === "name") return a.name.localeCompare(b.name, "id") * dir;
+        if (sort === "devices") return (a.devices_count - b.devices_count) * dir || a.name.localeCompare(b.name);
+        if (sort === "last_active") {
+          if (!a.last_active_at) return b.last_active_at ? 1 : 0;
+          if (!b.last_active_at) return -1;
+          return a.last_active_at.localeCompare(b.last_active_at) * dir;
+        }
+        return a.created_at.localeCompare(b.created_at) * dir;
+      });
+      const count = (f: (b: BusinessDetail) => boolean) => base.filter(f).length;
+      const facets = {
+        type: {
+          culinary: count((b) => b.type === "culinary"),
+          retail: count((b) => b.type === "retail"),
+          service: count((b) => b.type === "service"),
+          rental: count((b) => b.type === "rental"),
+        },
+        active: {
+          "7d": count((b) => activeWithin(b, 7)),
+          "30d": count((b) => activeWithin(b, 30)),
+          inactive: count((b) => !activeWithin(b, 30)),
+        },
+        feature: {
+          self_order: count((b) => b.features.self_order),
+          online_payment: count((b) => b.features.online_payment),
+        },
+        deletion: { scheduled: count((b) => !!b.deletion) },
+      };
+      return { ...page(rows.map(summaryOf), q.page, q.per_page ?? 20), facets };
     },
     async business(id) {
       await guard();
-      const b = db().businesses.find((x) => x.id === id);
+      const s = db();
+      const b = s.businesses.find((x) => x.id === id);
       if (!b) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
-      return b;
+      return { ...b, audit: s.audit.filter((e) => e.target_type === "business" && e.target_id === id).slice(0, 20) };
     },
     async saveFeatures(id, body) {
       await guard();
       const b = db().businesses.find((x) => x.id === id);
       if (!b) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
       if (body.online_payment && (!body.self_order || !body.provider)) {
-        throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", [
-          { field: "online_payment", message: "Bayar online butuh Pesan QR aktif dan provider." },
-        ]);
+        throw invalid("online_payment", "Bayar online butuh Pesan QR aktif dan provider.");
       }
       const before = { self_order: b.features.self_order, online_payment: b.features.online_payment, provider: b.features.provider };
       b.features = { ...body, updated_at: new Date().toISOString() };
       log("business_features.update", "business", id, { before, after: body });
       return b.features;
+    },
+
+    // ——— Admin ———
+    async admins() {
+      const s = await guard();
+      return [...db().admins]
+        .map((a) => ({ ...a, is_me: a.id === s.id }))
+        .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, "id"));
+    },
+    async createAdmin(body) {
+      const s = await guard();
+      await sleep(300);
+      const email = body.email.trim().toLowerCase();
+      const name = body.name.trim();
+      const details: { field: string; message: string }[] = [];
+      if (!EMAIL_RE.test(email)) details.push({ field: "email", message: "Format email tidak valid." });
+      if (name.length < 2 || name.length > 80) details.push({ field: "name", message: "Nama 2–80 karakter." });
+      if (details.length) throw new ApiError("Data tidak valid.", 422, "VALIDATION_ERROR", details);
+      if (email.includes("batas")) throw new ApiError("Terlalu banyak permintaan.", 429, "RATE_LIMITED", [], 1800);
+      if (email === "ada@sissi.id" || db().admins.some((a) => a.email === email)) {
+        throw new ApiError("Email admin sudah terdaftar.", 409, "ADMIN_EXISTS");
+      }
+      const me = db().admins.find((a) => a.id === s.id) ?? db().admins[0];
+      const admin: AdminListItem = {
+        id: crypto.randomUUID?.() ?? `a-${Date.now()}`,
+        email,
+        name,
+        active: true,
+        must_change_password: true,
+        created_at: new Date().toISOString(),
+        created_by: refOf(me),
+        last_login_at: null,
+        active_sessions: 0,
+        is_me: false,
+      };
+      db().admins.push(admin);
+      log("admin.create", "admin", admin.id, { via: "web", after: { email, name } });
+      return { admin, temporary_password: tempPassword(), expires_at: new Date(Date.now() + 72 * 3_600_000).toISOString() };
+    },
+    async resetAdminPassword(id) {
+      const s = await guard();
+      await sleep(300);
+      const a = db().admins.find((x) => x.id === id);
+      if (!a) throw new ApiError("Admin tidak ditemukan.", 404, "NOT_FOUND");
+      if (a.id === s.id) throw new ApiError("Tidak bisa mereset password sendiri. Pakai Akun saya.", 409, "CANNOT_TARGET_SELF");
+      if (!a.active) throw new ApiError("Admin nonaktif. Aktifkan dulu.", 409, "ADMIN_INACTIVE");
+      a.must_change_password = true;
+      a.active_sessions = 0;
+      log("admin.reset_password", "admin", a.id, { via: "web" });
+      return { temporary_password: tempPassword(), expires_at: new Date(Date.now() + 72 * 3_600_000).toISOString() };
+    },
+    async setAdminActive(id, active) {
+      const s = await guard();
+      await sleep(250);
+      const a = db().admins.find((x) => x.id === id);
+      if (!a) throw new ApiError("Admin tidak ditemukan.", 404, "NOT_FOUND");
+      if (a.id === s.id) throw new ApiError("Tidak bisa menonaktifkan diri sendiri.", 409, "CANNOT_TARGET_SELF");
+      if (!active && a.active && db().admins.filter((x) => x.active).length <= 1) {
+        throw new ApiError("Harus tersisa minimal satu admin aktif.", 409, "LAST_ACTIVE_ADMIN");
+      }
+      if (a.active !== active) {
+        a.active = active;
+        if (!active) a.active_sessions = 0;
+        log(active ? "admin.enable" : "admin.disable", "admin", a.id, { via: "web" });
+      }
+      return { ...a, is_me: false };
+    },
+
+    // ——— Crash ———
+    async crashes(q) {
+      await guard();
+      const to = parseDay(q.to, true) ?? Date.now();
+      const from = parseDay(q.from, false) ?? to - 14 * DAY;
+      if (from > to) throw invalid("from", "Tanggal awal setelah tanggal akhir.");
+      if (to - from > 91 * DAY) throw invalid("from", "Rentang maksimal 90 hari.");
+      const needle = (q.q ?? "").trim().toLowerCase();
+      const build = q.build ? Number(q.build) : null;
+      const base = db()
+        .crashes.map((c) => ({ c, inRange: crashInRange(c, from, to) }))
+        .filter(
+          ({ c, inRange }) =>
+            (!q.platform || c.group.platform === q.platform) &&
+            (build === null || (c.perBuild[build] ?? 0) > 0) &&
+            (!needle ||
+              lower(c.group.title).includes(needle) ||
+              lower(c.group.top_frame).includes(needle) ||
+              c.group.fingerprint === needle) &&
+            (inRange > 0 || Date.parse(c.group.last_seen_at) >= from)
+        );
+      const status = q.status || "open";
+      const rows = base.filter(({ c }) => status === "all" || c.group.status === status);
+      const sort = q.sort || "last_seen";
+      const dir = (q.order || "desc") === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const ga = a.c.group;
+        const gb = b.c.group;
+        if (sort === "count") return (a.inRange - b.inRange) * dir;
+        if (sort === "first_seen") return ga.first_seen_at.localeCompare(gb.first_seen_at) * dir;
+        if (sort === "businesses") return (ga.businesses_count - gb.businesses_count) * dir;
+        return ga.last_seen_at.localeCompare(gb.last_seen_at) * dir;
+      });
+      const groups: CrashGroup[] = rows.map(({ c, inRange }) => ({ ...c.group, events_in_range: inRange }));
+      const facets = {
+        status: {
+          open: base.filter(({ c }) => c.group.status === "open").length,
+          resolved: base.filter(({ c }) => c.group.status === "resolved").length,
+          ignored: base.filter(({ c }) => c.group.status === "ignored").length,
+        },
+      };
+      return { ...page(groups, q.page, q.per_page ?? 25), facets };
+    },
+    async crash(fp) {
+      await guard();
+      const crashes = db().crashes;
+      const idx = crashes.findIndex((c) => c.group.fingerprint === fp);
+      if (idx < 0) throw new ApiError("Crash tidak ditemukan.", 404, "NOT_FOUND");
+      const rec = crashes[idx];
+      rec.events ??= makeEvents(rec, idx + 1);
+      const day0 = startOfTodayUtc();
+      return {
+        group: { ...rec.group, events_in_range: rec.group.sparkline.reduce((a, b) => a + b, 0) },
+        daily: rec.daily90.slice(60).map((count, i) => ({
+          day: new Date(day0 - (29 - i) * DAY).toISOString().slice(0, 10),
+          count,
+        })),
+        builds: Object.entries(rec.perBuild)
+          .map(([b, count]) => ({
+            build: Number(b),
+            version: VERSIONS[Number(b)] ?? null,
+            count,
+            last_seen_at: rec.group.last_seen_at,
+          }))
+          .sort((a, b) => b.build - a.build),
+        businesses: rec.businesses,
+        events: rec.events,
+      };
+    },
+    async setCrashStatus(fp, body) {
+      await guard();
+      const rec = db().crashes.find((c) => c.group.fingerprint === fp);
+      if (!rec) throw new ApiError("Crash tidak ditemukan.", 404, "NOT_FOUND");
+      if (body.note.length > 300) throw invalid("note", "Maksimal 300 karakter.");
+      if (body.status !== "resolved" && body.resolved_in_build !== null) {
+        throw invalid("resolved_in_build", "Hanya untuk status selesai.");
+      }
+      const g = rec.group;
+      const nextBuild = body.status === "resolved" ? (body.resolved_in_build ?? db().version.latest_build) : null;
+      if (g.status === body.status && g.resolved_in_build === nextBuild) return { ...g };
+      const before = { status: g.status, resolved_in_build: g.resolved_in_build };
+      g.status = body.status;
+      g.resolved_in_build = nextBuild;
+      g.status_note = body.note;
+      g.status_by = body.status === "open" ? null : refOf(meRecord());
+      g.status_at = new Date().toISOString();
+      log("crash.status", "crash", fp, { before, after: { status: g.status, resolved_in_build: g.resolved_in_build } });
+      return { ...g };
+    },
+
+    // ——— Hapus akun ———
+    async accountDeletions(q) {
+      await guard();
+      const needle = (q.q ?? "").trim().toLowerCase();
+      const base = db().deletions.filter(
+        (d) =>
+          !needle ||
+          lower(d.business?.name).includes(needle) ||
+          lower(d.owner?.email).includes(needle) ||
+          d.business?.id === needle
+      );
+      const status = q.status || "scheduled";
+      const rows = base.filter((d) => status === "all" || d.status === status);
+      const sort = q.sort || (status === "scheduled" ? "purge_after" : "requested_at");
+      const dir = (q.order || (sort === "purge_after" ? "asc" : "desc")) === "asc" ? 1 : -1;
+      rows.sort(
+        (a, b) =>
+          (sort === "purge_after" ? a.purge_after.localeCompare(b.purge_after) : a.requested_at.localeCompare(b.requested_at)) *
+          dir
+      );
+      const facets = {
+        status: {
+          scheduled: base.filter((d) => d.status === "scheduled").length,
+          canceled: base.filter((d) => d.status === "canceled").length,
+          purged: base.filter((d) => d.status === "purged").length,
+        },
+      };
+      return { ...page(rows, q.page, q.per_page ?? 25), facets };
     },
   };
 }

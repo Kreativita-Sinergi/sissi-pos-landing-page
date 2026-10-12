@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Copy, Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 
@@ -413,4 +414,193 @@ export function useLoad<T>(load: (signal: AbortSignal) => Promise<T>, deps: (str
   const reload = useCallback(() => setTick((t) => t + 1), []);
   const setData = useCallback((data: T) => setLoaded({ key: keyRef.current, data, failed: false }), []);
   return { state, reload, setData };
+}
+
+// ——— Tahap 2: komponen bersama ———
+
+/** Kotak abu-abu berdenyut sebagai pengganti konten saat memuat. */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <span aria-hidden className={`block animate-pulse rounded-[6px] bg-border-subtle/70 motion-reduce:animate-none ${className}`} />;
+}
+
+/** Kerangka daftar/tabel: `rows` baris dengan lebar kolom bervariasi (tanpa lompatan layout). */
+export function SkeletonList({ rows = 8, label = "Memuat…" }: { rows?: number; label?: string }) {
+  const widths = ["w-2/5", "w-1/3", "w-1/2", "w-1/4"];
+  return (
+    <div role="status" aria-label={label} className={`${cardClass} divide-y divide-border-subtle`}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex h-[52px] items-center gap-4 px-4 sm:px-5">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className={`h-3.5 ${widths[i % widths.length]}`} />
+            <Skeleton className="h-3 w-1/5" />
+          </div>
+          <Skeleton className="hidden h-3.5 w-16 sm:block" />
+          <Skeleton className="hidden h-3.5 w-20 md:block" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Garis tipis berjalan di atas tabel saat memuat ulang (data lama tetap tampil redup). */
+export function LoadingBar({ active }: { active: boolean }) {
+  return (
+    <div aria-hidden className="relative h-0.5 overflow-hidden rounded-full">
+      {active && <div className="absolute inset-y-0 w-1/3 animate-[admin-bar_1s_ease-in-out_infinite] bg-brand-primary motion-reduce:animate-none" />}
+      <style>{"@keyframes admin-bar{0%{left:-33%}100%{left:100%}}"}</style>
+    </div>
+  );
+}
+
+/** Keadaan kosong yang ramah: ikon, kalimat manusiawi, dan aksi. */
+export function EmptyState({
+  icon,
+  title,
+  children,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center px-6 py-12 text-center">
+      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand-ink">{icon}</span>
+      <p className="text-[15px] font-semibold text-text-heading">{title}</p>
+      {children && <p className="mt-1 max-w-[380px] text-[14px] leading-relaxed text-text-muted">{children}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+/** Waktu relatif dengan waktu absolut di `title`. */
+export function TimeAgo({ value, empty = "belum pernah", className = "" }: { value: string | null | undefined; empty?: string; className?: string }) {
+  if (!value) return <span className={`text-text-muted ${className}`}>{empty}</span>;
+  return (
+    <time dateTime={value} title={formatDateTime(value)} className={className}>
+      {formatRelative(value)}
+    </time>
+  );
+}
+
+/** Angka besar untuk kartu ringkasan. */
+export function StatCard({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+  href,
+  icon,
+}: {
+  label: string;
+  value: number | string;
+  hint?: React.ReactNode;
+  tone?: "neutral" | "warning" | "danger" | "success";
+  href?: string;
+  icon?: React.ReactNode;
+}) {
+  const valueTone = { neutral: "text-text-heading", warning: "text-warning", danger: "text-danger", success: "text-success" }[tone];
+  const body = (
+    <>
+      <p className="flex items-start gap-1.5 text-[12px] leading-snug text-text-muted sm:text-[13px]">
+        {icon && <span className="mt-[2px] shrink-0">{icon}</span>}
+        <span className="min-w-0">{label}</span>
+      </p>
+      <p className={`mt-1 text-[22px] font-bold leading-none tracking-tight tabular-nums sm:text-[26px] ${valueTone}`}>
+        {typeof value === "number" ? value.toLocaleString("id-ID") : value}
+      </p>
+      {hint && <p className="mt-1.5 text-[12px] leading-snug text-text-muted">{hint}</p>}
+    </>
+  );
+  const cls = "min-w-0 rounded-[14px] border border-border-subtle bg-white px-3 py-3 sm:px-4 sm:py-3.5";
+  if (!href) return <div className={cls}>{body}</div>;
+  return (
+    <Link href={href} className={`${cls} block transition-colors hover:border-border-active ${focusRing}`}>
+      {body}
+    </Link>
+  );
+}
+
+/** Tab dengan tautan (tab aktif tersimpan di URL oleh pemanggil). */
+export function Tabs<T extends string>({
+  tabs,
+  active,
+  onChange,
+  label,
+}: {
+  tabs: { id: T; label: string; count?: number }[];
+  active: T;
+  onChange: (id: T) => void;
+  label: string;
+}) {
+  return (
+    <div role="tablist" aria-label={label} className="-mx-4 mb-5 flex gap-1 overflow-x-auto border-b border-border-subtle px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+      {tabs.map((t) => {
+        const on = t.id === active;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(t.id)}
+            className={`-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-[14px] font-semibold transition-colors ${
+              on ? "border-brand-deep text-brand-ink" : "border-transparent text-text-body hover:text-text-heading"
+            } ${focusRing}`}
+          >
+            {t.label}
+            {t.count !== undefined && (
+              <span className={`rounded-full px-1.5 text-[12px] tabular-nums ${on ? "bg-brand-tint" : "bg-bg-muted text-text-muted"}`}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export const thClass =
+  "sticky top-0 z-[1] whitespace-nowrap bg-white px-3 py-2.5 text-left text-[12px] font-semibold uppercase tracking-wide text-text-muted first:pl-5 last:pr-5 shadow-[inset_0_-1px_0_var(--color-border-subtle)]";
+export const tdClass = "px-3 py-2 align-middle first:pl-5 last:pr-5";
+
+/** Header tabel yang bisa diklik untuk mengurutkan. */
+export function SortTh({
+  label,
+  field,
+  sort,
+  order,
+  onSort,
+  align = "left",
+  className = "",
+}: {
+  label: string;
+  field: string;
+  sort: string;
+  order: "asc" | "desc";
+  onSort: (field: string) => void;
+  align?: "left" | "right";
+  className?: string;
+}) {
+  const active = sort === field;
+  return (
+    <th scope="col" aria-sort={active ? (order === "asc" ? "ascending" : "descending") : undefined} className={`${thClass} ${align === "right" ? "text-right" : ""} ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`inline-flex items-center gap-1 whitespace-nowrap uppercase tracking-wide hover:text-text-heading ${active ? "text-text-heading" : ""} ${align === "right" ? "flex-row-reverse" : ""} ${focusRing}`}
+      >
+        {label}
+        <span aria-hidden className={`text-[10px] ${active ? "" : "opacity-0"}`}>
+          {active && order === "asc" ? "▲" : "▼"}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+export function plural(n: number, word: string): string {
+  return `${n.toLocaleString("id-ID")} ${word}`;
 }

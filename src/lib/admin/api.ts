@@ -4,13 +4,26 @@
 // Mode tiruan (NEXT_PUBLIC_ADMIN_MOCK=1) memuat data contoh secara dinamis — tidak ikut terunduh saat mati.
 import { API_BASE_URL, ApiError, type ApiFieldError } from "@/lib/sissiApi";
 import type {
+  AccountDeletion,
+  AdminListItem,
   AppVersionConfig,
   AppVersionInput,
   AppVersionSaveResult,
   AuditEntry,
+  AuditPage,
   AuditQuery,
   BusinessDetail,
+  BusinessFacets,
+  BusinessQuery,
   BusinessSummary,
+  CrashDetail,
+  CrashFacets,
+  CrashGroup,
+  CrashQuery,
+  CrashStatusInput,
+  CreateAdminResult,
+  DeletionFacets,
+  DeletionQuery,
   Features,
   FeaturesInput,
   LoginResult,
@@ -19,8 +32,10 @@ import type {
   Paged,
   ReleaseList,
   Summary,
+  TempPassword,
   UploadApkInput,
   UploadApkResult,
+  VersionDistribution,
 } from "./types";
 
 export const ADMIN_MOCK = process.env.NEXT_PUBLIC_ADMIN_MOCK === "1";
@@ -32,15 +47,26 @@ export interface AdminApi {
   logout(): Promise<void>;
   me(signal?: AbortSignal): Promise<MeResult>;
   summary(signal?: AbortSignal): Promise<Summary>;
-  audit(q: AuditQuery, signal?: AbortSignal): Promise<Paged<AuditEntry>>;
   appVersion(signal?: AbortSignal): Promise<AppVersionConfig>;
   saveAppVersion(body: AppVersionInput): Promise<AppVersionSaveResult>;
   releases(signal?: AbortSignal): Promise<ReleaseList>;
   uploadApk(input: UploadApkInput, onProgress: (loaded: number, total: number) => void): UploadHandle;
   deleteRelease(file: string): Promise<void>;
-  businesses(q: { q?: string; page?: number; per_page?: number }, signal?: AbortSignal): Promise<Paged<BusinessSummary>>;
+  businesses(q: BusinessQuery, signal?: AbortSignal): Promise<Paged<BusinessSummary, BusinessFacets>>;
   business(id: string, signal?: AbortSignal): Promise<BusinessDetail>;
   saveFeatures(id: string, body: FeaturesInput): Promise<Features>;
+  // Tahap 2
+  versionDistribution(q: { active_days?: number; min_build?: number }, signal?: AbortSignal): Promise<VersionDistribution>;
+  auditPage(q: AuditQuery, signal?: AbortSignal): Promise<AuditPage>;
+  admins(signal?: AbortSignal): Promise<AdminListItem[]>;
+  createAdmin(body: { email: string; name: string }): Promise<CreateAdminResult>;
+  resetAdminPassword(id: string): Promise<TempPassword>;
+  setAdminActive(id: string, active: boolean): Promise<AdminListItem>;
+  changeMyPassword(body: { current_password: string; new_password: string }): Promise<LoginResult>;
+  crashes(q: CrashQuery, signal?: AbortSignal): Promise<Paged<CrashGroup, CrashFacets>>;
+  crash(fingerprint: string, signal?: AbortSignal): Promise<CrashDetail>;
+  setCrashStatus(fingerprint: string, body: CrashStatusInput): Promise<CrashGroup>;
+  accountDeletions(q: DeletionQuery, signal?: AbortSignal): Promise<Paged<AccountDeletion, DeletionFacets>>;
 }
 
 const ADMIN_BASE = `${API_BASE_URL}/admin`;
@@ -51,13 +77,24 @@ type BaseResponse<T> = {
   message?: string;
   data?: T;
   error?: { code?: string; details?: ApiFieldError[] };
-  meta?: Partial<PageMeta>;
+  meta?: Meta;
 };
+
+type Meta = Partial<PageMeta> & { facets?: unknown; next_cursor?: string | null };
 
 // Sesi habis di tengah jalan → halaman admin mengarahkan ke login (dipasang oleh AdminShell).
 let unauthorizedHandler: (() => void) | null = null;
 export function setUnauthorizedHandler(fn: (() => void) | null) {
   unauthorizedHandler = fn;
+}
+
+// Sesi dengan password sementara (403 PASSWORD_CHANGE_REQUIRED) → halaman ganti password.
+let passwordChangeHandler: (() => void) | null = null;
+export function setPasswordChangeHandler(fn: (() => void) | null) {
+  passwordChangeHandler = fn;
+}
+export function notifyPasswordChangeRequired() {
+  passwordChangeHandler?.();
 }
 
 function retryAfterOf(value: string | null): number | null {
@@ -94,7 +131,7 @@ async function call<T>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   opts: { body?: unknown; signal?: AbortSignal; skipAuthRedirect?: boolean } = {}
-): Promise<{ data: T; meta?: Partial<PageMeta> }> {
+): Promise<{ data: T; meta?: Meta }> {
   const headers: Record<string, string> = { Accept: "application/json", "X-Sissi-Admin": "1" };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   const timeout = AbortSignal.timeout(TIMEOUT_MS);
@@ -130,10 +167,11 @@ async function call<T>(
 
   const error = toError(res.status, json, res.headers.get("Retry-After"));
   if (res.status === 401 && !opts.skipAuthRedirect) unauthorizedHandler?.();
+  if (res.status === 403 && error.code === "PASSWORD_CHANGE_REQUIRED") passwordChangeHandler?.();
   throw error;
 }
 
-function paged<T>(r: { data: T[]; meta?: Partial<PageMeta> }, page: number, perPage: number): Paged<T> {
+function paged<T, F = undefined>(r: { data: T[]; meta?: Meta }, page: number, perPage: number): Paged<T, F> {
   const items = r.data ?? [];
   return {
     items,
@@ -142,13 +180,16 @@ function paged<T>(r: { data: T[]; meta?: Partial<PageMeta> }, page: number, perP
       per_page: r.meta?.per_page ?? perPage,
       total: r.meta?.total ?? items.length,
     },
+    facets: (r.meta?.facets as F | null | undefined) ?? null,
   };
 }
 
-function qs(params: Record<string, string | number | undefined>): string {
+function qs(params: Record<string, string | number | string[] | undefined>): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== "") sp.set(k, String(v));
+    if (Array.isArray(v)) {
+      if (v.length) sp.set(k, v.join(","));
+    } else if (v !== undefined && v !== "") sp.set(k, String(v));
   }
   const s = sp.toString();
   return s ? `?${s}` : "";
@@ -206,16 +247,6 @@ const httpApi: AdminApi = {
   },
   me: async (signal) => (await call<MeResult>("GET", "/auth/me", { signal, skipAuthRedirect: true })).data,
   summary: async (signal) => (await call<Summary>("GET", "/summary", { signal })).data,
-  audit: async (q, signal) => {
-    const page = q.page ?? 1;
-    const perPage = q.per_page ?? 50;
-    const r = await call<AuditEntry[]>(
-      "GET",
-      `/audit${qs({ page, per_page: perPage, action: q.action, admin_id: q.admin_id, target_type: q.target_type, target_id: q.target_id })}`,
-      { signal }
-    );
-    return paged(r, page, perPage);
-  },
   appVersion: async (signal) =>
     (await call<AppVersionConfig>("GET", "/app-version?platform=android", { signal })).data,
   saveAppVersion: async (body) => (await call<AppVersionSaveResult>("PUT", "/app-version", { body })).data,
@@ -227,18 +258,62 @@ const httpApi: AdminApi = {
   businesses: async (q, signal) => {
     const page = q.page ?? 1;
     const perPage = q.per_page ?? 20;
-    const r = await call<BusinessSummary[]>("GET", `/businesses${qs({ q: q.q, page, per_page: perPage })}`, { signal });
-    return paged(r, page, perPage);
+    const r = await call<BusinessSummary[]>(
+      "GET",
+      `/businesses${qs({ ...q, page, per_page: perPage })}`,
+      { signal }
+    );
+    return paged<BusinessSummary, BusinessFacets>(r, page, perPage);
   },
   business: async (id, signal) => (await call<BusinessDetail>("GET", `/businesses/${enc(id)}`, { signal })).data,
   saveFeatures: async (id, body) =>
     (await call<Features>("PUT", `/businesses/${enc(id)}/features`, { body })).data,
+  versionDistribution: async (q, signal) =>
+    (
+      await call<VersionDistribution>(
+        "GET",
+        `/app-versions/distribution${qs({ platform: "android", active_days: q.active_days, min_build: q.min_build })}`,
+        { signal }
+      )
+    ).data,
+  auditPage: async (q, signal) => {
+    const r = await call<AuditEntry[]>("GET", `/audit${qs({ ...q, limit: q.limit ?? 50 })}`, { signal });
+    return { items: r.data ?? [], next_cursor: r.meta?.next_cursor ?? null };
+  },
+  admins: async (signal) => (await call<AdminListItem[]>("GET", "/admins", { signal })).data ?? [],
+  createAdmin: async (body) => (await call<CreateAdminResult>("POST", "/admins", { body })).data,
+  resetAdminPassword: async (id) =>
+    (await call<TempPassword>("POST", `/admins/${enc(id)}/reset-password`, { body: {} })).data,
+  setAdminActive: async (id, active) =>
+    (await call<AdminListItem>("POST", `/admins/${enc(id)}/${active ? "enable" : "disable"}`, { body: {} })).data,
+  changeMyPassword: async (body) => (await call<LoginResult>("POST", "/me/password", { body })).data,
+  crashes: async (q, signal) => {
+    const page = q.page ?? 1;
+    const perPage = q.per_page ?? 25;
+    const r = await call<CrashGroup[]>("GET", `/crashes${qs({ ...q, page, per_page: perPage })}`, { signal });
+    return paged<CrashGroup, CrashFacets>(r, page, perPage);
+  },
+  crash: async (fp, signal) => (await call<CrashDetail>("GET", `/crashes/${enc(fp)}`, { signal })).data,
+  setCrashStatus: async (fp, body) => (await call<CrashGroup>("PUT", `/crashes/${enc(fp)}/status`, { body })).data,
+  accountDeletions: async (q, signal) => {
+    const page = q.page ?? 1;
+    const perPage = q.per_page ?? 25;
+    const r = await call<AccountDeletion[]>("GET", `/account-deletions${qs({ ...q, page, per_page: perPage })}`, {
+      signal,
+    });
+    return paged<AccountDeletion, DeletionFacets>(r, page, perPage);
+  },
 };
 
 let mockApi: Promise<AdminApi> | null = null;
 
 export function adminApi(): Promise<AdminApi> {
   if (!ADMIN_MOCK) return Promise.resolve(httpApi);
-  mockApi ??= import("./mock").then((m) => m.createMockApi(() => unauthorizedHandler?.()));
+  mockApi ??= import("./mock").then((m) =>
+    m.createMockApi(
+      () => unauthorizedHandler?.(),
+      () => passwordChangeHandler?.()
+    )
+  );
   return mockApi;
 }
