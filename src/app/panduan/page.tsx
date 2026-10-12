@@ -1,124 +1,99 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/shared/Container";
-import {
-  BookOpen,
-  Printer,
-  QrCode,
-  ClipboardList,
-  Wallet,
-  BarChart3,
-  ArrowRight,
-  Clock,
-  Sparkles,
-} from "lucide-react";
-import { GUIDES } from "@/constants/guides";
+import { ArrowRight } from "lucide-react";
+import { GUIDES, GUIDE_CATEGORIES, START_HERE_SLUGS, getGuide, guideSearchText } from "@/constants/guides";
+import { GuideBrowser } from "@/components/guides/GuideBrowser";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Panduan Pemakaian · Sissi POS",
   description:
-    "Panduan lengkap cara pakai aplikasi kasir Sissi: registrasi, kelola menu, printer bluetooth, hingga tutup kasir harian.",
-};
-
-const ICON_MAP = {
-  BookOpen,
-  ClipboardList,
-  Printer,
-  QrCode,
-  Wallet,
-  BarChart3,
+    "Panduan langkah demi langkah memakai aplikasi kasir Sissi POS: daftar & setup perangkat, produk dan varian, pesanan & meja, pembayaran, shift kas, stok, laporan, tim, dan bekerja offline.",
+  alternates: { canonical: "/panduan" },
 };
 
 export default function PanduanPage() {
+  const startHere = START_HERE_SLUGS.map((slug) => getGuide(slug)).filter(
+    (g): g is NonNullable<typeof g> => Boolean(g),
+  );
+
+  const summaries = GUIDES.map((guide) => ({
+    slug: guide.slug,
+    category: guide.category,
+    title: guide.title,
+    description: guide.description,
+    audience: guide.audience,
+    searchText: guideSearchText(guide),
+  }));
+
   return (
-    <div className="flex min-h-screen flex-col w-full bg-[#f3f6f5]">
-      {/* Subpage White Navbar */}
+    <div className="flex min-h-screen w-full flex-col bg-[#f3f6f5]">
       <Navbar isLight />
 
-      <main className="flex-1 pt-28 pb-20">
-        {/* Header */}
-        <section className="py-12 sm:py-16">
+      <main className="flex-1 pt-24 sm:pt-28 pb-20">
+        <section className="pt-8 pb-8 sm:pt-12 sm:pb-10">
           <Container>
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff7a45]/10 text-[#f1702c] text-[12px] font-mono font-medium uppercase tracking-wider mb-4">
-                <Sparkles size={13} />
-                <span>Pusat Bantuan & Panduan</span>
-              </div>
-              <h1 className="text-3xl sm:text-5xl font-semibold text-[#292e31] tracking-tight leading-[1.12]">
-                Panduan pemakaian Sissi
+              <p className="text-[12px] font-mono uppercase tracking-wider text-[#c2561d]">
+                Pusat panduan
+              </p>
+              <h1 className="mt-2 text-[30px] sm:text-[44px] font-semibold leading-[1.12] tracking-tight text-[#292e31]">
+                Cara pakai Sissi POS
               </h1>
-              <p className="mt-4 text-base sm:text-[18px] text-[#525866] leading-relaxed">
-                Langkah demi langkah mulai dari setup awal outlet, kelola menu, sambungkan printer bluetooth, hingga rekap tutup kasir harian.
+              <p className="mt-3 text-[16px] sm:text-[18px] leading-relaxed text-[#525866]">
+                Langkah demi langkah untuk pemilik dan kasir, dari daftar akun sampai tutup kasir. Nama tombol
+                dan menu di sini sama dengan yang tertulis di aplikasi.
               </p>
             </div>
           </Container>
         </section>
 
-        {/* Guides Grid */}
-        <section className="pb-16">
+        {/* Mulai dari sini */}
+        <section className="pb-10">
           <Container>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {GUIDES.map((guide) => {
-                const Icon = ICON_MAP[guide.iconName] || BookOpen;
-                return (
+            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#7d8986]">
+              Baru pertama kali? Mulai dari sini
+            </h2>
+            <ol className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              {startHere.map((guide, i) => (
+                <li key={guide.slug}>
                   <Link
-                    key={guide.slug}
                     href={`/panduan/${guide.slug}`}
-                    className="p-7 rounded-[18px] bg-white border border-[#e4e9e7] shadow-2xs hover:border-[#f1702c]/50 hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer"
+                    className="group flex h-full gap-3 rounded-[14px] border border-[#e4e9e7] bg-white p-4 sm:p-5 transition-colors hover:border-[#f1702c]/60"
                   >
-                    <div>
-                      <div className="flex items-center justify-between mb-5">
-                        <div className="w-12 h-12 rounded-[14px] bg-[#fff5f0] text-[#f1702c] border border-[#ffe0d3] flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <Icon size={24} className="stroke-[1.75]" />
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#7d8986]">
-                          <Clock size={12} />
-                          <span>{guide.estimatedTime}</span>
-                        </div>
-                      </div>
-
-                      <span className="text-[11px] font-semibold font-mono tracking-wider uppercase text-[#7d8986] mb-2 block">
-                        {guide.category}
-                      </span>
-                      <h2 className="text-[19px] font-semibold text-[#292e31] group-hover:text-[#f1702c] transition-colors leading-snug">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#fef1eb] font-mono text-[13px] font-semibold text-[#c2561d]">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[15px] font-semibold leading-snug text-[#292e31] group-hover:text-[#c2561d]">
                         {guide.title}
-                      </h2>
-                      <p className="mt-3 text-[14px] text-[#525866] leading-relaxed line-clamp-3">
+                      </span>
+                      <span className="mt-1 block text-[14px] leading-relaxed text-[#525866]">
                         {guide.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-6 pt-4 border-t border-[#e4e9e7]/60 flex items-center justify-between text-[13px] font-semibold text-[#f1702c]">
-                      <span>Baca panduan lengkap</span>
-                      <ArrowRight size={15} className="group-hover:translate-x-1.5 transition-transform" />
-                    </div>
+                      </span>
+                    </span>
+                    <ArrowRight
+                      size={16}
+                      className="mt-1 shrink-0 text-[#b0b8b5] group-hover:text-[#f1702c]"
+                    />
                   </Link>
-                );
-              })}
-            </div>
+                </li>
+              ))}
+            </ol>
           </Container>
         </section>
 
-        {/* Bantuan Callout */}
-        <section className="py-8">
+        {/* Semua panduan */}
+        <section>
           <Container>
-            <div className="bg-white rounded-[20px] border border-[#e4e9e7] p-8 sm:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xs">
-              <div>
-                <h3 className="text-xl sm:text-2xl font-semibold text-[#292e31]">
-                  Butuh bantuan langsung dari tim kami?
-                </h3>
-                <p className="mt-2 text-[#525866] text-[15px]">
-                  Kalau ada kendala teknis saat setup di tokomu, tim spesialis kami siap pandu via WhatsApp sampai kasirmu berjalan lancar.
-                </p>
-              </div>
-              <Link
-                href="https://wa.me/6281234567890"
-                className="h-[46px] px-6 bg-[#f1702c] hover:bg-[#ff7a45] text-white font-medium text-[14px] rounded-[10px] flex items-center justify-center transition-colors shadow-2xs cursor-pointer shrink-0"
-              >
-                Chat WhatsApp
-              </Link>
+            <div className="max-w-4xl">
+              <GuideBrowser
+                categories={GUIDE_CATEGORIES.map(({ id, label, description }) => ({ id, label, description }))}
+                guides={summaries}
+              />
             </div>
           </Container>
         </section>
