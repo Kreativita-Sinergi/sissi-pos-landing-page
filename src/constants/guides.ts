@@ -519,6 +519,12 @@ export const GUIDES: GuideItem[] = [
           "Bisa juga lewat pencarian “Printer struk”, atau langkah “Hubungkan printer struk” di kartu persiapan Beranda.",
           "Perubahan di layar ini langsung tersimpan (muncul “Pengaturan tersimpan”); tidak perlu menekan Simpan kedua kali.",
         ],
+        image: {
+          ...HP,
+          src: "/panduan/atur-printer-hp.png",
+          alt: "Layar Atur printer dengan printer kasir Bluetooth dan printer dapur jaringan",
+          caption: "Dua printer: Bluetooth untuk struk, Wi-Fi/LAN untuk dapur.",
+        },
       },
       {
         id: "bluetooth",
@@ -788,6 +794,12 @@ export const GUIDES: GuideItem[] = [
           "“Siap diimpor” — centang produk yang mau diimpor, atau “Pilih semua”.",
         ],
         points: ["Banner “Kategori baru yang akan dibuat” menunjukkan kategori yang belum ada."],
+        image: {
+          ...HP,
+          src: "/panduan/impor-csv-hp.png",
+          alt: "Layar Periksa impor dengan baris kembar dan tombol Impor 7 produk",
+          caption: "Periksa impor: pilih baris kembar sebelum mengimpor.",
+        },
       },
       {
         id: "impor",
@@ -1459,6 +1471,12 @@ export const GUIDES: GuideItem[] = [
           "“Diproses” — sudah lunas dan sedang disiapkan atau siap.",
           "“Selesai” — pesanan selesai, ditolak, dibatalkan, atau kedaluwarsa dalam 24 jam terakhir.",
         ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pesanan-qr-tablet.png",
+          alt: "Layar Pesanan QR di tablet dengan tiga pesanan menunggu dibayar",
+          caption: "Pesanan QR: tiap kartu punya tombol Tolak dan Terima & Bayar.",
+        },
       },
       {
         id: "terima-bayar",
@@ -2714,6 +2732,14 @@ export const GUIDES: GuideItem[] = [
           "Status diperbarui otomatis saat online. Ketuk “Perbarui” untuk mengambil status terbaru sekarang.",
         ],
         points: ["Halaman ini juga terbuka dari tombol “Lihat Langganan”, “Upgrade ke Pro”, atau “Perpanjang”."],
+        image: {
+          device: "hp",
+          width: 390,
+          height: 1264,
+          src: "/panduan/langganan-hp.png",
+          alt: "Halaman Langganan: status uji coba Pro, transaksi bulan ini, fitur Pro, dan cara bayar",
+          caption: "Halaman Langganan: status paket, fitur Pro, dan cara bayar.",
+        },
       },
       {
         id: "perpanjang",
