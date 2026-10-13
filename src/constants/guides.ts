@@ -158,7 +158,7 @@ export const GUIDES: GuideItem[] = [
         id: "produk",
         title: "Tambahkan produk",
         description:
-          "Buka “Produk”, ketuk “Tambah produk”, isi nama, kategori, dan harga. Kategori bisa dibuat langsung dari form lewat “Buat kategori baru”. Punya banyak produk? Impor sekaligus dari CSV lewat “Kelola” › “Impor dari CSV”.",
+          "Buka “Produk”, ketuk “Tambah produk”, isi nama, kategori, dan harga. Kategori bisa dibuat langsung dari form lewat “Buat kategori baru”. Punya banyak produk? Impor sekaligus dari Excel atau CSV lewat “Kelola” › “Impor produk”.",
       },
       {
         id: "buka-kasir",
@@ -531,14 +531,20 @@ export const GUIDES: GuideItem[] = [
         title: "Printer Bluetooth",
         steps: [
           "Di lembar “Printer baru”, pilih “Jenis sambungan”: “Bluetooth”.",
-          "Ketuk “Pilih printer Bluetooth”. Bila diminta, ketuk “Izinkan” untuk izin Perangkat sekitar (atau Lokasi di Android 11 ke bawah). Bila Bluetooth mati, ketuk “Nyalakan Bluetooth”.",
-          "Pilih printer dari “Sudah dipasangkan”, atau dari “Ditemukan di sekitar”. Printer yang belum dipasangkan bertanda “Pasangkan” — ketuk untuk memasangkannya langsung dari aplikasi.",
-          "“Nama printer” terisi otomatis dari nama Bluetooth; ganti bila perlu (mis. Printer kasir).",
+          "Nyalakan printer dan dekatkan ke HP, lalu ketuk “Pilih printer Bluetooth”. Bila diminta, ketuk “Izinkan” untuk izin Perangkat sekitar (atau Lokasi di Android 11 ke bawah). Bila Bluetooth mati, ketuk “Nyalakan Bluetooth”.",
+          "Sissi langsung mencari sendiri; printer muncul di “Sudah dipasangkan” atau “Ditemukan di sekitar”. Printer terdekat diberi tanda “Paling dekat”.",
+          "Ketuk printernya untuk memilih. Printer yang belum dipasangkan bertanda “Pasangkan” — ketuk untuk memasangkannya langsung dari aplikasi.",
+          "“Nama printer” terisi otomatis dari nama Bluetooth; ganti bila perlu, atau pilih nama cepat “Printer kasir”, “Printer dapur”, atau “Printer bar”.",
           "Atur peran, lebar kertas, dan pemotong (lihat di bawah), ketuk “Tes cetak”, lalu “Simpan”.",
+        ],
+        points: [
+          "Punya beberapa printer bernama sama? Namanya dibedakan dengan kode singkat, mis. “RPP02N (1A90)”. Ketuk “Cetak tes” di sebelah printer — printer yang mengeluarkan kertas bertuliskan “PRINTER INI” adalah printer itu.",
+          "Printer tidak ada di daftar? Sebagian printer tidak mengirim nama. Ketuk “Tampilkan perangkat lain”, lalu ketuk “Cetak tes” pada “Perangkat tanpa nama” untuk memastikan.",
+          "Di sebagian HP (terutama Android 11 ke bawah), Lokasi (GPS) harus menyala agar printer bisa ditemukan. Bila muncul “Nyalakan Lokasi”, ketuk “Buka pengaturan Lokasi”. Sissi tidak menyimpan lokasimu.",
         ],
         callout: {
           type: "tip",
-          text: "Gagal memasangkan? Pastikan printer menyala dan tidak tersambung ke HP lain. PIN printer biasanya 0000 atau 1234. Bila printer tidak muncul, ketuk “Cari lagi”.",
+          text: "Gagal memasangkan? Pastikan printer menyala dan tidak tersambung ke HP lain. PIN printer biasanya 0000 atau 1234. Bila printer tidak muncul, matikan lalu nyalakan lagi printernya, kemudian ketuk “Cari lagi”.",
         },
       },
       {
@@ -602,6 +608,21 @@ export const GUIDES: GuideItem[] = [
           "Buka Pengaturan › “Struk”. Isi “Header struk”, “Footer struk”, dan “Instagram”, pilih “Tampilkan persen pajak” bila perlu, lalu cek lewat “Lihat pratinjau”. Pengaturan ini berlaku untuk semua perangkat di outlet.",
       },
       {
+        id: "salinan-toko",
+        title: "Salinan struk untuk toko",
+        description:
+          "Perlu arsip kertas untuk kasir? Sissi bisa mencetak satu salinan bertanda “SALINAN TOKO” setelah struk pelanggan, untuk semua transaksi.",
+        steps: [
+          "Buka Pengaturan › “Struk”, lalu di kartu “Salinan untuk toko” nyalakan “Cetak salinan untuk toko”.",
+          "Pilih “Isi salinan”: “Sama seperti struk”, atau “Ringkas” (tanpa daftar barang — hanya nomor, waktu, kasir, total, dan pembayaran; hemat kertas).",
+          "Ketuk “Lihat contoh salinan” untuk melihat hasilnya.",
+        ],
+        points: [
+          "Printer tanpa pemotong otomatis: setelah struk pelanggan, muncul “Sobek struk pelanggan dulu”. Sobek struknya, lalu ketuk “Cetak salinan”.",
+          "Butuh salinan untuk transaksi yang sudah lewat? Buka “Riwayat” › pilih transaksi › “Salinan toko”.",
+        ],
+      },
+      {
         id: "cetak-ulang",
         title: "Bila struk gagal dicetak dan cetak ulang",
         points: [
@@ -642,7 +663,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "layar-dapur", "tanya-jawab-masalah-umum"],
-    keywords: ["printer", "bluetooth", "thermal", "struk", "nota", "wifi", "lan", "58mm", "80mm", "laci", "cash drawer", "printer dapur", "pairing", "pemotong", "auto cut"],
+    keywords: ["printer", "bluetooth", "thermal", "struk", "nota", "wifi", "lan", "58mm", "80mm", "laci", "cash drawer", "printer dapur", "pairing", "pemotong", "auto cut", "cetak tes", "paling dekat", "salinan struk", "salinan toko", "arsip struk"],
   },
 
   // ───────────────────────────── PRODUK ─────────────────────────────
@@ -742,7 +763,7 @@ export const GUIDES: GuideItem[] = [
       },
       {
         question: "Bisakah impor produk dari Excel?",
-        answer: "Bisa. Simpan daftar produk sebagai CSV, lalu impor lewat “Produk” › “Kelola” › “Impor dari CSV”. Baca “Impor banyak produk dari CSV”.",
+        answer: "Bisa. Berkas Excel (.xlsx) atau CSV bisa langsung diimpor lewat “Produk” › “Kelola” › “Impor produk”. Baca “Impor banyak produk dari Excel atau CSV”.",
       },
     ],
     relatedSlugs: ["impor-produk-dari-csv", "produk-dengan-varian", "hpp-resep-dan-bahan-baku"],
@@ -751,49 +772,67 @@ export const GUIDES: GuideItem[] = [
   {
     slug: "impor-produk-dari-csv",
     category: "produk",
-    title: "Impor banyak produk dari CSV",
-    description: "Isi template di Excel atau Google Sheets, periksa hasilnya, lalu impor sampai 1.000 produk sekaligus.",
+    title: "Impor banyak produk dari Excel atau CSV",
+    description: "Isi template Excel atau CSV, periksa hasilnya, lalu impor sampai 1.000 produk sekaligus — lengkap dengan varian, bahan baku, resep, dan pilihan ekstra.",
     audience: ["Pemilik"],
-    readMinutes: 5,
+    readMinutes: 6,
     lastUpdated: UPDATED_NEW,
     overview:
-      "Punya banyak produk? Daripada mengisi satu per satu, isi template CSV lalu impor sekaligus. Aplikasi menampilkan pratinjau sehingga kamu bisa memilih produk yang diimpor dan menangani baris kembar sebelum menyimpan.",
+      "Punya banyak produk? Daripada mengisi satu per satu, isi template lalu impor sekaligus. Berkas Excel (.xlsx) bisa langsung dipilih tanpa diubah ke CSV, dan template Excel lengkap juga memuat varian, bahan baku, resep, dan pilihan ekstra. Ekspor Excel dari aplikasi kasir lain juga bisa dicoba langsung: lembar dan kolomnya dikenali otomatis. Sebelum menyimpan, aplikasi menampilkan hasilnya sehingga kamu bisa memilih produk yang diimpor dan menangani baris kembar.",
     prerequisites: ["Aplikasi spreadsheet seperti Excel atau Google Sheets (di HP atau komputer)."],
     steps: [
       {
         id: "buka",
         title: "Buka Impor produk",
         steps: [
-          "Buka “Produk”, ketuk “Kelola”, lalu “Impor dari CSV”.",
-          "Bila daftar produk masih kosong, bisa juga lewat tautan “Atau impor banyak produk dari CSV”.",
+          "Buka “Produk”, ketuk “Kelola”, lalu “Impor produk”.",
+          "Bila daftar produk masih kosong, bisa juga lewat tautan “Atau impor banyak produk dari Excel atau CSV”.",
         ],
       },
       {
         id: "template",
         title: "Unduh dan isi template",
         steps: [
-          "Ketuk “Unduh template”, lalu simpan atau kirim berkas template-impor-produk.csv (mis. ke Google Drive atau email).",
-          "Buka di Excel/Google Sheets. Isi satu baris untuk satu produk; hapus baris contoh.",
-          "Simpan sebagai CSV (pemisah koma atau titik koma).",
+          "Ketuk “Unduh template”, lalu pilih “Excel lengkap” (produk, varian, bahan baku, resep, dan pilihan ekstra dalam satu berkas) atau “CSV sederhana” (produk saja; varian lewat kolom varian).",
+          "Simpan atau kirim berkas templatenya (mis. ke Google Drive atau email), lalu buka di Excel/Google Sheets.",
+          "Isi satu baris untuk satu produk; hapus baris contoh.",
+          "Simpan sebagai .xlsx atau .csv (CSV boleh memakai pemisah koma atau titik koma).",
         ],
         points: [
           "Wajib: “nama” dan “harga” (angka tanpa titik, mis. 15000).",
           "Opsional: “kategori” (dibuat otomatis bila belum ada), “modal”, “sku”, “barcode” (lebih dari satu dipisah titik koma), “satuan” (kosong = pcs), “lacak_stok” (ya/tidak), “stok_awal”, “stok_min”, “kena_pajak” (ya/tidak, kosong = ya), dan “deskripsi”.",
+          "Kolom “varian” boleh kosong; untuk produk bervarian, ulangi nama produk di baris lain dengan varian berbeda. Kolom “pilihan_ekstra” berisi nama grup pilihan ekstra, dipisah titik koma (;).",
           "Usaha jasa punya kolom tambahan “durasi_menit”.",
           "Kolom yang tidak dikenali diabaikan.",
+        ],
+      },
+      {
+        id: "lembar-excel",
+        title: "Lembar lain di template Excel",
+        description:
+          "Template Excel lengkap punya lembar tambahan. Isi yang perlu saja; lembar dikenali dari judul kolomnya, dan lembar yang tidak dikenali diabaikan.",
+        points: [
+          "“Varian” — nama_produk, varian, harga, modal, sku, barcode.",
+          "“Bahan” — nama_bahan, satuan (g, kg, ml, l, pcs…), harga_beli, isi_kemasan, stok_min, sku.",
+          "“Resep” — nama_produk, varian (boleh kosong), nama_bahan, jumlah, satuan.",
+          "“Pilihan Ekstra” — grup, pilih_satu (ya/tidak), pilihan, harga.",
         ],
       },
       {
         id: "pilih-berkas",
         title: "Pilih berkas dan periksa hasilnya",
         steps: [
-          "Ketuk “Pilih berkas CSV”. Muncul layar “Periksa impor”.",
+          "Ketuk “Pilih berkas”, lalu pilih berkas .xlsx atau .csv. Muncul layar “Periksa impor”.",
+          "Di bagian atas ada kartu berkas berisi nama berkas dan isinya (mis. jumlah produk, varian, bahan baku). Salah memilih berkas? Ketuk “Ganti berkas”.",
           "“Gagal” — baris yang isiannya salah, mis. “harga: bukan angka yang sah”. Perbaiki di berkas, lalu pilih ulang berkasnya.",
           "“Kembar di berkas” — baris dengan SKU/barcode sama: pilih satu yang dipakai. Baris dengan nama sama: centang semua yang memang ingin diimpor.",
-          "“Sudah ada di daftar produk” — produk yang SKU, barcode, atau namanya sudah ada. Pilih “Pertahankan” (bawaan) atau “Pakai CSV” untuk menimpa.",
+          "“Sudah ada di daftar produk” — produk yang SKU, barcode, atau namanya sudah ada. Pilih “Pertahankan” (bawaan) atau “Pakai berkas” untuk menimpa.",
           "“Siap diimpor” — centang produk yang mau diimpor, atau “Pilih semua”.",
         ],
-        points: ["Banner “Kategori baru yang akan dibuat” menunjukkan kategori yang belum ada."],
+        points: [
+          "Banner “Kategori baru yang akan dibuat” menunjukkan kategori yang belum ada.",
+          "Bagian “Bahan baku” dan “Pilihan ekstra” menampilkan bahan dan grup yang akan dibuat. Bahan atau grup bernama sama yang sudah ada dipakai tanpa diubah.",
+        ],
         image: {
           ...HP,
           src: "/panduan/impor-csv-hp.png",
@@ -806,7 +845,7 @@ export const GUIDES: GuideItem[] = [
         title: "Impor",
         steps: [
           "Ketuk “Impor … produk”. Bila ada produk yang ditimpa, konfirmasi “Timpa & impor”.",
-          "Muncul “Impor selesai” dengan jumlah produk baru, diperbarui, dan dilewati. Ketuk “Selesai” atau “Impor berkas lain”.",
+          "Muncul “Impor selesai” dengan jumlah produk baru, diperbarui, dan dilewati (serta varian, resep, bahan baku, dan grup pilihan ekstra bila ada). Ketuk “Selesai” atau “Impor berkas lain”.",
         ],
         callout: {
           type: "info",
@@ -817,24 +856,29 @@ export const GUIDES: GuideItem[] = [
     faqs: [
       {
         question: "Apakah bisa mengimpor varian?",
-        answer: "Belum. Impor membuat produk satu harga. Varian ditambahkan lewat form produk setelah impor.",
+        answer:
+          "Bisa, untuk produk baru: isi lembar “Varian” di template Excel, atau ulangi nama produk dengan kolom “varian” berbeda. Varian produk yang sudah ada tetap diatur lewat form produk.",
       },
       {
         question: "Apakah stok produk yang sudah ada ikut berubah?",
         answer:
-          "Tidak. “stok_awal” hanya berlaku untuk produk baru. Menimpa produk dengan “Pakai CSV” mengubah nama, harga, kategori, kode, dan pengaturan, tetapi tidak mengubah stok, foto, maupun modifier.",
+          "Tidak. “stok_awal” hanya berlaku untuk produk baru. Menimpa produk dengan “Pakai berkas” mengubah nama, harga, kategori, kode, dan pengaturan, tetapi tidak mengubah stok. Sel kosong mempertahankan data lama.",
       },
       {
         question: "Berapa batasnya?",
-        answer: "Maksimal 1.000 baris dan 2 MB per berkas. Lebih dari itu, bagi menjadi beberapa berkas.",
+        answer: "Maksimal 1.000 produk per berkas, dengan ukuran berkas maksimal 2 MB untuk CSV dan 5 MB untuk Excel. Lebih dari itu, bagi menjadi beberapa berkas.",
+      },
+      {
+        question: "Berkas saya .xls (Excel lama).",
+        answer: "Buka di Excel lalu simpan ulang sebagai .xlsx, kemudian pilih lagi.",
       },
       {
         question: "Muncul “Kolom \"nama\" tidak ditemukan”.",
         answer: "Baris pertama berkas harus berisi judul kolom dari template. Unduh ulang template dan salin datamu ke dalamnya.",
       },
     ],
-    relatedSlugs: ["menambah-produk", "produk-dengan-varian", "stok-barang-dan-stok-masuk"],
-    keywords: ["impor", "import", "csv", "excel", "google sheets", "upload produk", "massal", "bulk", "template"],
+    relatedSlugs: ["menambah-produk", "produk-dengan-varian", "hpp-resep-dan-bahan-baku", "stok-barang-dan-stok-masuk"],
+    keywords: ["impor", "import", "csv", "excel", "xlsx", "google sheets", "upload produk", "massal", "bulk", "template", "pindah dari aplikasi lain", "resep", "bahan baku"],
   },
   {
     slug: "produk-dengan-varian",
@@ -1311,7 +1355,11 @@ export const GUIDES: GuideItem[] = [
         id: "pelayan",
         title: "Untuk pelayan dan kasir",
         description:
-          "Bila ada pesanan siap, Kasir menampilkan “Pesanan siap disajikan”. Di “Pesanan” › “Status dapur”, antar ke tamu lalu ketuk “Tandai sudah diantar”.",
+          "Saat dapur menandai pesanan siap, Kasir langsung memberi tahu. Antar ke tamu, lalu ketuk “Tandai sudah diantar”. Daftar lengkapnya juga ada di “Pesanan” › “Status dapur”.",
+        devices: {
+          hp: "Muncul ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap disajikan”. Ketuk loncengnya untuk membuka lembar “Siap diantar”.",
+          tablet: "Muncul spanduk “Pesanan siap disajikan” di layar Kasir; ketuk “Lihat”.",
+        },
       },
       {
         id: "perangkat-khusus",
@@ -1344,7 +1392,7 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Buka Pengaturan › “Penjualan” › “Pesan & Bayar Mandiri”.",
           "Nyalakan “Terima pesanan dari QR”.",
-          "Atur kartu-kartu di bawahnya (lihat langkah berikut), lalu ketuk “Simpan”.",
+          "Atur pilihan lainnya (lihat langkah berikut), lalu ketuk “Simpan”.",
         ],
         callout: {
           type: "info",
@@ -1354,7 +1402,7 @@ export const GUIDES: GuideItem[] = [
       {
         id: "mode-meja",
         title: "Pilih cara pelanggan menentukan meja",
-        description: "Di kartu “Meja”, pilih salah satu:",
+        description: "Pilih salah satu mode meja:",
         points: [
           "“QR per meja” (bawaan) — tiap meja punya QR sendiri, meja terisi otomatis. QR outlet dipakai untuk pesanan tanpa meja.",
           "“Pilih meja” — cukup satu QR outlet; pelanggan memilih nomor meja saat makan di tempat.",
@@ -1391,7 +1439,7 @@ export const GUIDES: GuideItem[] = [
         id: "kelola-qr",
         title: "Buat, cetak, dan tempel QR",
         steps: [
-          "Di kartu “Kode QR pesanan”, ketuk “Kelola QR” (atau tombol “Kelola QR” di layar Pesanan QR).",
+          "Di Pengaturan › “Pesan & Bayar Mandiri”, ketuk “Kelola QR” (atau tombol “Kelola QR” di layar Pesanan QR).",
           "Untuk QR per meja, ketuk “Buat … QR” untuk membuat QR semua meja sekaligus, atau “Buat QR” per meja. Kode muncul setelah perangkat online dan tersinkron (status “Menunggu sinkron” lalu “Aktif”).",
           "Ketuk “Lihat” pada QR, lalu “Cetak” untuk mencetak ke printer struk perangkat ini, atau “Bagikan” untuk mengirim gambar QR (mis. untuk dicetak di percetakan).",
           "Tempel QR meja di tiap meja, dan QR outlet di kasir/konter.",
@@ -2418,6 +2466,9 @@ export const GUIDES: GuideItem[] = [
           "“Transaksi dibatalkan (void) atau di-refund” — berisi nomor struk, nominal, dan outlet.",
           "“Login di perangkat baru” — akun dimasuki dari HP/tablet yang belum pernah dipakai.",
           "“Langganan” — pengingat masa Pro berakhir, batas transaksi Gratis, dan pembayaran tercatat.",
+          "“Stok menipis atau habis” — barang atau bahan baku turun ke batas minimum atau habis, per outlet.",
+          "“Ringkasan penjualan harian” — total penjualan dan jumlah transaksi hari ini, dikirim pukul 21.00.",
+          "“Pengingat booking (usaha sewa)” — 15 menit sebelum booking mulai; juga muncul di perangkat kasir outlet itu.",
         ],
         callout: {
           type: "tip",
@@ -2432,7 +2483,7 @@ export const GUIDES: GuideItem[] = [
       },
       {
         question: "Apakah kasir menerima peringatan pemilik?",
-        answer: "Tidak. Peringatan pemilik hanya untuk perangkat yang dipakai pemilik. Kasir hanya menerima notifikasi pesanan QR.",
+        answer: "Tidak. Peringatan pemilik hanya untuk perangkat yang dipakai pemilik. Perangkat kasir hanya menerima notifikasi pesanan QR dan pengingat booking (usaha sewa).",
       },
       {
         question: "Saya void dari HP sendiri tetapi tidak dapat peringatan.",
@@ -2440,7 +2491,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["akun-dan-keamanan", "membatalkan-transaksi-void-refund", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["notifikasi", "push", "pemberitahuan", "peringatan", "alert", "lonceng"],
+    keywords: ["notifikasi", "push", "pemberitahuan", "peringatan", "alert", "lonceng", "stok menipis", "ringkasan harian", "pengingat booking"],
   },
 
   // ───────────────────────────── OFFLINE ─────────────────────────────
@@ -2451,7 +2502,7 @@ export const GUIDES: GuideItem[] = [
     description: "Apa yang tetap bisa dilakukan saat internet putus dan arti tiap status sinkron.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 4,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_NEW,
     overview:
       "Sissi menyimpan data di perangkat lebih dulu, lalu mengirimnya ke server di latar belakang. Karena itu kasir tetap bisa berjualan saat internet putus.",
     steps: [
@@ -2462,6 +2513,7 @@ export const GUIDES: GuideItem[] = [
           "Mencatat transaksi, menyimpan pesanan, membuka dan menutup kasir.",
           "Data tersimpan di perangkat dan menunggu dikirim.",
           "Hal yang butuh server tetap perlu internet, misalnya masuk akun, unggah foto, dan sinkron pertama.",
+          "Juga butuh internet: menerima Pesanan QR baru dari pelanggan, memperbarui status langganan, dan mengganti password.",
         ],
       },
       {
@@ -2603,14 +2655,24 @@ export const GUIDES: GuideItem[] = [
     description: "Ganti password, PIN supervisor, login di perangkat baru, dan keluar akun.",
     audience: ["Pemilik"],
     readMinutes: 3,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_NEW,
     overview: "Pengaturan akun ada di Pengaturan › “Akun & keamanan”.",
     steps: [
       {
         id: "password",
         title: "Ganti password",
-        description:
-          "Belum ada form ganti password di dalam aplikasi. Keluar dari akun, lalu gunakan “Lupa password?” di layar masuk; kode dikirim ke email akun.",
+        description: "Khusus pemilik; karyawan masuk memakai PIN. Mengganti password butuh internet.",
+        steps: [
+          "Buka Pengaturan › “Akun & keamanan”. Di kartu “Keamanan”, pada baris “Password”, ketuk “Ganti”.",
+          "Isi “Password saat ini”, lalu “Password baru” dan “Ulangi password”.",
+          "Nyalakan “Keluarkan perangkat lain” bila HP, tablet, dan dasbor web lain harus masuk lagi dengan password baru. Perangkat ini tetap masuk.",
+          "Ketuk “Simpan Password”. Muncul “Password berhasil disimpan.”",
+        ],
+        points: [
+          "Daftar lewat Google dan belum pernah membuat password? Kosongkan “Password saat ini” untuk mengatur password.",
+          "Lupa password saat ini? Gunakan “Lupa password?” di layar masuk; kode dikirim ke email akun.",
+          "Bila muncul “Terlalu banyak percobaan”, tunggu sekitar 15 menit, lalu coba lagi.",
+        ],
       },
       {
         id: "pin-supervisor",

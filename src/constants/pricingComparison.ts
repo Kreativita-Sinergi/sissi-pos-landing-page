@@ -50,7 +50,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
     category: "Produk & stok",
     items: [
       { name: "Produk, varian & stok menipis", gratis: true, pro: true },
-      { name: "Impor produk dari CSV", gratis: true, pro: true },
+      { name: "Impor produk dari Excel/CSV", gratis: true, pro: true },
     ],
   },
   {

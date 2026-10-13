@@ -8,7 +8,7 @@ import { AjakanSection } from "@/components/sections/AjakanSection";
 export const metadata: Metadata = {
   title: "Fitur · Sissi POS",
   description:
-    "Kasir offline, QRIS statis, printer Bluetooth & Wi-Fi, layar dapur, pesan lewat QR meja, impor produk CSV, varian dan HPP dari resep, stok bahan baku, PO dan opname, shift, laporan, absensi dan gaji, order servis, serta booking sewa. Semua di HP dan tablet Android.",
+    "Kasir offline, QRIS statis, printer Bluetooth & Wi-Fi, layar dapur, pesan lewat QR meja, impor produk Excel/CSV, varian dan HPP dari resep, stok bahan baku, PO dan opname, shift, laporan, absensi dan gaji, order servis, serta booking sewa. Semua di HP dan tablet Android.",
 };
 
 interface FeatureItem {
@@ -105,7 +105,7 @@ const FEATURE_BLOCKS: FeatureBlock[] = [
     imageAlt: "Form produk Sissi: varian Ukuran (S, M, L) dan Suhu (Panas, Es) dengan daftar kombinasi.",
     items: [
       {
-        title: "Impor produk dari CSV",
+        title: "Impor produk dari Excel/CSV",
         description: "Isi template di Excel atau Google Sheets, periksa pratinjau, impor sampai 1.000 produk sekaligus.",
       },
       {
