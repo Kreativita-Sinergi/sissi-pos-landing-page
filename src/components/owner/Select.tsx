@@ -221,7 +221,19 @@ export function Select<V extends string>({
         aria-labelledby={aria["aria-labelledby"]}
         aria-describedby={aria["aria-describedby"]}
         disabled={disabled}
-        onClick={() => (open ? close() : openList())}
+        onClick={(e) => {
+          // Klik pada <label> field diteruskan browser sebagai klik tombol ini — koordinatnya di label (di luar
+          // kotak tombol) atau 0,0. Itu cukup memfokuskan field, tidak membuka daftar; daftar hanya dibuka oleh klik
+          // di field atau Enter/Spasi/panah (onKeyDown, sudah preventDefault sehingga tidak lewat sini).
+          const r = buttonRef.current?.getBoundingClientRect();
+          const inside = r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+          if (!inside) {
+            buttonRef.current?.focus();
+            return;
+          }
+          if (open) close();
+          else openList();
+        }}
         onKeyDown={onKeyDown}
         className={`flex min-h-10 w-full items-center gap-2 rounded-[10px] border bg-white py-2 pr-3 pl-3 text-left text-[14px] transition-colors disabled:cursor-not-allowed disabled:bg-bg-muted disabled:text-text-muted ${
           invalid ? "border-danger" : open ? "border-brand-primary" : "border-border-subtle hover:border-border-active"
