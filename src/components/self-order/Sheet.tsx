@@ -81,6 +81,8 @@ export function Sheet({
       ref={ref}
       aria-labelledby={titleId}
       onCancel={(e) => {
+        // `cancel` dari <input type="file"> (pemilih file dibatalkan) ikut naik ke sini — abaikan; hanya Esc dialog.
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         onClose();
       }}

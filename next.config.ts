@@ -12,9 +12,20 @@ const nextConfig: NextConfig = {
       { key: "Referrer-Policy", value: "same-origin" },
       { key: "Cache-Control", value: "no-store" },
     ];
+    // Dasbor pemilik (/dasbor) & halaman masuknya (/masuk): sama seperti admin. /masuk memakai
+    // Referrer-Policy bawaan peramban (strict-origin-when-cross-origin) karena tombol Google Identity
+    // Services memeriksa origin halaman lewat Referer. Belum ada Content-Security-Policy di situs ini;
+    // bila kelak ditambah, izinkan https://accounts.google.com (script, frame, connect) dan origin API.
+    const ownerHeaders = adminHeaders;
+    const loginHeaders = adminHeaders.map((h) =>
+      h.key === "Referrer-Policy" ? { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" } : h
+    );
     return [
       { source: "/admin", headers: adminHeaders },
       { source: "/admin/:path*", headers: adminHeaders },
+      { source: "/dasbor", headers: ownerHeaders },
+      { source: "/dasbor/:path*", headers: ownerHeaders },
+      { source: "/masuk", headers: loginHeaders },
     ];
   },
   turbopack: {

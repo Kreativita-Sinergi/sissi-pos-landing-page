@@ -51,8 +51,9 @@ export function ClearFiltersButton({ onClick }: { onClick: () => void }) {
 
 type Close = (refocus?: boolean) => void;
 const CloseContext = createContext<Close>(() => {});
-/** Menutup popover terdekat (dipakai isi panel). */
+/** Menutup popover terdekat (dipakai isi panel; juga dipakai panel khusus di dasbor pemilik). */
 const useClose = () => useContext(CloseContext);
+export const useFilterClose = useClose;
 
 /** Tombol + popover dasar: Esc / klik di luar / Tab keluar menutup; fokus kembali ke tombol. */
 export function FilterPopover({
@@ -188,7 +189,7 @@ export type FilterOption = {
 };
 
 /** Daftar pilihan (role=listbox) dengan navigasi panah, Home/End, Enter/Spasi. */
-function OptionList({
+export function OptionList({
   id,
   label,
   options,
@@ -270,15 +271,13 @@ function OptionList({
               >
                 {on && <Check size={12} strokeWidth={3} />}
               </span>
-            ) : (
-              <span aria-hidden className="inline-flex w-4 shrink-0 justify-center">
-                {on && <Check size={15} strokeWidth={2.5} />}
-              </span>
-            )}
+            ) : null}
             <span className="min-w-0 flex-1 truncate">{o.label}</span>
             {o.count !== undefined && o.count !== null && (
               <span className="text-[12.5px] font-medium tabular-nums text-text-muted">{o.count.toLocaleString("id-ID")}</span>
             )}
+            {/* Pilihan tunggal: centang di kanan (tanpa ruang kosong di kiri), sama dengan dropdown form. */}
+            {!multiple && <Check size={15} strokeWidth={2.5} aria-hidden className={`shrink-0 ${on ? "" : "invisible"}`} />}
           </li>
         );
       })}
@@ -286,7 +285,7 @@ function OptionList({
   );
 }
 
-function PanelFooter({ onReset, resetDisabled, children }: { onReset?: () => void; resetDisabled?: boolean; children?: React.ReactNode }) {
+export function PanelFooter({ onReset, resetDisabled, children }: { onReset?: () => void; resetDisabled?: boolean; children?: React.ReactNode }) {
   if (!onReset && !children) return null;
   return (
     <div className="flex items-center justify-between gap-2 border-t border-border-subtle px-2 py-1.5">

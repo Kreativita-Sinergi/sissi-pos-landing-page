@@ -47,6 +47,8 @@ export function ConfirmDialog({
       aria-labelledby={titleId}
       aria-describedby={bodyId}
       onCancel={(e) => {
+        // `cancel` dari <input type="file"> (pemilih file dibatalkan) ikut naik ke sini — abaikan; hanya Esc dialog.
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         if (!busy) onClose();
       }}
@@ -118,6 +120,8 @@ export function Modal({
       ref={ref}
       aria-labelledby={titleId}
       onCancel={(e) => {
+        // `cancel` dari <input type="file"> (pemilih file dibatalkan) ikut naik ke sini — abaikan; hanya Esc dialog.
+        if (e.target !== e.currentTarget) return;
         e.preventDefault();
         if (dismissible) onClose();
       }}
