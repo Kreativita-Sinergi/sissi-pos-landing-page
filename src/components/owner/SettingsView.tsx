@@ -1,28 +1,26 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useId } from "react";
 import Link from "next/link";
-import { ChevronRight, Info, Lock, Plus, ShieldCheck, Store, Trash2 } from "lucide-react";
+import { ChevronRight, Info, Lock, Plus, Store, Trash2 } from "lucide-react";
 import { useToast } from "@/components/admin/toast";
 import {
   Badge,
   btn,
   cardClass,
   ErrorBlock,
-  errorMessage,
   Field,
   focusRing,
   formatRupiah,
   iconBtn,
   inputClass,
   PageHeader,
-  Section,
   SkeletonList,
   Switch,
   useLoad,
 } from "@/components/admin/ui";
 import { newId, pullAll } from "@/lib/owner/api";
-import { hasFeature, saveErrorText, saveRecord, type SaveOutcome } from "@/lib/owner/records";
+import { hasFeature, saveRecord } from "@/lib/owner/records";
 import {
   type AttendanceRules,
   isHHMM,
@@ -35,7 +33,6 @@ import {
   type OrderType,
   readAttendance,
   readLoyalty,
-  readPaymentMethods,
   readReceipt,
   readRounding,
   readServiceFee,
@@ -52,14 +49,15 @@ import {
 } from "@/lib/owner/settings";
 import type { SyncRecord } from "@/lib/owner/types";
 import { zoneLabel } from "@/lib/owner/tz";
-import { ChipGroup, EditSection, NumberInput, Segmented, useDraft } from "./editing";
+import { ChipGroup, EditSection, NumberInput, Segmented, useDraft, useSaver } from "./editing";
+import { PaymentMethodsSection } from "./PaymentMethodsSection";
 import { ORDER_TYPES, WEEKDAYS } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { Select } from "./Select";
 import { LockedCard } from "./ui";
 
-// Pengaturan: per outlet (`outlets` — nama/alamat, pajak, biaya layanan, pembulatan, struk, transaksi; metode
-// pembayaran hanya baca) dan per usaha (`business_settings` — loyalti, aturan absensi). Setiap bagian disimpan
+// Pengaturan: per outlet (`outlets` — nama/alamat, pajak, biaya layanan, pembulatan, struk, transaksi, metode
+// pembayaran dengan konfirmasi password) dan per usaha (`business_settings` — loyalti, aturan absensi). Setiap bagian disimpan
 // sendiri dengan seluruh field record + `base_updated_at`; kunci pengaturan yang tidak diedit tetap utuh.
 
 type Rec = SyncRecord & { settings?: unknown; name?: string; address?: string };
@@ -69,50 +67,6 @@ const ORDER_TYPE_OPTIONS = ORDER_TYPE_VALUES.map((v) => ({ value: v, label: ORDE
 function settingsOf(rec: Rec | null | undefined): Obj {
   const s = rec?.settings;
   return typeof s === "object" && s !== null && !Array.isArray(s) ? (s as Obj) : {};
-}
-
-/** Simpan + umpan balik standar (applied/conflict/rejected) untuk satu bagian. */
-function useSaver(onRecord: (r: SyncRecord) => void) {
-  const toast = useToast();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<React.ReactNode>(null);
-  const run = async (fn: () => Promise<SaveOutcome>, okText: string, onConflict: (r: SyncRecord) => void) => {
-    setSaving(true);
-    setError(null);
-    try {
-      const r = await fn();
-      if (r.status === "applied") {
-        if (r.record) onRecord(r.record);
-        toast.success(okText);
-      } else if (r.status === "conflict") {
-        if (r.record) {
-          onRecord(r.record);
-          onConflict(r.record);
-        }
-        setError(r.message);
-        toast.error(r.message);
-      } else {
-        if (r.record) onRecord(r.record);
-        setError(
-          <>
-            <p>{r.message}</p>
-            {r.details.length > 0 && (
-              <ul className="mt-1 list-disc pl-5">
-                {r.details.map((d) => (
-                  <li key={`${d.field}-${d.message}`}>{d.message}</li>
-                ))}
-              </ul>
-            )}
-          </>
-        );
-      }
-    } catch (err) {
-      setError(saveErrorText(err, errorMessage));
-    } finally {
-      setSaving(false);
-    }
-  };
-  return { saving, error, run, clearError: () => setError(null) };
 }
 
 export function SettingsView() {
@@ -185,7 +139,7 @@ export function SettingsView() {
           <RoundingSection rec={rec} onRecord={setOutlet} />
           <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} />
           <TransactionSection rec={rec} onRecord={setOutlet} credit={credit} />
-          <PaymentMethodsCard rec={rec} />
+          <PaymentMethodsSection rec={rec} onRecord={setOutlet} />
         </div>
       )}
 
@@ -257,7 +211,7 @@ function OutletInfoSection({ rec, onRecord }: OutletProps) {
     <EditSection
       id="outlet"
       title="Outlet"
-      description="Nama & alamat tampil di struk dan aplikasi. Membuat atau menghapus outlet dilakukan lewat aplikasi."
+      description={<>Nama & alamat tampil di struk dan aplikasi. Tambah atau hapus outlet di halaman <Link href="/dasbor/outlet" className="font-semibold text-brand-ink underline">Outlet</Link>.</>}
       dirty={dirty}
       saving={saver.saving}
       canSave={!nameErr && !addrErr}
@@ -753,59 +707,6 @@ function TransactionSection({ rec, onRecord, credit }: OutletProps & { credit: b
 }
 
 // ——— Outlet: metode pembayaran (hanya baca) ———
-
-function PaymentMethodsCard({ rec }: { rec: Rec }) {
-  const pm = readPaymentMethods(settingsOf(rec));
-  const status = (on: boolean) => (on ? <Badge tone="success">Aktif</Badge> : <Badge>Nonaktif</Badge>);
-  return (
-    <div id="pembayaran" className="scroll-mt-20">
-      <Section
-        title="Metode pembayaran"
-        description="QRIS & rekening diubah lewat aplikasi demi keamanan."
-        actions={
-          <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-text-muted">
-            <ShieldCheck size={15} aria-hidden /> Hanya baca
-          </span>
-        }
-      >
-        <ul className="flex flex-col divide-y divide-border-subtle text-[14px]">
-          <li className="flex items-center justify-between gap-3 py-2 first:pt-0">
-            <span className="font-semibold">Tunai</span>
-            <Badge tone="success">Selalu aktif</Badge>
-          </li>
-          <li className="flex items-center justify-between gap-3 py-2">
-            <span>
-              <span className="block font-semibold">QRIS</span>
-              <span className="block text-[12.5px] text-text-muted">
-                {pm.qris.merchant_name || (pm.qris.has_code ? "Kode QRIS tersimpan" : "Kode QRIS belum diatur")}
-              </span>
-            </span>
-            {status(pm.qris.enabled)}
-          </li>
-          <li className="flex items-start justify-between gap-3 py-2">
-            <span className="min-w-0">
-              <span className="block font-semibold">Transfer bank</span>
-              {pm.transfer.accounts.length === 0 ? (
-                <span className="block text-[12.5px] text-text-muted">Belum ada rekening</span>
-              ) : (
-                pm.transfer.accounts.map((a, i) => (
-                  <span key={i} className="block text-[12.5px] text-text-muted">
-                    {a.bank} · <span className="tabular-nums">{a.number}</span> · {a.holder}
-                  </span>
-                ))
-              )}
-            </span>
-            {status(pm.transfer.enabled)}
-          </li>
-          <li className="flex items-center justify-between gap-3 py-2 last:pb-0">
-            <span className="font-semibold">Kartu debit/kredit</span>
-            {status(pm.card.enabled)}
-          </li>
-        </ul>
-      </Section>
-    </div>
-  );
-}
 
 // ——— Usaha: loyalti ———
 

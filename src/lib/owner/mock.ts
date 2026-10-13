@@ -349,11 +349,14 @@ function generate(now: number): Db {
       const opening = 300000;
       const expected = opening + cashPay + cashIn - cashOut;
       const diff = closedAt === null ? null : r.weighted<number>([[0, 14], [-5000, 2], [-20000, 1], [2000, 2], [500, 1]]);
+      // Contoh tanda "Hitungan server berbeda": shift 3 hari lalu di outlet pertama tercatat perangkat 15.000 lebih tinggi.
+      const deviceExpected = closedAt !== null && back === 3 && o.weight === 1 ? expected + 15000 : expected;
       shifts.push({
         id: shiftId, outlet_id: o.id, outlet_name: o.name, device_name: device.name, cashier_id: cashier.id, cashier_name: cashier.name,
         status: closedAt === null ? "open" : "closed", opened_at: new Date(opened).toISOString(),
-        closed_at: closedAt === null ? null : new Date(closedAt).toISOString(), opening_cash: opening, expected_cash: expected,
-        closing_cash: diff === null ? null : expected + diff, difference: diff, sales_count: counted.length,
+        closed_at: closedAt === null ? null : new Date(closedAt).toISOString(), opening_cash: opening, expected_cash: deviceExpected,
+        expected_cash_server: expected, expected_mismatch: deviceExpected !== expected,
+        closing_cash: diff === null ? null : deviceExpected + diff, difference: diff, sales_count: counted.length,
         sales_total: counted.reduce((a, s) => a + s.total, 0), cash_in: cashIn, cash_out: cashOut,
         notes: diff !== null && diff < -10000 ? "Selisih kurang, sudah dicek ulang laci" : null, movements,
       });
@@ -364,11 +367,40 @@ function generate(now: number): Db {
   return { sales, shifts, generatedFor: `${today}:${Math.floor(now / (5 * 60_000))}` };
 }
 
+// Perubahan dari web (pembatalan transaksi, kas masuk/keluar) disimpan terpisah lalu diterapkan di atas data bangkitan.
+type SaleCancel = { status: "void" | "refunded"; reason: string; refunds: SaleDetail["payments"] };
+const saleCancels = new Map<string, SaleCancel>();
+const extraMovements = new Map<string, ShiftDetail["cash_movements"]>();
+
+function applyOverlays(d: Db): Db {
+  for (const s of d.sales) {
+    const c = saleCancels.get(s.id);
+    if (!c) continue;
+    s.status = c.status;
+    s.void_reason = c.reason;
+    s.approved_by_name = USER.name;
+    s.payments = [...s.payments, ...c.refunds];
+    s.paid_total = s.payments.reduce((a, p) => a + p.amount, 0);
+  }
+  for (const sh of d.shifts) {
+    const extra = extraMovements.get(sh.id);
+    if (!extra?.length) continue;
+    sh.movements = [...sh.movements, ...extra];
+    const cin = extra.filter((m) => m.type === "in").reduce((a, m) => a + m.amount, 0);
+    const cout = extra.filter((m) => m.type === "out").reduce((a, m) => a + m.amount, 0);
+    sh.cash_in += cin;
+    sh.cash_out += cout;
+    sh.expected_cash += cin - cout;
+    sh.expected_cash_server += cin - cout;
+  }
+  return d;
+}
+
 let cache: Db | null = null;
 function db(): Db {
   const now = Date.now();
   const key = `${wibDay(now)}:${Math.floor(now / (5 * 60_000))}`;
-  if (!cache || cache.generatedFor !== key) cache = generate(now);
+  if (!cache || cache.generatedFor !== key) cache = applyOverlays(generate(now));
   return cache;
 }
 
@@ -515,9 +547,13 @@ function sessionOf(s: MockSession): OwnerSession {
   return {
     user: USER,
     business: { ...BUSINESS, timezone },
-    outlets: OUTLETS.map(({ id, name, address, status }) => ({ id, name, address, status })),
+    outlets: liveOutlets().map((o) => ({ id: o.id, name: String(o.name ?? ""), address: (o.address as string | null) ?? null, status: o.status === "closed" ? "closed" : "open" })),
     subscription: plan(s.plan),
-    session: { expires_at: new Date(Date.now() + abs).toISOString(), idle_expires_at: new Date(Date.now() + idle).toISOString() },
+    session: {
+      expires_at: new Date(Date.now() + abs).toISOString(),
+      idle_expires_at: new Date(Date.now() + idle).toISOString(),
+      confirmed_until: confirmedUntil > Date.now() ? new Date(confirmedUntil).toISOString() : null,
+    },
   };
 }
 
@@ -528,7 +564,7 @@ function invalid(field: string, message: string) {
 }
 
 function checkOutlet(outletId: string | undefined) {
-  if (outletId && !OUTLETS.some((o) => o.id === outletId)) throw invalid("outlet_id", "Outlet tidak ditemukan");
+  if (outletId && !liveOutlets().some((o) => o.id === outletId)) throw invalid("outlet_id", "Outlet tidak ditemukan");
 }
 
 function range(from: string | undefined, to: string | undefined) {
@@ -713,12 +749,12 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       await guard();
       const { from, to } = range(q.from, q.to);
       const all = db().sales;
-      const rows: OutletRow[] = OUTLETS.map((o) => {
+      const rows: OutletRow[] = liveOutlets().map((o) => {
         const os = all.filter((x) => x.outlet_id === o.id);
         const inRange = os.filter((x) => x.day >= from && x.day <= to);
         const t = totals(inRange);
         return {
-          outlet_id: o.id, name: o.name, status: o.status, revenue: t.revenue, transactions: t.transactions, average: t.average,
+          outlet_id: o.id, name: String(o.name ?? ""), status: o.status === "closed" ? "closed" : "open", revenue: t.revenue, transactions: t.transactions, average: t.average,
           gross_profit: t.gross_profit, cancelled_count: cancelled(inRange).count, credit_outstanding: credit(os).outstanding, share_percent: 0,
         };
       });
@@ -864,38 +900,193 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       ];
       return list;
     },
-    // Tahap 2–3: penyimpanan tiruan sederhana di memori (kosong saat mulai; cukup untuk mencoba form).
+    async confirm(body) {
+      await guard();
+      await sleep(300);
+      if ("password" in body && (!body.password || body.password === "salah")) {
+        throw new ApiError("Email/nomor HP atau password salah", 401, "INVALID_CREDENTIALS");
+      }
+      confirmedUntil = Date.now() + 10 * 60_000;
+      return { confirmed_until: new Date(confirmedUntil).toISOString() };
+    },
+    // Tahap 2–3: penyimpanan tiruan di memori, diisi data contoh minimal (lihat `seedStore`).
     async pull(entity) {
       await guard();
-      return { items: [...(mockStore.get(entity)?.values() ?? [])], cursor: "x", has_more: false, server_time: new Date().toISOString() };
+      return { items: [...(store(entity).values())], cursor: "x", has_more: false, server_time: new Date().toISOString() };
     },
     async changes(changes) {
-      await guard();
+      const s = await guard();
       const now = new Date().toISOString();
+      // Aturan server yang ditiru: kuota outlet, konfirmasi ulang untuk metode pembayaran (422 untuk seluruh kiriman).
+      changes.forEach((c, i) => {
+        if (c.entity !== "outlets" || c.op !== "upsert") return;
+        const cur = store("outlets").get(c.id);
+        if (!cur || cur.deleted_at) {
+          const quota = s.plan === "free" ? 1 : 2;
+          if (liveOutlets().length >= quota) throw invalid(`changes[${i}]`, `Kuota outlet paket ini ${quota}. Tambah kuota outlet lewat menu Langganan.`);
+        }
+        const before = JSON.stringify(((cur?.settings ?? {}) as Record<string, unknown>).payment_methods ?? null);
+        const after = JSON.stringify(((c.data?.settings ?? {}) as Record<string, unknown>).payment_methods ?? null);
+        if (before !== after && confirmedUntil <= Date.now()) {
+          throw invalid(`changes[${i}]`, "CONFIRM_REQUIRED: Konfirmasi password untuk mengubah metode pembayaran (QRIS & rekening)");
+        }
+      });
       return {
         server_time: now,
         results: changes.map((c) => {
-          const table = mockStore.get(c.entity) ?? new Map<string, SyncRecord>();
-          mockStore.set(c.entity, table);
-          const cur = table.get(c.id);
-          if (cur && c.base_updated_at && cur.updated_at !== c.base_updated_at) {
-            return { entity: c.entity, id: c.id, status: "conflict" as const, record: cur };
+          const id = c.id;
+          if (c.entity === "sales") {
+            const sale = db().sales.find((x) => x.id === id);
+            if (!sale) return { entity: c.entity, id, status: "rejected" as const, message: "Transaksi tidak ditemukan", details: [] };
+            const d = (c.data ?? {}) as { status?: "void" | "refunded"; void_reason?: string; payments?: { id: string; method: string; amount: number; paid_at: string }[] };
+            saleCancels.set(id, {
+              status: d.status === "refunded" ? "refunded" : "void",
+              reason: d.void_reason ?? "",
+              refunds: (d.payments ?? []).map((p) => ({ id: p.id, method: p.method, amount: p.amount, received: null, change: null, paid_at: p.paid_at, cashier_name: USER.name })),
+            });
+            cache = null;
+            return { entity: c.entity, id, status: "applied" as const, record: null };
           }
-          const rec: SyncRecord = { ...(cur ?? {}), ...(c.data ?? {}), id: c.id, updated_at: now, deleted_at: c.op === "delete" ? now : null };
-          table.set(c.id, rec);
-          return { entity: c.entity, id: c.id, status: "applied" as const, record: rec };
+          if (c.entity === "cash_movements") {
+            const d = (c.data ?? {}) as { shift_id: string; type: "in" | "out"; amount: number; reason: string };
+            const list = extraMovements.get(d.shift_id) ?? [];
+            list.push({ id, type: d.type, amount: d.amount, reason: d.reason, cashier_name: USER.name, created_at: now });
+            extraMovements.set(d.shift_id, list);
+            cache = null;
+            return { entity: c.entity, id, status: "applied" as const, record: null };
+          }
+          const table = store(c.entity);
+          const cur = table.get(id);
+          if (cur && c.base_updated_at && cur.updated_at !== c.base_updated_at) {
+            return { entity: c.entity, id, status: "conflict" as const, record: cur };
+          }
+          if (c.entity === "outlets" && c.op === "delete" && cur && !cur.deleted_at && liveOutlets().length <= 1) {
+            return { entity: c.entity, id, status: "rejected" as const, code: "LAST_OUTLET", message: "Minimal harus ada satu outlet", details: [], record: cur };
+          }
+          const rec: SyncRecord = { ...(cur ?? {}), ...(c.data ?? {}), id, updated_at: now, deleted_at: c.op === "delete" ? now : null };
+          table.set(id, rec);
+          return { entity: c.entity, id, status: "applied" as const, record: rec };
         }),
       };
     },
-    async stock() {
+    async stock(q) {
       await guard();
-      return [];
+      checkOutlet(q.outlet_id);
+      return [
+        { kind: "product", product_id: PRODUCTS[7].id, variant_id: null, raw_material_id: null, name: PRODUCTS[7].name, variant_name: null, category: "Makanan", unit: "pcs", qty: 14_000, min_stock: 10_000, low: false },
+        { kind: "product", product_id: PRODUCTS[12].id, variant_id: null, raw_material_id: null, name: PRODUCTS[12].name, variant_name: null, category: "Minuman", unit: "botol", qty: 4_000, min_stock: 12_000, low: true },
+      ];
     },
     async subscription() {
       const s = await guard();
-      throw new ApiError(`Langganan tidak tersedia di mode tiruan (${s.plan}).`, 503, "SERVICE_UNAVAILABLE");
+      const p = plan(s.plan);
+      const outlets = liveOutlets().length;
+      const quota = s.plan === "free" ? 1 : 2;
+      const now = new Date();
+      return {
+        plan: p.plan,
+        status: p.status,
+        enforced: p.enforced,
+        trial_ends_at: s.plan === "trial" ? p.ends_at : null,
+        current_period_end: s.plan === "pro" ? p.ends_at : null,
+        grace_ends_at: null,
+        ends_at: p.ends_at,
+        days_left: p.days_left,
+        billing_cycle: s.plan === "pro" ? "yearly" : null,
+        limits: { tx_per_month: p.tx_limit, outlets: quota },
+        features: p.features,
+        usage: { month: wibDay(now.getTime()).slice(0, 7), tx_this_month: p.tx_this_month, outlets, over_limit: false, outlets_over: outlets > quota },
+        server_time: now.toISOString(),
+        billing: {
+          prices: { monthly: 99_000, yearly: 990_000 },
+          payment_info: {
+            bank_accounts: [{ bank: "BCA", number: "1234567890", holder: "PT Contoh Sissi" }],
+            whatsapp: "+6281200000000",
+            instructions: "Transfer sesuai harga paket, lalu kirim bukti lewat tombol \"Chat admin via WhatsApp\".",
+            updated_at: now.toISOString(),
+          },
+          payments:
+            s.plan === "pro"
+              ? [{ id: uuid("subpay1"), paid_at: new Date(now.getTime() - 222 * DAY).toISOString(), amount: 990_000, cycle: "yearly", period_start: wibDay(now.getTime() - 222 * DAY), period_end: wibDay(now.getTime() + 143 * DAY), method: "transfer", status: "active" }]
+              : [],
+        },
+      };
     },
   };
 }
 
-const mockStore = new Map<string, Map<string, SyncRecord>>();
+// ——— Penyimpanan data kelola (tiruan) ———
+
+let confirmedUntil = 0;
+
+const T0 = new Date(Date.UTC(2026, 6, 1, 3)).toISOString();
+const rec = (id: string, data: Record<string, unknown>): SyncRecord => ({ id, ...data, created_at: T0, updated_at: T0, deleted_at: null });
+
+/** Data contoh minimal per entitas (bentuk record = api.md "Sync v1"); entitas lain mulai kosong. */
+function seedStore(): Map<string, Map<string, SyncRecord>> {
+  const m = new Map<string, Map<string, SyncRecord>>();
+  const put = (entity: string, rows: SyncRecord[]) => m.set(entity, new Map(rows.map((r) => [r.id, r])));
+  const catDrink = uuid("cat:minuman");
+  const catFood = uuid("cat:makanan");
+  const modGroup = uuid("mod:kopi");
+  put("outlets", OUTLETS.map((o, i) =>
+    rec(o.id, {
+      name: o.name, address: o.address, status: o.status, image_url: null,
+      settings: {
+        taxes: o.tax ? [{ id: uuid(`tax:${o.id}`), name: "PB1", rate_bp: 1000, enabled: true }] : [],
+        service_fee: { enabled: o.service, type: "percent", rate_bp: 500, amount: 0, order_types: ["dine_in"], taxable: true },
+        payment_methods: {
+          qris: { enabled: true, merchant_name: i === 0 ? "KOPI SENJA DAGO" : "", payload: "", image_url: null },
+          transfer: { enabled: true, accounts: i === 0 ? [{ id: uuid(`acc:${o.id}`), bank: "BCA", number: "1234567890", holder: "Rina Wulandari" }] : [] },
+          card: { enabled: i === 0 },
+        },
+      },
+    })
+  ));
+  put("business_settings", [rec(BUSINESS.id, { settings: { timezone: "Asia/Jakarta", loyalty: { enabled: false } } })]);
+  put("categories", [rec(catDrink, { name: "Minuman", sort_order: 0 }), rec(catFood, { name: "Makanan", sort_order: 1 })]);
+  put("modifier_groups", [
+    rec(modGroup, { name: "Tambahan kopi", min_select: 0, max_select: 2, sort_order: 0, options: MODIFIERS.map((x, i) => ({ id: uuid(`modopt:${i}`), name: x.name, price: x.price, cost_price: x.cost, recipe: [] })) }),
+  ]);
+  const food = new Set([PRODUCTS[7].id, PRODUCTS[8].id, PRODUCTS[9].id, PRODUCTS[10].id, PRODUCTS[11].id]);
+  put("products", PRODUCTS.map((p, i) =>
+    rec(p.id, {
+      category_id: food.has(p.id) ? catFood : catDrink, name: p.name, description: "", price: p.price, sku: `KS-${String(i + 1).padStart(3, "0")}`,
+      barcode: null, barcodes: [], image_url: null, is_active: true, cost_price: p.cost, track_stock: i === 7 || i === 12, min_stock: i === 12 ? 12_000 : i === 7 ? 10_000 : 0,
+      unit: i === 12 ? "botol" : food.has(p.id) ? "porsi" : "cup", is_taxable: true, is_cookable: true,
+      modifier_group_ids: p.price >= 20000 && !food.has(p.id) ? [modGroup] : [], duration_min: null,
+      variant_options: p.variants ? [{ name: "Pilihan", values: p.variants.map((v) => v.name) }] : [],
+    })
+  ));
+  put("product_variants", PRODUCTS.flatMap((p) =>
+    (p.variants ?? []).map((v, k) =>
+      rec(v.id, {
+        product_id: p.id, name: v.name, price: p.price + v.add, sku: null, barcode: null, barcodes: [], is_active: true,
+        cost_price: p.cost, min_stock: null, sort_order: k + 1, options: { Pilihan: v.name }, image_url: null,
+      })
+    )
+  ));
+  put("customers", CUSTOMERS.map((c) => rec(c.id, { name: c.name, phone: c.phone, email: null, notes: "", birthday: null, is_member: true })));
+  put("employees", [
+    ...Object.values(CASHIERS).flat().map((c) => rec(c.id, { name: c.name, role: "cashier", email: null, phone: null, payroll: null, pin_hash: null, is_active: true })),
+    rec(uuid("k1"), { name: "Dapur Dago", role: "kitchen", email: null, phone: null, payroll: null, pin_hash: null, is_active: true }),
+  ]);
+  return m;
+}
+
+const mockStore = seedStore();
+
+function store(entity: string): Map<string, SyncRecord> {
+  let t = mockStore.get(entity);
+  if (!t) {
+    t = new Map();
+    mockStore.set(entity, t);
+  }
+  return t;
+}
+
+/** Outlet hidup (urut dibuat), sumber pemilih outlet & laporan outlet tiruan. */
+function liveOutlets(): SyncRecord[] {
+  return [...store("outlets").values()].filter((o) => !o.deleted_at);
+}
+

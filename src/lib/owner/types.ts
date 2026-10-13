@@ -38,7 +38,8 @@ export type OwnerSession = {
   business: OwnerBusiness;
   outlets: OwnerOutlet[];
   subscription: OwnerPlan;
-  session: { expires_at: string; idle_expires_at: string };
+  /** `confirmed_until` = batas konfirmasi ulang untuk aksi sensitif (null/kosong = perlu konfirmasi). */
+  session: { expires_at: string; idle_expires_at: string; confirmed_until?: string | null };
 };
 
 export type Totals = {
@@ -100,6 +101,10 @@ export type ShiftListItem = {
   sales_total: number;
   cash_in: number;
   cash_out: number;
+  /** Kas seharusnya menurut data di server (kas awal + tunai shift + kas masuk − kas keluar). */
+  expected_cash_server: number;
+  /** Shift tertutup yang `expected_cash`-nya (dicatat perangkat) ≠ hitungan server. */
+  expected_mismatch: boolean;
 };
 
 export type OwnerDevice = {
@@ -216,6 +221,8 @@ export type SalePayment = {
 };
 
 export type SaleDetail = SaleListItem & {
+  /** Belum dikirim server (2026-10-13); dipakai sebagai `base_updated_at` pembatalan bila ada. */
+  updated_at?: string;
   subtotal: number;
   discount_total: number;
   service_fee: number;
@@ -351,7 +358,9 @@ export type DataEntity =
   | "payslips";
 
 /**
- * Entitas yang bisa diubah web (`POST /owner/changes`). `outlets`: hanya ubah, metode bayar tidak boleh berubah.
+ * Entitas yang bisa diubah web (`POST /owner/changes`). `outlets`: tambah (dalam kuota), ubah, hapus; metode bayar
+ * (QRIS & rekening) butuh konfirmasi ulang (`CONFIRM_REQUIRED:`). `sales`: hanya void/refund. `cash_movements`: baris
+ * baru untuk shift yang sedang buka.
  * `stock_movements`: hanya baris baru bertipe in/out/adjust/opname/transfer. `sale_payments`: hanya pelunasan kasbon.
  */
 export type WritableEntity =
@@ -374,7 +383,10 @@ export type WritableEntity =
   | "suppliers"
   | "employees"
   | "attendances"
-  | "payslips";
+  | "payslips"
+  // Nomor 14: pembatalan transaksi (void/refund) & kas masuk/keluar shift buka.
+  | "sales"
+  | "cash_movements";
 
 /** Record sync mentah: bentuk per entitas ada di api.md "Sync v1". */
 export type SyncRecord = { id: string; updated_at: string; deleted_at: string | null; [key: string]: unknown };

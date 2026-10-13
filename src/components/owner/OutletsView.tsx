@@ -10,10 +10,12 @@ import { ownerApi } from "@/lib/owner/api";
 import { downloadCsv, slug } from "@/lib/owner/csv";
 import type { OutletsReport } from "@/lib/owner/types";
 import { labelOf } from "./labels";
+import { OutletManage } from "./OutletManage";
 import { useOwner } from "./OwnerShell";
 import { ExportMenu, PeriodFilter, periodTitle, SyncNote, usePeriod } from "./ui";
 
 // Perbandingan outlet (GET /owner/reports/outlets). Selalu semua outlet aktif; pilihan outlet di atas diabaikan.
+// Di bawahnya: kelola outlet (tambah dalam kuota / hapus) — OutletManage.
 
 export function OutletsView() {
   const { outlet, session } = useOwner();
@@ -70,14 +72,14 @@ export function OutletsView() {
             {r.outlets.length === 0 ? (
               <Section>
                 <EmptyState icon={<Store size={22} aria-hidden />} title="Belum ada outlet aktif">
-                  Tambah outlet lewat aplikasi Sissi (menu Outlet).
+                  Tambah outlet di bagian Kelola outlet di bawah.
                 </EmptyState>
               </Section>
             ) : (
               <>
                 {r.outlets.length === 1 && (
                   <p className="flex items-start gap-1.5 text-[13px] text-text-body">
-                    <Info size={14} aria-hidden className="mt-0.5 shrink-0" /> Usaha ini baru punya satu outlet. Perbandingan berguna setelah outlet kedua ditambahkan lewat aplikasi.
+                    <Info size={14} aria-hidden className="mt-0.5 shrink-0" /> Usaha ini baru punya satu outlet. Perbandingan berguna setelah outlet kedua ditambahkan.
                   </p>
                 )}
                 <OutletsTable r={r} />
@@ -87,6 +89,9 @@ export function OutletsView() {
           </div>
         </>
       )}
+      <div className="mt-5">
+        <OutletManage onChanged={reload} />
+      </div>
     </>
   );
 }

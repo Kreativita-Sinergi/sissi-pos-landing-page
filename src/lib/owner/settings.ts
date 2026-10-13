@@ -101,27 +101,70 @@ export function readTransaction(settings: unknown): TransactionSettings {
   };
 }
 
-export type PaymentMethodsView = {
-  qris: { enabled: boolean; merchant_name: string; has_code: boolean };
-  transfer: { enabled: boolean; accounts: { bank: string; number: string; holder: string }[] };
+export type BankAccount = { id: string; bank: string; number: string; holder: string };
+export type QrisSettings = { enabled: boolean; merchant_name: string; payload: string; image_url: string | null };
+export type PaymentMethods = {
+  qris: QrisSettings;
+  transfer: { enabled: boolean; accounts: BankAccount[] };
   card: { enabled: boolean };
 };
 
-/** Ringkasan metode pembayaran (hanya baca — QRIS & rekening diubah lewat aplikasi). */
-export function readPaymentMethods(settings: unknown): PaymentMethodsView {
+/** Batas rekening tujuan per outlet. */
+export const MAX_BANK_ACCOUNTS = 10;
+
+/**
+ * Metode pembayaran outlet (`settings.payment_methods`): QRIS statis, transfer (+ rekening), kartu. Tunai selalu aktif
+ * (tidak disimpan). Bawaan sama dengan app (`outlet_settings.dart`): semua aktif, isian kosong.
+ */
+export function readPaymentMethods(settings: unknown): PaymentMethods {
   const pm = obj(obj(settings).payment_methods);
   const q = obj(pm.qris);
   const t = obj(pm.transfer);
   const c = obj(pm.card);
+  const img = str(q.image_url).trim();
   return {
-    qris: { enabled: bool(q.enabled, true), merchant_name: str(q.merchant_name), has_code: !!str(q.payload) || !!q.image_url },
+    qris: { enabled: bool(q.enabled, true), merchant_name: str(q.merchant_name), payload: str(q.payload), image_url: img || null },
     transfer: {
       enabled: bool(t.enabled, true),
       accounts: (Array.isArray(t.accounts) ? t.accounts : [])
         .filter(isObj)
-        .map((a) => ({ bank: str(a.bank), number: str(a.number), holder: str(a.holder) })),
+        .map((a, i) => ({ id: str(a.id) || `idx-${i}`, bank: str(a.bank), number: str(a.number), holder: str(a.holder) })),
     },
     card: { enabled: bool(c.enabled, true) },
+  };
+}
+
+/** QRIS punya kode (teks payload atau gambar)? */
+export const qrisHasCode = (q: QrisSettings) => !!q.payload.trim() || !!q.image_url;
+
+/**
+ * Metode pembayaran diedit → objek `settings` baru. Kunci yang tidak dikenal web (di `payment_methods`, tiap metode,
+ * dan tiap rekening per `id`) tetap utuh.
+ */
+export function mergePaymentMethods(settings: unknown, pm: PaymentMethods): Obj {
+  const s = obj(settings);
+  const old = obj(s.payment_methods);
+  const oldT = obj(old.transfer);
+  const oldAccounts = (Array.isArray(oldT.accounts) ? oldT.accounts : []).filter(isObj);
+  return {
+    ...s,
+    payment_methods: {
+      ...old,
+      qris: { ...obj(old.qris), ...pm.qris, image_url: pm.qris.image_url || null },
+      transfer: {
+        ...oldT,
+        enabled: pm.transfer.enabled,
+        // Rekening lama tanpa `id` (data rusak) dikenali lewat urutan dan disimpan tanpa id buatan web.
+        accounts: pm.transfer.accounts.map((a) => {
+          if (a.id.startsWith("idx-")) {
+            const { bank, number, holder } = a;
+            return { ...(oldAccounts[Number(a.id.slice(4))] ?? {}), bank, number, holder };
+          }
+          return { ...(oldAccounts.find((o) => o.id === a.id) ?? {}), ...a };
+        }),
+      },
+      card: { ...obj(old.card), ...pm.card },
+    },
   };
 }
 

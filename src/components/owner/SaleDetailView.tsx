@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Ban, HandCoins, ReceiptText } from "lucide-react";
+import { ArrowLeft, Ban, HandCoins, ReceiptText, Undo2 } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 import { btn, cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, Notice, PageHeader, Skeleton, useLoad } from "@/components/admin/ui";
 import { formatDateTime, zoneLabel } from "@/lib/owner/tz";
@@ -13,11 +13,14 @@ import type { SaleDetail } from "@/lib/owner/types";
 import { labelOf, METHODS, orderTypeLabel } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SettleCreditDialog } from "./credit/SettleCreditDialog";
+import { CancelSaleDialog } from "./CancelSaleDialog";
+import { canRefund, canVoid, type CancelKind } from "@/lib/owner/cancelSale";
 import { SaleStatusBadge } from "./parts";
 
 // Detail transaksi (GET /owner/sales/{id}) dalam bentuk struk. Kasbon (`unpaid|partial`) bisa dilunasi/dicicil dari
 // sini (POST /owner/changes `sale_payments`, di luar laci kasir) — tersedia juga untuk paket Gratis (pelunasan kasbon
-// tetap boleh, api.md "Batas transaksi Gratis").
+// tetap boleh, api.md "Batas transaksi Gratis"). Transaksi juga bisa dibatalkan (void) / direfund dari sini (api.md
+// "Nomor 14": `sales` upsert status void/refunded + pengembalian negatif di luar laci kasir).
 
 export function BackLink({ href, label }: { href: string; label: string }) {
   const router = useRouter();
@@ -44,6 +47,7 @@ export function SaleDetailView() {
   const { state, reload } = useLoad<SaleDetail>(async (signal) => (await ownerApi()).sale(id, signal), [id]);
   const s = state.data;
   const [settling, setSettling] = useState(false);
+  const [cancelling, setCancelling] = useState<CancelKind | null>(null);
   const back = <BackLink href={withOutlet("/dasbor/transaksi")} label="Transaksi" />;
 
   if (state.status === "error" && state.error instanceof ApiError && state.error.code === "NOT_FOUND") {
@@ -75,7 +79,14 @@ export function SaleDetailView() {
           ))}
         </div>
       )}
-      {s && <Receipt s={s} onSettle={state.status === "loading" ? undefined : () => setSettling(true)} />}
+      {s && (
+        <Receipt
+          s={s}
+          onSettle={state.status === "loading" ? undefined : () => setSettling(true)}
+          onCancel={state.status === "loading" ? undefined : (k) => setCancelling(k)}
+        />
+      )}
+      <CancelSaleDialog sale={cancelling && s ? s : null} kind={cancelling ?? "void"} onClose={() => setCancelling(null)} onDone={(again) => again && reload()} />
       <SettleCreditDialog sale={settling && s && isCreditOpen(s.status) ? s : null} onClose={() => setSettling(false)} onSettled={() => reload()} />
     </>
   );
@@ -90,7 +101,7 @@ function Line({ label, value, strong, tone }: { label: React.ReactNode; value: s
   );
 }
 
-function Receipt({ s, onSettle }: { s: SaleDetail; onSettle?: () => void }) {
+function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => void; onCancel?: (kind: CancelKind) => void }) {
   const cancelled = s.status === "void" || s.status === "refunded";
   const outstanding = s.total - s.paid_total;
   const lineDiscounts = s.items.reduce((a, i) => a + i.discount, 0);
@@ -228,6 +239,18 @@ function Receipt({ s, onSettle }: { s: SaleDetail; onSettle?: () => void }) {
           </p>
         )}
       </article>
+      {!cancelled && canVoid(s.status) && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          {canRefund(s.status) && (
+            <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("refunded")} disabled={!onCancel}>
+              <Undo2 size={16} aria-hidden /> Refund
+            </button>
+          )}
+          <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("void")} disabled={!onCancel}>
+            <Ban size={16} aria-hidden /> Batalkan transaksi
+          </button>
+        </div>
+      )}
     </div>
   );
 }

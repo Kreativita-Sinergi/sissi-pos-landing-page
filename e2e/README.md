@@ -46,4 +46,11 @@ login salah/benar · konfirmasi keluar (Batal) · Beranda KPI · Laporan + ganti
 kosong) · produk satu-harga: buat → ubah harga → entri "Perubahan data" di Aktivitas → hapus · dialog Tambah produk
 tetap terbuka saat pemilih file dibatalkan · dropdown kategori via keyboard (Esc hanya menutup daftar) · unggah foto
 produk (PNG dibangkitkan) · pelanggan tambah/ubah/hapus · pengaturan struk simpan & kembalikan · Aktivitas + filter
-Perubahan data · keluar sungguhan.
+Perubahan data · outlet: kuota penuh (tombol Tambah nonaktif + tautan Langganan) · ubah nama merchant QRIS lewat dialog
+konfirmasi password (salah lalu benar), lalu record outlet dikembalikan persis lewat API · batalkan (void) transaksi lunas
+(QRIS bila ada) + cek pengembalian negatif & Aktivitas · kas keluar Rp1.000 pada shift buka · tanda "Hitungan server
+berbeda" di daftar shift · keluar sungguhan.
+
+Catatan: pembatalan transaksi dan kas keluar **tidak bisa diurungkan** (aturan entitas sync) — tiap run membatalkan satu
+transaksi lunas dan menambah satu kas keluar `E2E …` di data demo. Konfirmasi password dibatasi server 10/15 menit per
+pengguna (tes memakai 2–3 per run), jadi jangan menjalankan tes QRIS lebih dari ±3 kali per 15 menit.

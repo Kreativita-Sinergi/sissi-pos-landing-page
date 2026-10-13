@@ -1,13 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronRight, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, ChevronRight, Wallet } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 import { FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import {
   Badge,
+  btn,
   cardClass,
   EmptyState,
   ErrorBlock,
@@ -31,9 +32,13 @@ import { labelOf, METHODS } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { formatStamp } from "./parts";
 import { BackLink } from "./SaleDetailView";
+import { CashMovementDialog } from "./CashMovementDialog";
+import type { CashType } from "@/lib/owner/cashMovement";
 import { formatTime, PeriodFilter, SyncNote, usePeriod } from "./ui";
 
 // Shift & kas (GET /owner/shifts, /owner/shifts/{id}). Selisih kas: merah bila kurang, kuning bila lebih.
+// `expected_mismatch` (shift tertutup yang kas seharusnya dari perangkat ≠ hitungan server) ditandai "Hitungan server
+// berbeda". Shift yang sedang buka bisa dicatati kas masuk/keluar dari web (api.md "Nomor 14").
 
 const PER_PAGE = 25;
 
@@ -45,6 +50,19 @@ export function DifferenceValue({ value }: { value: number | null }) {
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[13px] font-semibold tabular-nums whitespace-nowrap ${short ? "bg-danger-tint text-danger" : "bg-warning-tint text-warning"}`}>
       {short ? "Kurang " : "Lebih "}
       {formatRupiah(Math.abs(value))}
+    </span>
+  );
+}
+
+/** Tanda hitungan kas server berbeda dengan yang dicatat perangkat. */
+export function MismatchBadge({ s }: { s: Pick<ShiftListItem, "expected_mismatch" | "expected_cash" | "expected_cash_server"> }) {
+  if (!s.expected_mismatch) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-warning-tint px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap text-warning"
+      title={`Perangkat ${formatRupiah(s.expected_cash)} · server ${formatRupiah(s.expected_cash_server)}`}
+    >
+      <AlertTriangle size={12} aria-hidden /> Hitungan server berbeda
     </span>
   );
 }
@@ -124,8 +142,11 @@ export function ShiftsView() {
                             <span className="block text-[12px] text-text-muted">
                               {[showOutlet ? s.outlet_name : null, s.device_name, `${s.sales_count.toLocaleString("id-ID")} trx · ${formatRupiah(s.sales_total)}`].filter(Boolean).join(" · ")}
                             </span>
-                            <span className="mt-1 block md:hidden">
+                            <span className="mt-1 flex flex-wrap items-center gap-1.5 md:hidden">
                               <ShiftStatus s={s} />
+                              <span className="sm:hidden">
+                                <MismatchBadge s={s} />
+                              </span>
                             </span>
                           </Link>
                         </td>
@@ -133,7 +154,15 @@ export function ShiftsView() {
                           <ShiftStatus s={s} />
                         </td>
                         <td className={`${tdClass} hidden border-b border-border-subtle text-right tabular-nums whitespace-nowrap lg:table-cell`}>{formatRupiah(s.opening_cash)}</td>
-                        <td className={`${tdClass} hidden border-b border-border-subtle text-right tabular-nums whitespace-nowrap sm:table-cell`}>{formatRupiah(s.expected_cash)}</td>
+                        <td className={`${tdClass} hidden border-b border-border-subtle text-right tabular-nums whitespace-nowrap sm:table-cell`}>
+                          {formatRupiah(s.expected_cash)}
+                          {s.expected_mismatch && (
+                            <span className="mt-0.5 block">
+                              <MismatchBadge s={s} />
+                              <span className="block text-[11.5px] font-normal text-text-muted">server {formatRupiah(s.expected_cash_server)}</span>
+                            </span>
+                          )}
+                        </td>
                         <td className={`${tdClass} hidden border-b border-border-subtle text-right tabular-nums whitespace-nowrap sm:table-cell`}>
                           {s.closing_cash === null ? <span className="text-text-muted">—</span> : formatRupiah(s.closing_cash)}
                         </td>
@@ -192,18 +221,32 @@ export function ShiftDetailView() {
       />
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
       {!s && state.status === "loading" && <SkeletonList rows={6} label="Memuat shift" />}
-      {s && <ShiftBody s={s} />}
+      {s && <ShiftBody s={s} onChanged={reload} />}
     </>
   );
 }
 
-function ShiftBody({ s }: { s: ShiftDetail }) {
+function ShiftBody({ s, onChanged }: { s: ShiftDetail; onChanged: () => void }) {
+  const [cash, setCash] = useState<CashType | null>(null);
   const diffTone = s.difference === null || s.difference === 0 ? "neutral" : s.difference < 0 ? "danger" : "warning";
   return (
     <div className="flex flex-col gap-5">
       {s.status === "open" && (
         <Notice tone="info" title="Shift masih buka">
           Kas seharusnya dihitung dari kas awal + pembayaran tunai + kas masuk − kas keluar sejauh yang sudah sinkron.
+        </Notice>
+      )}
+      {s.expected_mismatch && (
+        <Notice tone="warning" icon={<AlertTriangle size={17} aria-hidden />} title="Hitungan server berbeda">
+          <p>
+            Kas seharusnya dari perangkat <strong className="tabular-nums">{formatRupiah(s.expected_cash)}</strong>, menurut data di server{" "}
+            <strong className="tabular-nums">{formatRupiah(s.expected_cash_server)}</strong> (selisih{" "}
+            <span className="tabular-nums">{formatRupiah(Math.abs(s.expected_cash - s.expected_cash_server))}</span>).
+          </p>
+          <p className="mt-1 text-[13px]">
+            Biasanya ada transaksi atau kas masuk/keluar dari perangkat yang belum/tidak tersinkron, atau dihitung berbeda di perangkat. Selisih kas di atas tetap
+            memakai angka perangkat. Periksa riwayat transaksi shift ini dan pastikan perangkat kasir sudah sinkron.
+          </p>
         </Notice>
       )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -251,7 +294,23 @@ function ShiftBody({ s }: { s: ShiftDetail }) {
           )}
         </Section>
 
-        <Section title="Kas masuk & keluar" description={`Masuk ${formatRupiah(s.cash_in)} · keluar ${formatRupiah(s.cash_out)}`} bodyClass="p-0">
+        <Section
+          title="Kas masuk & keluar"
+          description={`Masuk ${formatRupiah(s.cash_in)} · keluar ${formatRupiah(s.cash_out)}`}
+          bodyClass="p-0"
+          actions={
+            s.status === "open" ? (
+              <div className="flex gap-2">
+                <button type="button" className={btn.secondary} onClick={() => setCash("in")}>
+                  <ArrowDownLeft size={16} aria-hidden /> Kas masuk
+                </button>
+                <button type="button" className={btn.secondary} onClick={() => setCash("out")}>
+                  <ArrowUpRight size={16} aria-hidden /> Kas keluar
+                </button>
+              </div>
+            ) : undefined
+          }
+        >
           {s.cash_movements.length === 0 ? (
             <p className="px-4 py-5 text-[14px] text-text-muted sm:px-5">Tidak ada kas masuk/keluar selama shift ini.</p>
           ) : (
@@ -281,6 +340,7 @@ function ShiftBody({ s }: { s: ShiftDetail }) {
           <p className="text-[14px] text-text-body">{s.notes}</p>
         </Section>
       )}
+      <CashMovementDialog shift={cash && s.status === "open" ? s : null} type={cash ?? "out"} onClose={() => setCash(null)} onSaved={onChanged} />
     </div>
   );
 }

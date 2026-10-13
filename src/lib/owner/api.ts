@@ -41,6 +41,11 @@ export interface OwnerApi {
   google(body: GoogleLoginInput): Promise<OwnerSession>;
   logout(): Promise<void>;
   me(signal?: AbortSignal): Promise<OwnerSession>;
+  /**
+   * Konfirmasi ulang identitas (password atau ID token Google akun yang sama) sebelum aksi sensitif — mis. mengubah
+   * QRIS/rekening outlet. Berlaku ±10 menit (`confirmed_until`). Salah → 401 `INVALID_CREDENTIALS` (tanpa keluar sesi).
+   */
+  confirm(body: { password: string } | { id_token: string }): Promise<{ confirmed_until: string }>;
   summary(q: { outlet_id?: string }, signal?: AbortSignal): Promise<Summary>;
   salesReport(q: RangeQuery, signal?: AbortSignal): Promise<SalesReport>;
   outletsReport(q: { from?: string; to?: string }, signal?: AbortSignal): Promise<OutletsReport>;
@@ -169,6 +174,15 @@ const httpApi: OwnerApi = {
     await call<null>("POST", "/auth/logout", { body: {}, skipAuthRedirect: true });
   },
   me: async (signal) => (await call<OwnerSession>("GET", "/auth/me", { signal, skipAuthRedirect: true })).data,
+  // 401 INVALID_CREDENTIALS di sini = password salah (tetap di halaman); 401 lain = sesi habis → /masuk.
+  confirm: async (body) => {
+    try {
+      return (await call<{ confirmed_until: string }>("POST", "/auth/confirm", { body, skipAuthRedirect: true })).data;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401 && err.code !== "INVALID_CREDENTIALS") unauthorizedHandler?.();
+      throw err;
+    }
+  },
   summary: async (q, signal) => (await call<Summary>("GET", `/summary${qs(q)}`, { signal })).data,
   salesReport: async (q, signal) => (await call<SalesReport>("GET", `/reports/sales${qs(q)}`, { signal })).data,
   outletsReport: async (q, signal) => (await call<OutletsReport>("GET", `/reports/outlets${qs(q)}`, { signal })).data,

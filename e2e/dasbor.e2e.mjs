@@ -123,6 +123,13 @@ const api = {
   async activity(qs) {
     return (await this.call("GET", `/owner/activity?${qs}`)).data;
   },
+  async get(path) {
+    return (await this.call("GET", path)).data;
+  },
+  /** Konfirmasi ulang sesi klien tes (aksi sensitif, mis. mengembalikan QRIS). Batas server 10/15 menit. */
+  async confirm() {
+    await this.call("POST", "/owner/auth/confirm", { password: PASSWORD });
+  },
 };
 
 // ——— Bantuan browser ———
@@ -600,6 +607,124 @@ test("aktivitas memuat ringkasan & chip Perubahan data", async () => {
   await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
   const kinds = await page.$$eval("main li[data-kind]", (els) => [...new Set(els.map((e) => e.dataset.kind))]);
   assert(kinds.every((k) => k === "change"), `hanya entri perubahan data (${kinds.join(",")})`);
+});
+
+// ——— Nomor 14: outlet, QRIS (konfirmasi password), batal transaksi, kas shift ———
+
+test("outlet: kuota penuh → tombol Tambah outlet nonaktif dengan penjelasan", async () => {
+  await ensureLoggedIn();
+  const sub = await api.get("/owner/subscription");
+  await go("/dasbor/outlet");
+  await waitText("Kelola outlet");
+  await waitText(`dari ${sub.limits.outlets} outlet terpakai`);
+  const full = sub.usage.outlets >= sub.limits.outlets;
+  const disabled = await page.evaluate(() => {
+    const b = [...document.querySelectorAll("main button")].find((x) => x.innerText.trim() === "Tambah outlet");
+    return b ? b.disabled : null;
+  });
+  eq(disabled, full, "tombol Tambah outlet nonaktif bila kuota penuh");
+  if (full) {
+    await waitText("Kuota outlet penuh");
+    assert(await page.$('main a[href="/dasbor/langganan"]'), "tautan ke Langganan");
+  }
+});
+
+test("pengaturan: ubah nama merchant QRIS lewat konfirmasi password, lalu kembalikan", async () => {
+  await ensureLoggedIn();
+  const me = await api.get("/owner/auth/me");
+  const outletId = me.outlets[0].id;
+  const before = (await api.pull("outlets")).find((o) => o.id === outletId);
+  const name = `E2E QRIS ${RUN}`;
+  try {
+    await go(`/dasbor/pengaturan?outlet=${outletId}`);
+    await page.waitForSelector("#pembayaran", { visible: true });
+    await waitText("Ini mengubah tujuan uang pelanggan", { root: "#pembayaran" });
+    if (!(await page.$("#pembayaran input[id$='-merchant']"))) await click("QRIS", { within: "#pembayaran", selector: "label" });
+    await fillSel("#pembayaran input[id$='-merchant']", name);
+    await click("Simpan", { within: "#pembayaran", selector: "button[type=submit]" });
+    // Sesi browser baru belum dikonfirmasi → server 422 CONFIRM_REQUIRED → dialog.
+    await waitDialog("Konfirmasi password");
+    await fill("Password", "salah-sekali-123", { within: "dialog" });
+    await click("Konfirmasi", { within: "dialog" });
+    await waitText("Password salah", { root: "dialog[open]" });
+    await fill("Password", PASSWORD, { within: "dialog" });
+    await click("Konfirmasi", { within: "dialog" });
+    await waitDialogClosed("Konfirmasi password");
+    await waitText("Metode pembayaran disimpan.");
+    const saved = await poll(async () => {
+      const o = (await api.pull("outlets")).find((x) => x.id === outletId);
+      return o?.settings?.payment_methods?.qris?.merchant_name === name ? o : null;
+    }, "nama merchant tersimpan di server");
+    assert(saved.updated_at !== before.updated_at, "record outlet berubah");
+  } finally {
+    // Kembalikan record outlet persis seperti semula (klien tes perlu konfirmasi sendiri).
+    const cur = (await api.pull("outlets")).find((o) => o.id === outletId);
+    if (cur && JSON.stringify(cur.settings) !== JSON.stringify(before.settings)) {
+      await api.confirm();
+      const system = new Set(["id", "business_id", "created_at", "updated_at", "deleted_at"]);
+      const data = Object.fromEntries(Object.entries(before).filter(([k]) => !system.has(k)));
+      await api.upsert("outlets", outletId, data, cur.updated_at);
+    }
+  }
+});
+
+test("transaksi: batalkan (void) transaksi lunas dari detail", async () => {
+  await ensureLoggedIn();
+  // Data demo diisi ulang sesi utama; pembatalan ini memang tidak bisa diurungkan.
+  const list = await api.get("/owner/sales?status=paid&per_page=20");
+  const sale = list.find((s) => s.payment_method === "qris") ?? list.find((s) => s.payment_method === "cash") ?? list[0];
+  assert(sale, "ada transaksi lunas untuk diuji");
+  await go(`/dasbor/transaksi/${sale.id}`);
+  await click("Batalkan transaksi", { within: "main" });
+  await waitDialog(`Batalkan transaksi · ${sale.receipt_no}`);
+  await click("Lanjut", { within: "dialog" });
+  await waitText("Alasan wajib diisi.", { root: "dialog[open]" });
+  await click("Salah input", { within: "dialog" });
+  await click("Lanjut", { within: "dialog" });
+  await waitText("Pembatalan tidak bisa diurungkan", { root: "dialog[open]" });
+  await click("Batalkan & kembalikan", { within: "dialog", partial: true });
+  await waitDialogClosed(`Batalkan transaksi · ${sale.receipt_no}`);
+  await waitText("Transaksi dibatalkan");
+  const after = await api.get(`/owner/sales/${sale.id}`);
+  eq(after.status, "void", "status transaksi");
+  eq(after.void_reason, "Salah input", "alasan");
+  const net = after.payments.reduce((a, p) => a + p.amount, 0);
+  eq(net, 0, "jumlah bersih pembayaran setelah pengembalian");
+  assert(after.payments.some((p) => p.amount < 0 && p.method === sale.payment_method), "pengembalian negatif lewat metode asal");
+  const acts = await api.activity("kind=void&per_page=100");
+  assert(acts.some((a) => a.ref_id === sale.id), "pembatalan muncul di Aktivitas");
+});
+
+test("shift: catat kas keluar pada shift yang sedang buka", async () => {
+  await ensureLoggedIn();
+  const open = await api.get("/owner/shifts?status=open&per_page=5");
+  assert(open.length, "ada shift buka di data demo");
+  const shift = open[0];
+  const note = `E2E ${RUN}`;
+  await go(`/dasbor/shift/${shift.id}`);
+  await click("Kas keluar", { within: "main" });
+  await waitDialog("Catat kas masuk/keluar");
+  await waitText("pastikan kasir mengetahuinya", { root: "dialog[open]" });
+  await fill("Nominal", "1000", { within: "dialog" });
+  await click("Operasional", { within: "dialog" });
+  await fill("Catatan", note, { within: "dialog" });
+  await click("Catat kas keluar", { within: "dialog" });
+  await waitDialogClosed("Catat kas masuk/keluar");
+  await waitText("Kas keluar dicatat.");
+  await waitText(`Operasional · ${note}`);
+  const detail = await api.get(`/owner/shifts/${shift.id}`);
+  const mv = detail.cash_movements.find((m) => m.reason === `Operasional · ${note}`);
+  assert(mv && mv.type === "out" && mv.amount === 1000, "kas keluar tersimpan di server");
+  eq(detail.cash_out, shift.cash_out + 1000, "kas keluar shift bertambah");
+});
+
+test("shift: daftar menandai hitungan server berbeda (bila ada)", async () => {
+  await ensureLoggedIn();
+  const rows = await api.get("/owner/shifts?per_page=100&status=closed");
+  const bad = rows.find((r) => r.expected_mismatch);
+  await go("/dasbor/shift?status=closed");
+  await page.waitForSelector("main table");
+  eq(await hasText("Hitungan server berbeda", "main"), !!bad && rows.indexOf(bad) < 25, "badge selisih hitungan server");
 });
 
 test("keluar: konfirmasi Keluar kembali ke halaman masuk", async () => {

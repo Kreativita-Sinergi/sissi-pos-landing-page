@@ -2,8 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
-import { btn, cardClass, focusRing, inputClass, Notice, Spinner } from "@/components/admin/ui";
+import { useToast } from "@/components/admin/toast";
+import { btn, cardClass, errorMessage, focusRing, inputClass, Notice, Spinner } from "@/components/admin/ui";
+import { saveErrorText, type SaveOutcome } from "@/lib/owner/records";
 import { bpToPercentText, intText, percentTextToBp } from "@/lib/owner/settings";
+import type { SyncRecord } from "@/lib/owner/types";
+import { ConfirmCancelled } from "./ConfirmIdentityDialog";
 
 // Komponen bersama untuk formulir kelola data dasbor pemilik (Pelanggan, Pengaturan).
 
@@ -252,4 +256,49 @@ export function Segmented<T extends string | number>({
       })}
     </div>
   );
+}
+
+/** Simpan + umpan balik standar (applied/conflict/rejected) untuk satu bagian. */
+export function useSaver(onRecord: (r: SyncRecord) => void) {
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<React.ReactNode>(null);
+  const run = async (fn: () => Promise<SaveOutcome>, okText: string, onConflict: (r: SyncRecord) => void) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const r = await fn();
+      if (r.status === "applied") {
+        if (r.record) onRecord(r.record);
+        toast.success(okText);
+      } else if (r.status === "conflict") {
+        if (r.record) {
+          onRecord(r.record);
+          onConflict(r.record);
+        }
+        setError(r.message);
+        toast.error(r.message);
+      } else {
+        if (r.record) onRecord(r.record);
+        setError(
+          <>
+            <p>{r.message}</p>
+            {r.details.length > 0 && (
+              <ul className="mt-1 list-disc pl-5">
+                {r.details.map((d) => (
+                  <li key={`${d.field}-${d.message}`}>{d.message}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        );
+      }
+    } catch (err) {
+      if (err instanceof ConfirmCancelled) setError("Perubahan belum disimpan: konfirmasi password dibatalkan.");
+      else setError(saveErrorText(err, errorMessage));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return { saving, error, run, clearError: () => setError(null) };
 }
