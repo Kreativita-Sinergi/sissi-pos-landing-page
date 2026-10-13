@@ -80,3 +80,10 @@ body {
 button, a, [role="button"], input[type="button"], input[type="submit"] {
   cursor: pointer;
 }
+
+/* Selama dialog modal terbuka (panel produk, konfirmasi, dll.), halaman di belakangnya tidak ikut bergulir.
+   scrollbar-gutter menjaga lebar konten agar tidak bergeser saat scrollbar disembunyikan. */
+html:has(dialog[open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}

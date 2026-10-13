@@ -66,7 +66,7 @@ export function Sheet({
           </div>
           {/* relative: elemen absolute di isi (sr-only toggle/checkbox, input file) diukur terhadap area gulir ini,
               bukan dialog — tanpa ini dialog ikut bergulir dan footer terangkat ke tengah layar. */}
-          <div className="relative min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">{children}</div>
+          <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">{children}</div>
           {footer && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 py-3 sm:px-6">{footer}</div>}
         </div>
       )}
