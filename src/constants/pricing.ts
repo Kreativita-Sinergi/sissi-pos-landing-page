@@ -92,6 +92,11 @@ export const PRICING_FEATURES: FeatureComparisonItem[] = [
     proValue: true,
   },
   {
+    name: "Pesan & Bayar Mandiri lewat QR",
+    freeValue: false,
+    proValue: true,
+  },
+  {
     name: "Antrean servis, jadwal & sesi sewa",
     freeValue: false,
     proValue: true,

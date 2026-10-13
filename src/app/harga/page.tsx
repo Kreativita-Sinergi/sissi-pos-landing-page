@@ -150,6 +150,7 @@ export default function HargaPage() {
                   "Transaksi tanpa batas",
                   "Semua fitur Gratis",
                   "Meja, pesanan berjalan & layar dapur",
+                  "Pesan & Bayar Mandiri lewat QR",
                   "Antrean servis, jadwal & sesi sewa",
                   "Kasbon dengan pengingat",
                   "Kehadiran, jadwal & gaji",
@@ -168,7 +169,7 @@ export default function HargaPage() {
 
           {/* Pricing Note */}
           <p className="text-[14px] text-[#7d8986] text-left">
-            Harga sudah termasuk PPN. Outlet tambahan dikenakan biaya terpisah.
+            Harga belum termasuk PPN. Outlet tambahan dikenakan biaya terpisah.
           </p>
         </div>
       </section>

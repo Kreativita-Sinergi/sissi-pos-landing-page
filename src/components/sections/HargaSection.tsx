@@ -193,7 +193,7 @@ export function HargaSection() {
 
           {/* Footer Note - Left-aligned, no border, no background, pt-5 */}
           <div className="pt-5 text-left text-[14px] text-[#7d8986]">
-            Harga sudah termasuk PPN. Outlet tambahan dikenakan biaya terpisah.
+            Harga belum termasuk PPN. Outlet tambahan dikenakan biaya terpisah.
           </div>
         </div>
       </div>

@@ -1335,7 +1335,6 @@ export const GUIDES: GuideItem[] = [
       "Dengan Pesan & Bayar Mandiri, pelanggan memindai QR di meja, memilih menu dari HP tanpa memasang aplikasi, lalu menyebut nomor pesanannya ke kasir untuk membayar. Setelah lunas, pesanan langsung masuk dapur. Fitur ini termasuk paket Pro.",
     prerequisites: [
       "Paket Pro atau masa uji coba Pro aktif.",
-      "Menu “Pesan & Bayar Mandiri” sudah tersedia untuk bisnismu. Bila halaman menulis “belum diaktifkan untuk bisnis ini”, hubungi Sissi.",
       "Produk sudah dibuat. Untuk QR per meja, meja juga sudah dibuat di menu Meja.",
     ],
     steps: [
@@ -2746,13 +2745,13 @@ export const GUIDES: GuideItem[] = [
         title: "Berlangganan atau memperpanjang Pro",
         description: "Pembayaran Pro saat ini dilakukan manual lewat transfer, lalu dikonfirmasi admin Sissi.",
         steps: [
-          "Di halaman Langganan, lihat kartu “Cara bayar”: harga bulanan/tahunan, rekening tujuan, dan petunjuk dari admin. Ketuk ikon salin untuk menyalin nomor rekening.",
+          "Di halaman Langganan, lihat kartu “Cara bayar”: harga bulanan/tahunan, rekening tujuan, dan petunjuk pembayaran. Ketuk ikon salin untuk menyalin nomor rekening. Bila rekening belum tampil, tanyakan lewat “Chat admin via WhatsApp”.",
           "Transfer sesuai harga paket yang dipilih.",
           "Ketuk “Chat admin via WhatsApp”. Pesan berisi nama usahamu sudah terisi; kirim beserta bukti transfer.",
           "Setelah admin mencatat pembayaran, status menjadi “Pro aktif” dan HP pemilik menerima notifikasi “Pro aktif sampai …”. Riwayatnya tampil di kartu “Riwayat pembayaran”.",
         ],
         points: [
-          "Harga berlaku per usaha dengan 1 outlet termasuk.",
+          "Harga berlaku per usaha dengan 1 outlet termasuk, dan belum termasuk PPN.",
           "Bila diperpanjang sebelum habis, masa baru disambung dari tanggal berakhir yang lama, jadi tidak ada hari yang hilang.",
         ],
       },

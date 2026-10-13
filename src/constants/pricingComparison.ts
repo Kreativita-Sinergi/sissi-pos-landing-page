@@ -27,7 +27,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
     items: [
       { name: "Meja & pesanan berjalan", gratis: false, pro: true },
       { name: "Layar dapur", gratis: false, pro: true },
-      { name: "Pesan & Bayar Mandiri lewat QR", gratis: false, pro: "Segera hadir" },
+      { name: "Pesan & Bayar Mandiri lewat QR", gratis: false, pro: true },
     ],
   },
   {
