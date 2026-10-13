@@ -105,7 +105,7 @@ export default function SyaratKetentuanPage() {
                     3. Paket, Uji Coba, dan Pembayaran
                   </h2>
                   <p>
-                    Paket Gratis dapat digunakan tanpa batas waktu sesuai batas kuota yang ditentukan. Paket Pro mencakup uji coba gratis selama 30 hari kalender sejak transaksi pertama Anda. Setelah masa uji coba, biaya langganan bulanan atau tahunan akan ditagihkan sesuai siklus pembayaran yang dipilih.
+                    Paket Gratis dapat digunakan tanpa batas waktu sesuai batas kuota yang ditentukan. Paket Pro mencakup uji coba gratis selama 30 hari kalender sejak tanggal pendaftaran akun. Setelah masa uji coba, Anda dapat berlangganan Pro dengan membayar biaya bulanan atau tahunan sesuai petunjuk di menu Langganan pada aplikasi. Langganan tidak diperpanjang atau ditagih secara otomatis; bila tidak diperpanjang, akun kembali ke Paket Gratis setelah masa tenggang dan data Anda tetap tersimpan.
                   </p>
                 </section>
 

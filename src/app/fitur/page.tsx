@@ -8,7 +8,7 @@ import { AjakanSection } from "@/components/sections/AjakanSection";
 export const metadata: Metadata = {
   title: "Fitur · Sissi POS",
   description:
-    "Kasir offline, QRIS statis, layar dapur, varian dan HPP dari resep, stok bahan baku, PO dan opname, shift, laporan, absensi dan gaji, order servis, serta booking sewa. Semua di HP dan tablet Android.",
+    "Kasir offline, QRIS statis, printer Bluetooth & Wi-Fi, layar dapur, impor produk CSV, varian dan HPP dari resep, stok bahan baku, PO dan opname, shift, laporan, absensi dan gaji, order servis, serta booking sewa. Semua di HP dan tablet Android.",
 };
 
 interface FeatureItem {
@@ -60,7 +60,11 @@ const FEATURE_BLOCKS: FeatureBlock[] = [
       },
       {
         title: "Struk",
-        description: "Cetak ke printer thermal jaringan 58/80 mm atau kirim lewat WhatsApp.",
+        description: "Cetak ke printer thermal Bluetooth atau Wi-Fi/LAN 58/80 mm, atau kirim lewat WhatsApp.",
+      },
+      {
+        title: "Banyak printer, struk & dapur",
+        description: "Satu printer untuk struk kasir, satu lagi khusus tiket dapur. Laci uang terbuka saat bayar tunai.",
       },
     ],
   },
@@ -101,6 +105,10 @@ const FEATURE_BLOCKS: FeatureBlock[] = [
     image: "/images/app/varian-tablet.webp",
     imageAlt: "Form produk Sissi: varian Ukuran (S, M, L) dan Suhu (Panas, Es) dengan daftar kombinasi.",
     items: [
+      {
+        title: "Impor produk dari CSV",
+        description: "Isi template di Excel atau Google Sheets, periksa pratinjau, impor sampai 1.000 produk sekaligus.",
+      },
       {
         title: "Varian multi-dimensi",
         description: "Sampai tiga pilihan, mis. Ukuran × Suhu; kombinasinya dibuat otomatis.",

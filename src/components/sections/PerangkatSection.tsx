@@ -23,7 +23,7 @@ const DEVICES = [
   {
     name: "Printer & scanner",
     description:
-      "Printer thermal jaringan (LAN/Wi-Fi) 58 atau 80 mm. Scanner barcode mode keyboard, atau kamera HP untuk memindai.",
+      "Printer thermal Bluetooth atau jaringan (LAN/Wi-Fi) 58 atau 80 mm, bisa lebih dari satu untuk kasir dan dapur. Scanner barcode mode keyboard, atau kamera HP untuk memindai.",
   },
 ];
 

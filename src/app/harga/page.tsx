@@ -30,8 +30,7 @@ export default function HargaPage() {
             Harga yang jelas, tanpa biaya tersembunyi
           </h1>
           <p className="text-[18px] sm:text-[19px] text-[#fef1eb] leading-relaxed max-w-[620px] mx-auto mb-10">
-            Mulai gratis. Semua fitur Pro bisa dicoba 30 hari, dihitung sejak
-            transaksi pertama.
+            Mulai gratis. Semua fitur Pro bisa dicoba 30 hari sejak daftar.
           </p>
 
           {/* Billing Switcher */}
@@ -152,9 +151,9 @@ export default function HargaPage() {
                   "Semua fitur Gratis",
                   "Meja, pesanan berjalan & layar dapur",
                   "Antrean servis, jadwal & sesi sewa",
-                  "Kasbon, diskon, refund & void",
+                  "Kasbon dengan pengingat",
                   "Kehadiran, jadwal & gaji",
-                  "Jam ramai & bantuan prioritas",
+                  "Jam ramai, produk terlaris & bantuan prioritas",
                 ].map((item) => (
                   <div key={item} className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-[#196b52] shrink-0 stroke-[2.5]" />
@@ -191,12 +190,12 @@ export default function HargaPage() {
               {
                 step: "1",
                 title: "Daftar dan siapkan toko",
-                desc: "Masukkan menu dan sambungkan printer. Hitungan belum dimulai.",
+                desc: "Buat akun, masukkan menu, dan sambungkan printer. Uji coba Pro langsung aktif.",
               },
               {
                 step: "2",
                 title: "30 hari semua fitur Pro",
-                desc: "Dimulai sejak transaksi pertama. Tidak perlu kartu kredit.",
+                desc: "Dihitung sejak daftar. Tidak perlu kartu kredit.",
               },
               {
                 step: "3",

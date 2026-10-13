@@ -17,8 +17,9 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
       { name: "Kasir, struk & printer", gratis: true, pro: true },
       { name: "Tunai, QRIS, kartu & transfer", gratis: true, pro: true },
       { name: "Mode offline", gratis: true, pro: true },
-      { name: "Diskon, refund & void", gratis: false, pro: true },
-      { name: "Bayar sebagian & kasbon", gratis: false, pro: true },
+      { name: "Diskon, refund & void", gratis: true, pro: true },
+      { name: "Bayar dengan beberapa cara (split)", gratis: true, pro: true },
+      { name: "Kasbon dengan pengingat", gratis: false, pro: true },
     ],
   },
   {
@@ -26,6 +27,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
     items: [
       { name: "Meja & pesanan berjalan", gratis: false, pro: true },
       { name: "Layar dapur", gratis: false, pro: true },
+      { name: "Pesan & Bayar Mandiri lewat QR", gratis: false, pro: "Segera hadir" },
     ],
   },
   {
@@ -48,6 +50,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
     category: "Produk & stok",
     items: [
       { name: "Produk, varian & stok menipis", gratis: true, pro: true },
+      { name: "Impor produk dari CSV", gratis: true, pro: true },
     ],
   },
   {
@@ -64,17 +67,17 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
 export const PRICING_FAQS = [
   {
     question: "Apakah perlu kartu kredit untuk uji coba?",
-    answer: "Tidak. Uji coba 30 hari langsung aktif tanpa data pembayaran.",
+    answer: "Tidak. Uji coba Pro 30 hari langsung aktif sejak daftar, tanpa data pembayaran.",
   },
   {
     question: "Apa yang terjadi kalau Pro tidak diperpanjang?",
     answer:
-      "Akun otomatis kembali ke paket Gratis. Data tetap aman, hanya fitur Pro yang terkunci.",
+      "Ada masa tenggang 3 hari, lalu akun kembali ke paket Gratis. Data tetap aman, hanya fitur Pro yang terkunci; pesanan dan kasbon yang masih berjalan tetap bisa diselesaikan.",
   },
   {
     question: "Bagaimana cara bayar?",
     answer:
-      "Lewat QRIS atau transfer bank dari menu Langganan di aplikasi.",
+      "Transfer ke rekening yang tertera di menu Pengaturan › Langganan, lalu konfirmasi ke admin lewat tombol “Chat admin via WhatsApp”. Pro aktif setelah pembayaran dicatat.",
   },
   {
     question: "Apakah perpanjangan otomatis?",

@@ -77,8 +77,8 @@ export const USAHA_SUBPAGES: Record<string, UsahaSubpageData> = {
         description: "Atur perangkat sebagai layar dapur, lalu masuk dengan PIN karyawan dapur.",
       },
       {
-        title: "Printer thermal jaringan",
-        description: "Kertas 58 atau 80 mm untuk struk dan tiket dapur.",
+        title: "Printer struk & dapur",
+        description: "Bluetooth atau Wi-Fi/LAN, 58 atau 80 mm. Tambah printer khusus dapur bila perlu.",
       },
     ],
   },
@@ -138,8 +138,8 @@ export const USAHA_SUBPAGES: Record<string, UsahaSubpageData> = {
         description: "Kode langsung masuk ke kolom pindai. Di HP bisa memakai kamera.",
       },
       {
-        title: "Printer thermal jaringan",
-        description: "Kertas 58 atau 80 mm, dengan header dan footer toko.",
+        title: "Printer thermal",
+        description: "Bluetooth atau Wi-Fi/LAN, kertas 58 atau 80 mm, dengan header dan footer toko.",
       },
     ],
   },
@@ -200,8 +200,8 @@ export const USAHA_SUBPAGES: Record<string, UsahaSubpageData> = {
         description: "Cukup untuk usaha jasa kecil; antrean tampil per status.",
       },
       {
-        title: "Printer thermal jaringan",
-        description: "Cetak nota ambil untuk pelanggan.",
+        title: "Printer thermal",
+        description: "Bluetooth atau Wi-Fi/LAN. Cetak nota ambil untuk pelanggan.",
       },
     ],
   },
@@ -262,8 +262,8 @@ export const USAHA_SUBPAGES: Record<string, UsahaSubpageData> = {
         description: "Cek jadwal hari ini dan sesi yang sedang berjalan.",
       },
       {
-        title: "Printer thermal jaringan",
-        description: "Bukti booking dan struk sewa dengan durasi dan tarif.",
+        title: "Printer thermal",
+        description: "Bluetooth atau Wi-Fi/LAN. Bukti booking dan struk sewa dengan durasi dan tarif.",
       },
     ],
   },

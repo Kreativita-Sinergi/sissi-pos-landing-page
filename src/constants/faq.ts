@@ -27,7 +27,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Printer apa yang bisa dipakai?",
     answer:
-      "Printer thermal yang tersambung lewat jaringan (LAN/Wi-Fi), kertas 58 mm atau 80 mm, untuk struk dan tiket dapur. Printer Bluetooth belum didukung. Struk juga bisa dikirim ke pelanggan lewat WhatsApp.",
+      "Printer thermal Bluetooth atau jaringan (LAN/Wi-Fi), kertas 58 mm atau 80 mm. Satu perangkat bisa memakai beberapa printer, misalnya satu untuk struk kasir dan satu khusus tiket dapur. Printer USB belum didukung. Struk juga bisa dikirim ke pelanggan lewat WhatsApp.",
   },
   {
     question: "Bagaimana akses karyawan diatur?",

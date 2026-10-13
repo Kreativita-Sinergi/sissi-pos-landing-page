@@ -26,7 +26,7 @@ export function HargaSection() {
           </h2>
           <p className="mt-4 text-[17px] text-[#525866] leading-relaxed">
             Paket Gratis bisa dipakai selamanya. Semua fitur Pro bisa dicoba
-            gratis 30 hari, dihitung sejak transaksi pertama.
+            gratis 30 hari sejak daftar.
           </p>
         </div>
 
