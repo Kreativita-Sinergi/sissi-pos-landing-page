@@ -49,7 +49,7 @@ export function Sheet({
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
       }}
-      className={`m-0 ml-auto h-dvh max-h-dvh w-full ${wide ? "max-w-[880px]" : "max-w-[640px]"} bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.45)] sm:rounded-l-[16px]`}
+      className={`m-0 ml-auto h-dvh max-h-dvh w-full overflow-hidden ${wide ? "max-w-[880px]" : "max-w-[640px]"} bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.45)] sm:rounded-l-[16px]`}
     >
       {open && (
         <div className="flex h-full flex-col">
@@ -64,7 +64,9 @@ export function Sheet({
               <X size={18} aria-hidden />
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">{children}</div>
+          {/* relative: elemen absolute di isi (sr-only toggle/checkbox, input file) diukur terhadap area gulir ini,
+              bukan dialog — tanpa ini dialog ikut bergulir dan footer terangkat ke tengah layar. */}
+          <div className="relative min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">{children}</div>
           {footer && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle px-4 py-3 sm:px-6">{footer}</div>}
         </div>
       )}
