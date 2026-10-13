@@ -395,6 +395,15 @@ export const GUIDES: GuideItem[] = [
         },
       },
       {
+        id: "tombol-kembali",
+        title: "Tombol kembali Android",
+        points: [
+          "Di menu selain Beranda, tombol kembali membawa Anda ke Beranda.",
+          "Di Beranda, tombol kembali memunculkan “Tekan sekali lagi untuk keluar”. Tekan lagi dalam ±2 detik untuk keluar dari aplikasi.",
+          "Di perangkat “Layar dapur”, berandanya adalah layar Dapur.",
+        ],
+      },
+      {
         id: "daftar-tablet",
         title: "Daftar dan saringan",
         points: [
@@ -546,6 +555,12 @@ export const GUIDES: GuideItem[] = [
           type: "tip",
           text: "Gagal memasangkan? Pastikan printer menyala dan tidak tersambung ke HP lain. PIN printer biasanya 0000 atau 1234. Bila printer tidak muncul, matikan lalu nyalakan lagi printernya, kemudian ketuk “Cari lagi”.",
         },
+        image: {
+          ...HP,
+          src: "/panduan/bluetooth-printer-hp.png",
+          alt: "Pemilih printer Bluetooth: dua printer RPP02N dibedakan kode (1A90) dan (2B07), lencana Paling dekat, dan tombol Cetak tes",
+          caption: "Printer bernama sama dibedakan kode singkat; ketuk “Cetak tes” untuk memastikan.",
+        },
       },
       {
         id: "jaringan",
@@ -621,6 +636,13 @@ export const GUIDES: GuideItem[] = [
           "Printer tanpa pemotong otomatis: setelah struk pelanggan, muncul “Sobek struk pelanggan dulu”. Sobek struknya, lalu ketuk “Cetak salinan”.",
           "Butuh salinan untuk transaksi yang sudah lewat? Buka “Riwayat” › pilih transaksi › “Salinan toko”.",
         ],
+        image: {
+          ...HP,
+          height: 1180,
+          src: "/panduan/struk-salinan-hp.png",
+          alt: "Pengaturan Struk dengan Cetak salinan untuk toko aktif dan pilihan isi salinan Ringkas",
+          caption: "Nyalakan salinan untuk toko dan pilih isinya.",
+        },
       },
       {
         id: "cetak-ulang",
@@ -785,7 +807,7 @@ export const GUIDES: GuideItem[] = [
         id: "buka",
         title: "Buka Impor produk",
         steps: [
-          "Buka “Produk”, ketuk “Kelola”, lalu “Impor produk”.",
+          "Buka “Produk”, ketuk “Kelola”, lalu “Impor produk”. Lembar “Kelola produk” juga berisi “Stok & harga modal”, “Stok menipis”, “Kategori”, “Grup modifier”, dan “Diskon”.",
           "Bila daftar produk masih kosong, bisa juga lewat tautan “Atau impor banyak produk dari Excel atau CSV”.",
         ],
       },
@@ -1360,6 +1382,12 @@ export const GUIDES: GuideItem[] = [
           hp: "Muncul ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap disajikan”. Ketuk loncengnya untuk membuka lembar “Siap diantar”.",
           tablet: "Muncul spanduk “Pesanan siap disajikan” di layar Kasir; ketuk “Lihat”.",
         },
+        image: {
+          ...HP,
+          src: "/panduan/kasir-lonceng-siap-hp.png",
+          alt: "Layar Kasir di HP dengan ikon lonceng berangka 2 di bagian atas",
+          caption: "Di HP, angka di lonceng = jumlah pesanan yang siap diantar. Ketuk untuk membuka “Siap diantar”.",
+        },
       },
       {
         id: "perangkat-khusus",
@@ -1391,43 +1419,59 @@ export const GUIDES: GuideItem[] = [
         title: "Aktifkan pesanan dari QR",
         steps: [
           "Buka Pengaturan › “Penjualan” › “Pesan & Bayar Mandiri”.",
-          "Nyalakan “Terima pesanan dari QR”.",
-          "Atur pilihan lainnya (lihat langkah berikut), lalu ketuk “Simpan”.",
+          "Di kartu “1. Aktifkan”, nyalakan “Terima pesanan dari QR”. Selama mati, hanya kartu ini yang tampil.",
+          "Setelah dinyalakan, muncul kartu berikutnya berurutan: “Kode QR pesanan”, “2. Cara pesan”, “3. Pembayaran”, dan “4. Aturan pesanan”.",
+          "Atur pilihan di tiap kartu (lihat langkah berikut), lalu ketuk “Simpan”.",
         ],
         callout: {
           type: "info",
           text: "Di paket Gratis, halaman ini menampilkan “Fitur Pro” dengan tombol “Lihat Langganan”. Baca “Langganan: paket Gratis & Pro”.",
         },
+        image: {
+          ...HP,
+          height: 1690,
+          src: "/panduan/pesan-mandiri-hp.png",
+          alt: "Pengaturan Pesan & Bayar Mandiri di HP dengan sakelar Terima pesanan dari QR aktif dan kartu cara pesan, pembayaran, serta aturan pesanan",
+          caption: "Nyalakan “Terima pesanan dari QR”, lalu atur cara pesan, pembayaran, dan aturan pesanan.",
+        },
       },
       {
         id: "mode-meja",
-        title: "Pilih cara pelanggan menentukan meja",
-        description: "Pilih salah satu mode meja:",
+        title: "2. Cara pesan: meja, jenis pesanan, dan pengantaran",
+        description: "Di kartu “2. Cara pesan”, ketuk “Meja” lalu pilih salah satu di lembar pilihan (tiap pilihan ada penjelasannya):",
         points: [
           "“QR per meja” (bawaan) — tiap meja punya QR sendiri, meja terisi otomatis. QR outlet dipakai untuk pesanan tanpa meja.",
           "“Pilih meja” — cukup satu QR outlet; pelanggan memilih nomor meja saat makan di tempat.",
           "“Tanpa meja” — satu QR outlet; pelanggan mengambil pesanan di konter dengan nomor pesanan.",
           "Di “Jenis pesanan yang bisa dipilih”, aktifkan Makan di tempat, Bawa pulang, atau keduanya (minimal satu).",
+          "“Pesanan sampai ke pelanggan”: “Diambil pelanggan” (pelanggan menyebut nomor pesanan) atau “Diantar ke meja” (pelayan mengantar pesanan makan di tempat; bawa pulang tetap diambil).",
         ],
+        image: {
+          ...HP,
+          src: "/panduan/pesan-mandiri-meja-hp.png",
+          alt: "Lembar pilihan Meja: QR per meja, Pilih meja, dan Tanpa meja beserta penjelasannya",
+          caption: "Ketuk “Meja”, lalu pilih cara pelanggan menentukan meja.",
+        },
       },
       {
         id: "pembayaran",
-        title: "Pembayaran",
+        title: "3. Pembayaran",
         description:
-          "Pilih “Bayar di kasir”: kasir menerima atau menolak pesanan, lalu menagih lewat Bayar seperti biasa. Pilihan “Bayar online” (QRIS di HP pelanggan) belum tersedia; selama belum diaktifkan, semua pesanan dibayar di kasir.",
+          "Di kartu “3. Pembayaran”, pilih “Bayar di kasir”: kasir menerima atau menolak pesanan, lalu menagih lewat Bayar seperti biasa. Pilihan “Bayar online” (QRIS di HP pelanggan) belum tersedia; selama belum diaktifkan, semua pesanan dibayar di kasir.",
       },
       {
         id: "alur",
-        title: "Alur pesanan setelah dibayar",
+        title: "4. Aturan pesanan: status untuk pelanggan",
+        description: "Kartu terakhir, “4. Aturan pesanan”, dimulai dengan pengaturan status:",
         points: [
           "“Pelanggan memantau status pesanan” — bila menyala, halaman pelanggan menampilkan status sampai pesanan siap. Bila mati, halaman berhenti setelah pesanan lunas.",
           "Bila Layar dapur aktif, status “Sedang disiapkan” dan “Siap” berubah otomatis dari layar dapur. Tanpa layar dapur, kasir mengetuk “Tandai siap” saat pesanan siap.",
-          "“Pesanan sampai ke pelanggan”: “Diambil pelanggan” (pelanggan menyebut nomor pesanan) atau “Diantar ke meja” (pelayan mengantar pesanan makan di tempat; bawa pulang tetap diambil).",
         ],
       },
       {
         id: "aturan",
-        title: "Aturan pesanan",
+        title: "4. Aturan pesanan: tambahan, batas, dan nomor",
+        description: "Masih di kartu “4. Aturan pesanan”:",
         points: [
           "“Boleh pesan tambahan” — pelanggan bisa “Pesan lagi” selama pesanannya belum selesai; tambahan masuk ke tagihan yang sama.",
           "“Maks. pesanan menunggu per meja” (1–10, bawaan 3) — mencegah pesanan iseng menumpuk.",
@@ -1439,14 +1483,21 @@ export const GUIDES: GuideItem[] = [
         id: "kelola-qr",
         title: "Buat, cetak, dan tempel QR",
         steps: [
-          "Di Pengaturan › “Pesan & Bayar Mandiri”, ketuk “Kelola QR” (atau tombol “Kelola QR” di layar Pesanan QR).",
-          "Untuk QR per meja, ketuk “Buat … QR” untuk membuat QR semua meja sekaligus, atau “Buat QR” per meja. Kode muncul setelah perangkat online dan tersinkron (status “Menunggu sinkron” lalu “Aktif”).",
+          "Di Pengaturan › “Pesan & Bayar Mandiri”, pada kartu “Kode QR pesanan” ketuk “Kelola & cetak QR” (atau tombol “Kelola QR” di layar Pesanan QR).",
+          "Untuk QR per meja, di kartu “QR per meja” ketuk “Buat … QR” (mis. “Buat 8 QR”) untuk membuat QR semua meja sekaligus, atau “Buat QR” per meja. Belum ada meja? Ketuk “Buka menu Meja” untuk menambahkannya dulu.",
+          "Kode muncul setelah perangkat online dan tersinkron: selama itu barisnya bertanda “Menunggu sinkron”, lalu tombol “Lihat” siap dipakai.",
           "Ketuk “Lihat” pada QR, lalu “Cetak” untuk mencetak ke printer struk perangkat ini, atau “Bagikan” untuk mengirim gambar QR (mis. untuk dicetak di percetakan).",
           "Tempel QR meja di tiap meja, dan QR outlet di kasir/konter.",
         ],
         callout: {
           type: "warning",
-          text: "“Ganti kode” membuat QR lama langsung tidak berlaku. Gunakan bila QR hilang atau disalahgunakan, lalu cetak dan tempel QR baru.",
+          text: "Tombol “Ganti kode” ada terpisah di bawah gambar QR, di bawah keterangan “QR hilang atau disalahgunakan?”. Setelah dikonfirmasi, QR lama langsung tidak berlaku — cetak dan tempel QR baru.",
+        },
+        image: {
+          ...HP,
+          src: "/panduan/kelola-qr-hp.png",
+          alt: "Layar Kode QR pesanan: QR outlet dan daftar QR per meja dengan tombol Buat 3 QR",
+          caption: "Buat QR untuk semua meja sekaligus, lalu lihat, bagikan, atau cetak.",
         },
       },
       {
@@ -1465,7 +1516,7 @@ export const GUIDES: GuideItem[] = [
     faqs: [
       {
         question: "Pelanggan melihat “Kode QR tidak berlaku”.",
-        answer: "QR itu sudah diganti atau dinonaktifkan. Cetak QR terbaru dari “Kelola QR” dan tempel ulang.",
+        answer: "QR itu sudah diganti atau dinonaktifkan. Cetak QR terbaru dari “Kelola & cetak QR” dan tempel ulang.",
       },
       {
         question: "Pelanggan melihat “Pemesanan lewat QR sedang tutup”.",
@@ -1512,7 +1563,7 @@ export const GUIDES: GuideItem[] = [
       {
         id: "antrean",
         title: "Layar Pesanan QR",
-        description: "Pesanan dibagi dalam tiga segmen:",
+        description: "Pesanan dibagi dalam tiga tab:",
         points: [
           "“Menunggu” — pesanan yang belum dibayar. Kartu menunjukkan nomor, meja (atau “Bawa pulang” / “Tanpa meja”), jumlah item, dan sisa waktu sebelum kedaluwarsa.",
           "“Diproses” — sudah lunas dan sedang disiapkan atau siap.",
@@ -1529,7 +1580,7 @@ export const GUIDES: GuideItem[] = [
         id: "terima-bayar",
         title: "Terima & Bayar",
         steps: [
-          "Tanyakan nomor pesanan pelanggan, lalu cari kartunya di segmen “Menunggu”.",
+          "Tanyakan nomor pesanan pelanggan, lalu cari kartunya di tab “Menunggu”.",
           "Ketuk “Terima & Bayar”. Pesanan terbuka di layar Bayar.",
           "Selesaikan pembayaran seperti biasa (tunai, QRIS, kartu, atau transfer).",
           "Setelah lunas, item masak dikirim ke dapur dan halaman pelanggan berubah menjadi “Lunas di kasir”.",
@@ -1550,8 +1601,8 @@ export const GUIDES: GuideItem[] = [
         title: "Pesanan siap",
         points: [
           "Bila Layar dapur aktif, status menjadi “Siap” otomatis setelah semua item ditandai siap di dapur.",
-          "Tanpa layar dapur, ketuk “Tandai siap” di segmen “Diproses” saat pesanan siap. Dapur juga bisa menekannya.",
-          "Pesanan “Siap” ditutup otomatis setelah 60 menit.",
+          "Tanpa layar dapur, ketuk “Tandai siap” di tab “Diproses” saat pesanan siap. Dapur juga bisa menekannya.",
+          "Pesanan “Siap” ditutup otomatis setelah 60 menit (tidak ada tombol untuk menyelesaikan manual).",
         ],
       },
       {
@@ -1888,7 +1939,7 @@ export const GUIDES: GuideItem[] = [
     description: "Pantau stok, catat barang datang, koreksi stok hilang/rusak, dan atur stok minimum.",
     audience: ["Pemilik"],
     readMinutes: 4,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_NEW,
     overview:
       "Stok hanya dihitung untuk produk yang “Lacak stok”-nya menyala. Stok berkurang saat pesanan ditagih, bukan saat pesanan disimpan. Semua menu stok ada di “Inventori” (tidak tersedia untuk usaha jasa dan penyewaan).",
     steps: [
@@ -1908,7 +1959,7 @@ export const GUIDES: GuideItem[] = [
         id: "stok-masuk",
         title: "Catat barang datang (stok masuk)",
         steps: [
-          "Buka “Stok barang”, pilih barang, lalu “Stok masuk”.",
+          "Buka “Inventori” › “Stok barang” (atau “Produk” › “Kelola” › “Stok & harga modal” — layarnya sama), pilih barang, lalu “Stok masuk”.",
           "Isi “Jumlah masuk” dan “Harga beli per satuan”.",
           "Nyalakan “Jadikan harga modal” bila harga beli ini mau dipakai sebagai HPP.",
         ],
@@ -1925,6 +1976,10 @@ export const GUIDES: GuideItem[] = [
         title: "Stok menipis",
         description:
           "Atur “Stok minimum” per barang. Barang di bawah batas tampil di tab “Perlu dibeli”, di kartu “Perlu perhatian” Beranda, dan sebagai notifikasi “Stok menipis”. Tombol “Salin daftar belanja” menyalin daftar untuk ditempel ke WhatsApp.",
+        points: [
+          "Kartu “Perlu perhatian” menyebut paling banyak 3 nama barang. Bila lebih, tertulis jumlahnya, mis. “5 barang menipis atau habis”.",
+          "Ketuk “Restok” di kartu itu untuk membuka daftar stok menipis.",
+        ],
       },
     ],
     relatedSlugs: ["pembelian-po-dan-supplier", "stok-opname", "hpp-resep-dan-bahan-baku"],
@@ -2147,7 +2202,7 @@ export const GUIDES: GuideItem[] = [
         id: "tab-lain",
         title: "Produk terjual, jam ramai, per kasir",
         points: [
-          "“Produk terjual” — urutkan “Terlaris” atau “Omzet terbesar”.",
+          "“Produk terjual” — urutkan “Terlaris” atau “Omzet terbesar”. Pilihan urutan tetap terlihat saat daftar digulir.",
           "“Jam ramai” — “Jam tersibuk” dan “Hari tersibuk”, selalu dari 30 hari terakhir. Berguna untuk jadwal karyawan.",
           "“Per kasir” — penjualan per kasir.",
         ],
@@ -2186,7 +2241,7 @@ export const GUIDES: GuideItem[] = [
     description: "Tambah karyawan, pilih peran Kasir/Dapur, atur PIN, dan kunci kasir.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 4,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_NEW,
     overview:
       "Karyawan tidak perlu akun email sendiri. Mereka memakai perangkat yang sudah dimasuki pemilik, lalu membuka kasir dengan PIN 6 digit masing-masing.",
     steps: [
@@ -2223,12 +2278,18 @@ export const GUIDES: GuideItem[] = [
           "Bila ada karyawan aktif yang punya PIN, aplikasi terkunci saat dibuka ulang dan setelah tidak disentuh beberapa menit (bawaan 5 menit). Di layar “Siapa yang bertugas?”, karyawan memilih namanya lalu memasukkan PIN.",
         points: [
           "Kunci manual: “Kunci kasir” di menu Lainnya (HP) atau “Ganti karyawan (kunci)” di menu akun.",
-          "Lama kunci otomatis diatur di Pengaturan › “Perangkat ini” › “Kunci kasir otomatis”.",
+          "Lama kunci otomatis diatur di Pengaturan › “Perangkat ini” › kartu “Lanjutan” › “Kunci kasir otomatis”: ketuk barisnya, lalu pilih “Mati” atau 1, 3, 5, 10, 15, atau 30 menit di lembar pilihan.",
           "Terlalu sering salah PIN membuat percobaan dikunci sementara. Lupa PIN? Pemilik bisa menggantinya.",
         ],
         callout: {
           type: "warning",
           text: "Tombol “Keluar” di layar kunci mengeluarkan akun dari perangkat, bukan sekadar ganti karyawan.",
+        },
+        image: {
+          ...HP,
+          src: "/panduan/kunci-otomatis-hp.png",
+          alt: "Lembar Kunci kasir otomatis dengan pilihan Mati sampai 30 menit",
+          caption: "Pilih berapa lama kasir terkunci sendiri bila tidak disentuh.",
         },
       },
     ],
@@ -2435,8 +2496,16 @@ export const GUIDES: GuideItem[] = [
         id: "menu-notifikasi",
         title: "Menu Notifikasi",
         description:
-          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan dalam tab “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem”. Contohnya: pesanan QR baru, stok menipis, kasbon jatuh tempo, pesanan siap disajikan, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
-        points: ["Ketuk “Tandai semua dibaca” untuk membersihkan tanda baru."],
+          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok menipis, kasbon jatuh tempo, pesanan siap disajikan, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
+        points: [
+          "Untuk membersihkan tanda baru, ketuk “Tandai semua dibaca”. Muncul konfirmasi “Tandai semua dibaca?”; ketuk “Tandai dibaca”.",
+        ],
+        image: {
+          ...HP,
+          src: "/panduan/notifikasi-tandai-dibaca-hp.png",
+          alt: "Dialog konfirmasi Tandai semua dibaca? di halaman Notifikasi HP",
+          caption: "“Tandai semua dibaca” selalu dikonfirmasi dulu.",
+        },
       },
       {
         id: "aktifkan",
@@ -2673,6 +2742,12 @@ export const GUIDES: GuideItem[] = [
           "Lupa password saat ini? Gunakan “Lupa password?” di layar masuk; kode dikirim ke email akun.",
           "Bila muncul “Terlalu banyak percobaan”, tunggu sekitar 15 menit, lalu coba lagi.",
         ],
+        image: {
+          ...HP,
+          src: "/panduan/ganti-password-hp.png",
+          alt: "Lembar Ganti password: password saat ini, password baru, ulangi password, dan sakelar Keluarkan perangkat lain",
+          caption: "Isi password lama dan baru, lalu ketuk “Simpan Password”.",
+        },
       },
       {
         id: "pin-supervisor",
@@ -2878,7 +2953,7 @@ export const GUIDES: GuideItem[] = [
     audience: ["Pemilik", "Kasir", "Dapur"],
     readMinutes: 5,
     lastUpdated: UPDATED_NEW,
-    overview: "Cari masalahmu di bawah. Bila belum terjawab, hubungi tim Sissi lewat “Bantuan & Panduan” di aplikasi (menu Lainnya).",
+    overview: "Cari masalahmu di bawah. Bila belum terjawab, buka “Bantuan & Panduan” di aplikasi (menu Lainnya): panduan singkatnya dikelompokkan per topik, mis. “Transaksi & Pembayaran”, “Pesanan & Dapur”, dan “Akun & Langganan”, dan dari sana Anda bisa menghubungi tim Sissi.",
     steps: [
       {
         id: "kasir",
