@@ -80,7 +80,7 @@ export function planLabel(p: { plan: string; status: string; days_left: number |
 export const hourLabel = (h: number) => `${String(h).padStart(2, "0")}.00`;
 
 /** Jenis log aktivitas (`GET /owner/activity`), urutan tampil chip. */
-export const ACTIVITY_KINDS = ["void", "refund", "manual_discount", "shift_closed", "cash_in", "cash_out", "new_device"] as const;
+export const ACTIVITY_KINDS = ["void", "refund", "manual_discount", "shift_closed", "cash_in", "cash_out", "new_device", "change"] as const;
 
 export const ACTIVITY_KIND: Record<string, string> = {
   void: "Pembatalan",
@@ -90,4 +90,73 @@ export const ACTIVITY_KIND: Record<string, string> = {
   cash_in: "Kas masuk",
   cash_out: "Kas keluar",
   new_device: "Perangkat baru",
+  change: "Perubahan data",
+};
+
+/** Entri `change`: nama entitas (kata benda, huruf kecil) untuk kalimat "mengubah produk X". */
+export const CHANGE_ENTITY: Record<string, string> = {
+  products: "produk",
+  product_variants: "varian",
+  categories: "kategori",
+  modifier_groups: "grup modifier",
+  discounts: "diskon",
+  recipes: "resep",
+  outlets: "outlet",
+  business_settings: "pengaturan usaha",
+  employees: "karyawan",
+};
+
+/** Entri `change`: nama kolom (huruf kecil, dipakai di tengah kalimat). Kunci `entity.field` mengalahkan `field`. */
+export const CHANGE_FIELD: Record<string, string> = {
+  name: "nama",
+  price: "harga",
+  cost_price: "modal",
+  category_id: "kategori",
+  is_active: "status",
+  sku: "SKU",
+  barcode: "barcode",
+  unit: "satuan",
+  track_stock: "lacak stok",
+  min_stock: "stok minimum",
+  is_taxable: "kena pajak",
+  image_url: "foto",
+  modifier_group_ids: "modifier",
+  variant_options: "pilihan varian",
+  min_select: "pilihan minimum",
+  max_select: "pilihan maksimum",
+  options: "opsi",
+  type: "jenis",
+  value: "nilai",
+  scope: "berlaku untuk",
+  target_ids: "target",
+  min_purchase: "minimal belanja",
+  starts_at: "mulai berlaku",
+  ends_at: "berakhir",
+  auto_apply: "otomatis",
+  items: "isi resep",
+  address: "alamat",
+  status: "status",
+  role: "peran",
+  pin_hash: "PIN",
+  payroll: "pengaturan gaji",
+  "discounts.type": "jenis diskon",
+  "discounts.value": "besar diskon",
+};
+
+/** Kunci `settings.<kunci>` (outlet & usaha) → label ramah. */
+export const SETTINGS_KEY: Record<string, string> = {
+  taxes: "Pajak",
+  service_fee: "Biaya layanan",
+  receipt: "Struk",
+  rounding: "Pembulatan",
+  transaction: "Aturan transaksi",
+  payment_methods: "Metode pembayaran (QRIS & rekening)",
+  loyalty: "Loyalti",
+  attendance: "Aturan absensi",
+  shift_rules: "Aturan shift",
+  timezone: "Zona waktu",
+  features: "Fitur (meja & dapur)",
+  self_order: "Pesan & Bayar Mandiri",
+  printer: "Printer",
+  kitchen: "Dapur",
 };

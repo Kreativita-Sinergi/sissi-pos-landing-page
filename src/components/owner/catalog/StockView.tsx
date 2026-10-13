@@ -17,6 +17,7 @@ import {
   Pagination,
   SkeletonList,
   StatCard,
+  Tabs,
   tdClass,
   thClass,
   useLoad,
@@ -27,10 +28,11 @@ import { downloadCsv, slug } from "@/lib/owner/csv";
 import type { StockRow } from "@/lib/owner/types";
 import { useOwner } from "../OwnerShell";
 import { SyncNote } from "../ui";
+import { StockOpsPanel, type OpsTab } from "../stock/StockOpsPanel";
 
-// Stok (hanya baca, Gratis & Pro): GET /owner/stock?outlet_id= — produk ber-"Lacak stok" (per varian) dan bahan baku.
-// qty & min_stock dalam mili-satuan → ditampilkan /1000 (maks. 3 desimal). Penyesuaian/opname/PO di aplikasi.
-// Filter di URL: q, kind, low=1, page.
+// Stok (Gratis & Pro). Tab di URL (`?tab=`): Stok saat ini (GET /owner/stock?outlet_id= — produk ber-"Lacak stok" per
+// varian dan bahan baku; qty & min_stock mili-satuan → /1000, maks. 3 desimal; filter q, kind, low=1, page) · Opname ·
+// Pembelian · Transfer · Supplier (operasi stok setara aplikasi, lihat ../stock/*). Dokumen terbuka = `?doc=`.
 
 const PER_PAGE = 50;
 
@@ -46,7 +48,38 @@ const LEVEL_LABEL: Record<Level, string> = { out: "Habis", low: "Menipis", ok: "
 const LEVEL_TONE: Record<Level, "danger" | "warning" | "success"> = { out: "danger", low: "warning", ok: "success" };
 const LEVEL_RANK: Record<Level, number> = { out: 0, low: 1, ok: 2 };
 
+type Tab = "stock" | OpsTab;
+
+const TABS: { id: Tab; label: string; hint: string }[] = [
+  { id: "stock", label: "Stok saat ini", hint: "Stok saat ini" },
+  { id: "opname", label: "Opname", hint: "Cocokkan stok fisik & sistem" },
+  { id: "po", label: "Pembelian", hint: "Pesanan pembelian (PO) ke supplier" },
+  { id: "transfer", label: "Transfer", hint: "Pindahkan stok antar outlet" },
+  { id: "supplier", label: "Supplier", hint: "Kontak pemasok untuk PO" },
+];
+
 export function StockView() {
+  const { outlet, session } = useOwner();
+  const qs = useQueryState();
+  const raw = qs.get("tab");
+  const tab: Tab = TABS.some((t) => t.id === raw) ? (raw as Tab) : "stock";
+  const scope = outlet ? outlet.name : session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? session.business.name);
+  const hint = TABS.find((t) => t.id === tab)!.hint;
+  return (
+    <>
+      <PageHeader title="Stok" description={<>{hint} · {tab === "supplier" ? session.business.name : scope}</>} />
+      <Tabs<Tab>
+        label="Menu stok"
+        tabs={TABS.map(({ id, label }) => ({ id, label }))}
+        active={tab}
+        onChange={(t) => qs.update({ tab: t === "stock" ? null : t, doc: null, q: null, po: null, kind: null, low: null })}
+      />
+      {tab === "stock" ? <CurrentStockTab /> : <StockOpsPanel tab={tab} />}
+    </>
+  );
+}
+
+function CurrentStockTab() {
   const { outletId, outlet, session } = useOwner();
   const qs = useQueryState();
   const q = qs.get("q").slice(0, 80);
@@ -83,7 +116,6 @@ export function StockView() {
   const current = Math.min(page, pages);
   const shown = filtered.slice((current - 1) * PER_PAGE, current * PER_PAGE);
   const filteredActive = !!q || !!kind || onlyLow;
-  const scope = outlet ? outlet.name : session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? session.business.name);
 
   function exportCsv() {
     downloadCsv(
@@ -104,15 +136,6 @@ export function StockView() {
 
   return (
     <>
-      <PageHeader
-        title="Stok"
-        description={<>Stok saat ini · {scope}. Hanya baca — penyesuaian, opname, dan pembelian (PO) dicatat lewat aplikasi Sissi.</>}
-        actions={
-          <button type="button" className={btn.secondary} onClick={exportCsv} disabled={!filtered.length}>
-            Ekspor CSV
-          </button>
-        }
-      />
 
       {state.status === "error" && (
         <div className="mb-4">
@@ -124,7 +147,7 @@ export function StockView() {
       {rows && rows.length === 0 && (
         <section className={cardClass}>
           <EmptyState icon={<Boxes size={22} aria-hidden />} title="Belum ada produk yang dilacak stoknya">
-            Aktifkan &quot;Lacak stok&quot; di produk (menu Produk) atau tambahkan bahan baku lewat aplikasi, lalu catat stok awal di aplikasi.
+            Aktifkan &quot;Lacak stok&quot; di produk (menu Produk) atau tambahkan bahan baku lewat aplikasi, lalu catat stok awal di form produk.
           </EmptyState>
         </section>
       )}
@@ -170,6 +193,9 @@ export function StockView() {
               onChange={(n) => qs.update({ kind: n[0] ?? null })}
             />
             {filteredActive && <ClearFiltersButton onClick={() => qs.clear(["outlet"])} />}
+            <button type="button" className={`${btn.secondary} sm:ml-auto`} onClick={exportCsv} disabled={!filtered.length}>
+              Ekspor CSV
+            </button>
           </FilterBar>
 
           <LoadingBar active={state.status === "loading"} />
@@ -248,8 +274,8 @@ export function StockView() {
           )}
           <div className="mt-4 space-y-3">
             <Notice tone="info" icon={<Info size={16} aria-hidden />}>
-              Stok dihitung dari semua pergerakan stok yang sudah sinkron{outlet ? " di outlet ini" : " di semua outlet"}. Untuk menambah stok, opname, atau membuat PO,
-              gunakan menu Stok di aplikasi Sissi.
+              Stok dihitung dari semua pergerakan stok yang sudah sinkron{outlet ? " di outlet ini" : " di semua outlet"}. Catat opname, pembelian (PO), dan transfer
+              lewat tab di atas; penyesuaian stok satu barang ada di form produk.
             </Notice>
             <SyncNote />
           </div>

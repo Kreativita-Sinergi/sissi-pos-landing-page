@@ -40,10 +40,13 @@ import { zonedToday } from "@/lib/owner/tz";
 import { useOwner } from "./OwnerShell";
 import { formatStamp, SaleStatusBadge } from "./parts";
 import { LockedCard, SyncNote } from "./ui";
+import { CustomerCreditList } from "./credit/CustomerCredit";
 
 // Pelanggan (Gratis & Pro): daftar dari GET /owner/data/customers, tambah/ubah/hapus lewat POST /owner/changes.
 // Sisa kasbon (kunci `credit`) dihitung dari transaksi unpaid/partial 92 hari terakhir, dikelompokkan per nama
-// pelanggan pada transaksi. Pelunasan kasbon hanya dari aplikasi.
+// pelanggan pada transaksi. Pelunasan/cicilan kasbon bisa dari detail pelanggan (Lunasi per transaksi & Lunasi semua,
+// lewat POST /owner/changes `sale_payments`, di luar laci kasir). Paket Gratis: ringkasan kasbon terkunci, tetapi
+// kasbon lama tetap bisa dilunasi (api.md "Batas transaksi Gratis": pelunasan kasbon tetap boleh).
 
 type Customer = SyncRecord & {
   name: string;
@@ -360,6 +363,7 @@ export function CustomersView() {
         credit={credit}
         creditInfo={detail && creditData ? creditData.byName[nameKey(detail.name)] ?? null : null}
         creditLoading={creditLoad.state.status === "loading"}
+        onCreditChanged={creditLoad.reload}
         onClose={() => setDetail(null)}
         onEdit={(c) => {
           setDetail(null);
@@ -608,6 +612,7 @@ function CustomerDetail({
   credit,
   creditInfo,
   creditLoading,
+  onCreditChanged,
   onClose,
   onEdit,
 }: {
@@ -615,12 +620,22 @@ function CustomerDetail({
   credit: boolean;
   creditInfo: CreditInfo | null;
   creditLoading: boolean;
+  onCreditChanged: () => void;
   onClose: () => void;
   onEdit: (c: Customer) => void;
 }) {
   return (
     <Modal open={customer !== null} title={customer?.name ?? "Pelanggan"} onClose={onClose} icon={<UserRound size={20} aria-hidden className="text-brand-ink" />}>
-      {customer && <CustomerDetailBody customer={customer} credit={credit} creditInfo={creditInfo} creditLoading={creditLoading} onEdit={onEdit} />}
+      {customer && (
+        <CustomerDetailBody
+          customer={customer}
+          credit={credit}
+          creditInfo={creditInfo}
+          creditLoading={creditLoading}
+          onCreditChanged={onCreditChanged}
+          onEdit={onEdit}
+        />
+      )}
     </Modal>
   );
 }
@@ -630,12 +645,14 @@ function CustomerDetailBody({
   credit,
   creditInfo,
   creditLoading,
+  onCreditChanged,
   onEdit,
 }: {
   customer: Customer;
   credit: boolean;
   creditInfo: CreditInfo | null;
   creditLoading: boolean;
+  onCreditChanged: () => void;
   onEdit: (c: Customer) => void;
 }) {
   const { withOutlet } = useOwner();
@@ -649,6 +666,20 @@ function CustomerDetailBody({
     },
     [c.id, q]
   );
+  // Paket Gratis: ringkasan kasbon terkunci, tetapi kasbon lama atas nama ini tetap bisa dilunasi.
+  const legacyCredit = useLoad<SaleListItem[] | null>(
+    async (signal) => {
+      if (credit) return null;
+      const r = await (await ownerApi()).sales({ from: range.from, to: range.to, q, status: ["unpaid", "partial"], per_page: 100, sort: "oldest" }, signal);
+      return r.items.filter((s) => nameKey(s.customer_name) === nameKey(c.name));
+    },
+    [c.id, q, credit ? 1 : 0]
+  );
+  const afterPayment = () => {
+    onCreditChanged();
+    legacyCredit.reload();
+    recent.reload();
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -686,27 +717,26 @@ function CustomerDetailBody({
             <>
               <p className="mt-0.5 text-[20px] font-bold tabular-nums text-warning">{formatRupiah(creditInfo.outstanding)}</p>
               <p className="text-[12.5px] text-text-muted">{creditInfo.count.toLocaleString("id-ID")} transaksi belum lunas (92 hari terakhir)</p>
-              <ul className="mt-2 divide-y divide-border-subtle">
-                {creditInfo.sales.slice(0, 5).map((s) => (
-                  <li key={s.id}>
-                    <Link href={withOutlet(`/dasbor/transaksi/${s.id}`)} className={`flex items-center gap-2 py-1.5 text-[13px] hover:underline ${focusRing}`}>
-                      <span className="tabular-nums text-text-muted">{formatStamp(s.paid_at)}</span>
-                      <span className="tabular-nums">{s.receipt_no}</span>
-                      <span className="ml-auto font-semibold tabular-nums">{formatRupiah(s.total - s.paid_total)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <CustomerCreditList sales={creditInfo.sales} onChanged={afterPayment} />
             </>
           ) : (
             <p className="mt-0.5 text-[13px] text-text-body">Tidak ada kasbon dalam 92 hari terakhir.</p>
           )}
-          <p className="mt-2 text-[12.5px] text-text-muted">Pelunasan kasbon dicatat lewat aplikasi Sissi (menu Belum lunas), bukan dari web.</p>
+          <p className="mt-2 text-[12.5px] text-text-muted">Pelunasan dari web dicatat di luar laci kasir; tidak memengaruhi hitungan kas shift.</p>
         </div>
       ) : (
-        <LockedCard title="Sisa kasbon" compact>
-          Pantau kasbon pelanggan beserta pengingatnya dengan paket Pro.
-        </LockedCard>
+        <>
+          <LockedCard title="Sisa kasbon" compact>
+            Pantau kasbon pelanggan beserta pengingatnya dengan paket Pro.
+          </LockedCard>
+          {legacyCredit.state.data && legacyCredit.state.data.length > 0 && (
+            <div className="rounded-[12px] border border-border-subtle p-3.5">
+              <p className="text-[13px] font-semibold text-text-heading">Kasbon belum lunas</p>
+              <p className="text-[12.5px] text-text-muted">Pelunasan kasbon tetap bisa dicatat di paket Gratis. Dicatat di luar laci kasir; tidak memengaruhi hitungan kas shift.</p>
+              <CustomerCreditList sales={legacyCredit.state.data} onChanged={afterPayment} />
+            </div>
+          )}
+        </>
       )}
 
       <div>

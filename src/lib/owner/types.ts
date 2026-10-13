@@ -281,11 +281,15 @@ export type SalesPage = {
 export type ShiftsPage = { items: ShiftListItem[]; meta: PageMeta };
 
 /** Jenis entri log aktivitas (`GET /owner/activity`). */
-export type ActivityKind = "void" | "refund" | "manual_discount" | "shift_closed" | "cash_in" | "cash_out" | "new_device";
+export type ActivityKind = "void" | "refund" | "manual_discount" | "shift_closed" | "cash_in" | "cash_out" | "new_device" | "change";
+
+/** Satu kolom yang berubah pada entri `change` (nilai JSON apa adanya; kolom rahasia → before/after `null`). */
+export type ActivityFieldChange = { field: string; before: unknown; after: unknown };
 
 /**
  * Satu entri log aktivitas turunan. Kolom yang tidak relevan untuk jenisnya = `null`.
- * `ref_id`: id transaksi (void/refund/manual_discount) atau id shift (shift_closed/cash_in/cash_out).
+ * `ref_id`: id transaksi (void/refund/manual_discount), id shift (shift_closed/cash_in/cash_out), atau id record
+ * yang berubah (change).
  */
 export type ActivityItem = {
   kind: ActivityKind;
@@ -303,6 +307,13 @@ export type ActivityItem = {
   expected: number | null;
   counted: number | null;
   difference: number | null;
+  /** `change`: tabel yang berubah (`products`, `outlets`, `business_settings`, …); `note` = nama record. */
+  entity?: string | null;
+  op?: "create" | "update" | "delete" | null;
+  /** `change`: create = hanya kolom terisi; delete = `[]`. Pengaturan per kunci: `settings.<kunci>`. */
+  changes?: ActivityFieldChange[] | null;
+  /** `change`: nama perangkat atau `"Dasbor web"`. */
+  device?: string | null;
 };
 
 export type ActivityQuery = RangeQuery & {
@@ -332,11 +343,16 @@ export type DataEntity =
   | "employees"
   | "attendances"
   | "raw_materials"
-  | "suppliers";
+  | "suppliers"
+  | "recipes"
+  | "stock_opnames"
+  | "purchase_orders"
+  | "stock_transfers"
+  | "payslips";
 
 /**
  * Entitas yang bisa diubah web (`POST /owner/changes`). `outlets`: hanya ubah, metode bayar tidak boleh berubah.
- * `stock_movements`: hanya baris baru bertipe in/out/adjust.
+ * `stock_movements`: hanya baris baru bertipe in/out/adjust/opname/transfer. `sale_payments`: hanya pelunasan kasbon.
  */
 export type WritableEntity =
   | "categories"
@@ -349,7 +365,16 @@ export type WritableEntity =
   | "outlets"
   | "recipes"
   | "raw_materials"
-  | "stock_movements";
+  | "stock_movements"
+  // Pelunasan kasbon (baru, tanpa shift), operasi stok, tim.
+  | "sale_payments"
+  | "stock_opnames"
+  | "purchase_orders"
+  | "stock_transfers"
+  | "suppliers"
+  | "employees"
+  | "attendances"
+  | "payslips";
 
 /** Record sync mentah: bentuk per entitas ada di api.md "Sync v1". */
 export type SyncRecord = { id: string; updated_at: string; deleted_at: string | null; [key: string]: unknown };

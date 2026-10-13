@@ -17,6 +17,7 @@ import type { OwnerApi } from "./api";
 import type { StaffMember, SyncRecord } from "./types";
 import { normalizeZone } from "./tz";
 import type {
+  ActivityFieldChange,
   ActivityItem,
   OutletRow,
   OwnerDevice,
@@ -828,6 +829,23 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       const yesterday = addDays(wibDay(Date.now()), -1);
       if (!q.outlet_id && yesterday >= from && yesterday <= to) {
         out.push({ ...base, kind: "new_device", at: new Date(dayStart(yesterday) + 20 * HOUR).toISOString(), outlet_id: null, outlet_name: null, actor: USER.name, ref_id: null, note: "" });
+      }
+      // Riwayat perubahan data (tidak terikat outlet → tampil di semua pilihan outlet).
+      const today = wibDay(Date.now());
+      const d2 = addDays(today, -2);
+      type MockChange = [day: string, hour: number, entity: string, op: "create" | "update" | "delete", note: string, changes: ActivityFieldChange[], actor?: string, device?: string];
+      const changes: MockChange[] = [
+        [today, 9.5, "products", "update", "Americano", [{ field: "price", before: 20000, after: 21000 }]],
+        [today, 10, "products", "create", "Teh Tarik", [{ field: "name", before: null, after: "Teh Tarik" }, { field: "price", before: null, after: 15000 }, { field: "is_active", before: null, after: true }], "Rani", "Kasir Dago"],
+        [today, 11, "outlets", "update", "Kopi Senja Dago", [{ field: "settings.payment_methods", before: { qris: { enabled: true, payload: "a" } }, after: { qris: { enabled: true, payload: "b" } } }]],
+        [today, 11.25, "employees", "update", "Rani", [{ field: "pin_hash", before: null, after: null }]],
+        [d2, 15, "products", "update", "Croissant", [{ field: "price", before: 18000, after: 19000 }, { field: "cost_price", before: 8000, after: 8500 }, { field: "is_active", before: true, after: false }]],
+        [d2, 16, "business_settings", "update", "Pengaturan usaha", [{ field: "settings.loyalty", before: null, after: { enabled: true } }]],
+        [d2, 17, "discounts", "delete", "Promo Kemerdekaan", []],
+      ];
+      for (const [day, h, entity, op, note, ch, actor, device] of changes) {
+        if (day < from || day > to) continue;
+        out.push({ ...base, kind: "change", at: new Date(dayStart(day) + h * HOUR).toISOString(), outlet_id: null, outlet_name: null, actor: actor ?? USER.name, ref_id: uuid(`chg:${entity}:${note}`), note, entity, op, changes: ch, device: device ?? "Dasbor web" });
       }
       const kinds = q.kind?.length ? new Set(q.kind) : null;
       const rows = out.filter((a) => !kinds || kinds.has(a.kind)).sort((a, b) => Date.parse(b.at) - Date.parse(a.at));

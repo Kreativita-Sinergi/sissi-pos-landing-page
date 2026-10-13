@@ -1,19 +1,23 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Ban, ReceiptText } from "lucide-react";
+import { ArrowLeft, Ban, HandCoins, ReceiptText } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
-import { cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, Notice, PageHeader, Skeleton, useLoad } from "@/components/admin/ui";
+import { btn, cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, Notice, PageHeader, Skeleton, useLoad } from "@/components/admin/ui";
 import { formatDateTime, zoneLabel } from "@/lib/owner/tz";
 import { ownerApi } from "@/lib/owner/api";
+import { isCreditOpen, OUTSIDE_DRAWER_NOTE } from "@/lib/owner/credit";
 import type { SaleDetail } from "@/lib/owner/types";
 import { labelOf, METHODS, orderTypeLabel } from "./labels";
 import { useOwner } from "./OwnerShell";
+import { SettleCreditDialog } from "./credit/SettleCreditDialog";
 import { SaleStatusBadge } from "./parts";
 
-// Detail transaksi (GET /owner/sales/{id}) dalam bentuk struk.
+// Detail transaksi (GET /owner/sales/{id}) dalam bentuk struk. Kasbon (`unpaid|partial`) bisa dilunasi/dicicil dari
+// sini (POST /owner/changes `sale_payments`, di luar laci kasir) — tersedia juga untuk paket Gratis (pelunasan kasbon
+// tetap boleh, api.md "Batas transaksi Gratis").
 
 export function BackLink({ href, label }: { href: string; label: string }) {
   const router = useRouter();
@@ -39,6 +43,7 @@ export function SaleDetailView() {
   const { withOutlet } = useOwner();
   const { state, reload } = useLoad<SaleDetail>(async (signal) => (await ownerApi()).sale(id, signal), [id]);
   const s = state.data;
+  const [settling, setSettling] = useState(false);
   const back = <BackLink href={withOutlet("/dasbor/transaksi")} label="Transaksi" />;
 
   if (state.status === "error" && state.error instanceof ApiError && state.error.code === "NOT_FOUND") {
@@ -70,7 +75,8 @@ export function SaleDetailView() {
           ))}
         </div>
       )}
-      {s && <Receipt s={s} />}
+      {s && <Receipt s={s} onSettle={state.status === "loading" ? undefined : () => setSettling(true)} />}
+      <SettleCreditDialog sale={settling && s && isCreditOpen(s.status) ? s : null} onClose={() => setSettling(false)} onSettled={() => reload()} />
     </>
   );
 }
@@ -84,7 +90,7 @@ function Line({ label, value, strong, tone }: { label: React.ReactNode; value: s
   );
 }
 
-function Receipt({ s }: { s: SaleDetail }) {
+function Receipt({ s, onSettle }: { s: SaleDetail; onSettle?: () => void }) {
   const cancelled = s.status === "void" || s.status === "refunded";
   const outstanding = s.total - s.paid_total;
   const lineDiscounts = s.items.reduce((a, i) => a + i.discount, 0);
@@ -110,10 +116,16 @@ function Receipt({ s }: { s: SaleDetail }) {
           <p className="mt-1 text-[13px]">Tidak dihitung dalam omzet.</p>
         </Notice>
       )}
-      {(s.status === "unpaid" || s.status === "partial") && (
+      {isCreditOpen(s.status) && (
         <Notice tone="warning" title="Kasbon belum lunas">
           Sisa tagihan <strong className="font-semibold tabular-nums">{formatRupiah(outstanding)}</strong>
           {s.due_at ? ` · jatuh tempo ${formatDateTime(s.due_at)}` : ""}.
+          <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <button type="button" className={`${btn.primary} self-start`} onClick={onSettle} disabled={!onSettle}>
+              <HandCoins size={16} aria-hidden /> Lunasi / bayar cicilan
+            </button>
+          </div>
+          <p className="mt-2 text-[12.5px] text-text-body">{OUTSIDE_DRAWER_NOTE}</p>
         </Notice>
       )}
 
