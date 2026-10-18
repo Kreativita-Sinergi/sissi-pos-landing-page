@@ -69,6 +69,7 @@ const PILL =
  * Kartu unduhan APK. Data versi dibaca saat runtime dari `latest.json`; bila gagal,
  * server unduhan (nginx yang sama dengan APK) dianggap bermasalah → tombol utama
  * beralih ke folder Google Drive cadangan, server utama tetap bisa dicoba.
+ * `?unduh=gagal` (pengalihan nginx/API saat berkas APK tidak tersaji) langsung memakai cadangan.
  */
 export function ApkRelease({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
@@ -76,8 +77,13 @@ export function ApkRelease({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    fetch(APK_LATEST_JSON_URL, { cache: "no-store", signal: ctrl.signal })
-      .then((res) => (res.ok ? res.json() : null))
+    const forced =
+      new URLSearchParams(window.location.search).get("unduh") === "gagal";
+    (forced
+      ? Promise.resolve(null)
+      : fetch(APK_LATEST_JSON_URL, { cache: "no-store", signal: ctrl.signal })
+          .then((res) => (res.ok ? res.json() : null))
+    )
       .then((json) => {
         const info = parseInfo(json);
         setState(info ? { status: "ready", info } : { status: "failed" });
