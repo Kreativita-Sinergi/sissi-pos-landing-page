@@ -5,6 +5,7 @@ import { Check, Copy, Download } from "lucide-react";
 import {
   APK_LATEST_JSON_URL,
   APK_LATEST_URL,
+  APK_MIRROR_URL,
   MIN_ANDROID,
   PLAY_STORE_URL,
 } from "@/constants/site";
@@ -66,7 +67,8 @@ const PILL =
 
 /**
  * Kartu unduhan APK. Data versi dibaca saat runtime dari `latest.json`; bila gagal,
- * kartu tetap tampil tanpa angka dan tombol unduh tetap berfungsi.
+ * server unduhan (nginx yang sama dengan APK) dianggap bermasalah → tombol utama
+ * beralih ke folder Google Drive cadangan, server utama tetap bisa dicoba.
  */
 export function ApkRelease({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
@@ -93,6 +95,7 @@ export function ApkRelease({ children }: { children: React.ReactNode }) {
   }, [copied]);
 
   const info = state.status === "ready" ? state.info : null;
+  const useMirror = state.status === "failed";
 
   const copySha = async () => {
     if (!info) return;
@@ -126,14 +129,19 @@ export function ApkRelease({ children }: { children: React.ReactNode }) {
             )}
 
             {state.status === "failed" && (
-              <ul className="flex flex-wrap items-center gap-2" aria-label="Info rilis">
-                <li className={`${PILL} bg-bg-muted text-text-body`}>
-                  {ANDROID_REQ}
-                </li>
-                <li className="text-[14px] text-text-muted">
-                  Tombol selalu mengunduh versi terbaru.
-                </li>
-              </ul>
+              <>
+                <ul className="flex flex-wrap items-center gap-2" aria-label="Info rilis">
+                  <li className={`${PILL} bg-bg-muted text-text-body`}>
+                    {ANDROID_REQ}
+                  </li>
+                </ul>
+                <p className="mt-4 text-[14px] text-text-body">
+                  Server unduhan kami sedang bermasalah. Untuk sementara, unduh
+                  dari folder Google Drive: buka foldernya, pilih berkas{" "}
+                  <span className="font-mono text-[13px]">.apk</span> dengan
+                  versi terbaru, lalu ketuk Unduh.
+                </p>
+              </>
             )}
 
             {info && (
@@ -194,12 +202,38 @@ export function ApkRelease({ children }: { children: React.ReactNode }) {
 
         <div className="lg:col-span-4 flex flex-col justify-center gap-3 px-6 pb-6 sm:px-8 sm:pb-8 lg:py-8 lg:border-l border-border-subtle lg:bg-bg-muted">
           <a
-            href={APK_LATEST_URL}
+            href={useMirror ? APK_MIRROR_URL : APK_LATEST_URL}
+            {...(useMirror && { target: "_blank", rel: "noopener noreferrer" })}
             className="h-[56px] w-full px-6 rounded-[12px] bg-brand-deep hover:bg-brand-deeper text-white font-semibold text-[17px] inline-flex items-center justify-center gap-2.5 transition-colors"
           >
             <Download className="w-5 h-5" aria-hidden />
-            <span>Unduh APK</span>
+            <span>{useMirror ? "Unduh dari Google Drive" : "Unduh APK"}</span>
           </a>
+          <p className="text-[14px] text-text-muted text-center">
+            {useMirror ? (
+              <>
+                Atau{" "}
+                <a
+                  href={APK_LATEST_URL}
+                  className="text-brand-deep font-medium hover:underline"
+                >
+                  coba server utama
+                </a>
+              </>
+            ) : (
+              <>
+                Unduhan gagal?{" "}
+                <a
+                  href={APK_MIRROR_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-deep font-medium hover:underline"
+                >
+                  Lewat Google Drive
+                </a>
+              </>
+            )}
+          </p>
           <p className="text-[14px] text-text-muted text-center">
             Ada Google Play?{" "}
             <a

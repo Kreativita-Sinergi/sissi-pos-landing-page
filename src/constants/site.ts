@@ -22,3 +22,10 @@ export const MIN_ANDROID = "Android 7.0";
 export const APK_BASE_URL = "https://apipos.sissi.id/unduh";
 export const APK_LATEST_URL = `${APK_BASE_URL}/sissi-pos-latest.apk`;
 export const APK_LATEST_JSON_URL = `${APK_BASE_URL}/latest.json`;
+
+/**
+ * Cadangan APK di folder Google Drive bila server unduhan bermasalah. Folder (bukan berkas) agar
+ * tautan tetap; tiap rilis cukup unggah APK baru ke folder ini dan hapus yang lama.
+ */
+export const APK_MIRROR_URL =
+  "https://drive.google.com/drive/folders/1iJTowvSBdAr79D5UAOZCWxM5YR_CEK7B?usp=drive_link";
