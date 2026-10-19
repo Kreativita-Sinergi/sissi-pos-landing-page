@@ -77,6 +77,8 @@ export type Attendance = SyncRecord & {
   source: "pin" | "manual" | "self";
   edited_by: string | null;
   edit_reason: string;
+  /** Pengajuan disetujui yang menghasilkan absen manual ini (null selainnya). */
+  leave_request_id?: string | null;
 };
 
 export type PayslipLine = { label: string; kind: "earning" | "deduction"; amount: number };

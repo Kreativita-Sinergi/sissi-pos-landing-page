@@ -119,6 +119,8 @@ export async function approvalChanges(p: {
         note: "",
         edit_reason: APPROVED_EDIT_REASON,
         edited_by: p.ownerId,
+        // Server menolak absen ini (DEPENDS_ON_REJECTED) bila pengajuannya ternyata tidak disetujui.
+        leave_request_id: r.id,
       },
     };
     if (cur) change.base_updated_at = cur.updated_at;

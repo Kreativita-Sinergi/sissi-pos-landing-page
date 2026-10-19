@@ -106,6 +106,7 @@ test("satu kiriman: pengajuan dulu (berbasis), lalu absen manual per tanggal", a
     assert.equal(a.data.status, "sick");
     assert.equal(a.data.edit_reason, APPROVED_EDIT_REASON);
     assert.equal(a.data.edited_by, "owner");
+    assert.equal(a.data.leave_request_id, changes[0].id);
     assert.equal(a.data.clock_in_at, null);
   }
 });
