@@ -133,6 +133,7 @@ export function TeamView() {
             ctx={ctx}
             selfId={session.user.id}
             businessType={session.business.type}
+            businessName={session.business.name}
             onClose={() => setEmployee(null)}
           />
           {staff && (

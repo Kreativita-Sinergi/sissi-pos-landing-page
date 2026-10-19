@@ -964,6 +964,12 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
             return { entity: c.entity, id, status: "rejected" as const, code: "LAST_OUTLET", message: "Minimal harus ada satu outlet", details: [], record: cur };
           }
           const rec: SyncRecord = { ...(cur ?? {}), ...(c.data ?? {}), id, updated_at: now, deleted_at: c.op === "delete" ? now : null };
+          if (c.entity === "employees" && c.data && "bound_device_id" in c.data) {
+            if (c.data.bound_device_id !== null) {
+              return { entity: c.entity, id, status: "rejected" as const, message: "bound_device_id hanya boleh null", details: [{ field: "bound_device_id", message: "Hanya boleh dilepas" }], record: cur };
+            }
+            rec.bound_at = null;
+          }
           table.set(id, rec);
           return { entity: c.entity, id, status: "applied" as const, record: rec };
         }),
@@ -976,6 +982,26 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         { kind: "product", product_id: PRODUCTS[7].id, variant_id: null, raw_material_id: null, name: PRODUCTS[7].name, variant_name: null, category: "Makanan", unit: "pcs", qty: 14_000, min_stock: 10_000, low: false },
         { kind: "product", product_id: PRODUCTS[12].id, variant_id: null, raw_material_id: null, name: PRODUCTS[12].name, variant_name: null, category: "Minuman", unit: "botol", qty: 4_000, min_stock: 12_000, low: true },
       ];
+    },
+    async inviteEmployee(id) {
+      const s = await guard();
+      if (s.plan === "free") throw new ApiError("Undang karyawan login di HP pribadi butuh Sissi Pro.", 403, "PRO_REQUIRED");
+      const e = store("employees").get(id);
+      if (!e || e.deleted_at) throw new ApiError("Karyawan tidak ditemukan.", 404, "NOT_FOUND");
+      if (e.is_active === false || (e.role !== "cashier" && e.role !== "kitchen")) throw invalid("role", "Hanya kasir atau dapur yang aktif yang bisa diundang");
+      if (!e.phone) throw invalid("phone", "Isi no. HP karyawan dulu — no. HP dipakai untuk masuk");
+      if (e.personal_access === "none") throw invalid("personal_access", "Izinkan akses dari HP pribadi dulu");
+      const reset = e.has_password === true;
+      const expires = new Date(Date.now() + (reset ? DAY : 7 * DAY)).toISOString();
+      const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+      const raw = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => alphabet[b % 32]).join("");
+      store("employees").set(id, { ...e, invite_expires_at: expires, updated_at: new Date().toISOString() });
+      return {
+        code: `${raw.slice(0, 5)}-${raw.slice(5)}`,
+        url: `${window.location.origin}/undangan/${raw}`,
+        purpose: reset ? "reset_password" : "invite",
+        expires_at: expires,
+      };
     },
     async subscription() {
       const s = await guard();
@@ -1067,9 +1093,19 @@ function seedStore(): Map<string, Map<string, SyncRecord>> {
     )
   ));
   put("customers", CUSTOMERS.map((c) => rec(c.id, { name: c.name, phone: c.phone, email: null, notes: "", birthday: null, is_member: true })));
+  // Akun HP pribadi (api.md "Akun karyawan & Ruang Karyawan"): Dewi terikat HP, Bagas diundang, Sari punya akun
+  // (HP dilepas), Yoga belum diundang (tanpa no. HP), Dapur tidak bisa login.
+  const account: Record<string, Record<string, unknown>> = {
+    Dewi: { phone: "+6281234567789", personal_access: "full", outlet_ids: [OUTLETS[0].id], has_password: true, bound_device_id: uuid("dev:dewi"), bound_at: new Date(Date.now() - 9 * DAY).toISOString() },
+    Bagas: { phone: "+6281298765432", invite_expires_at: new Date(Date.now() + 5 * DAY).toISOString() },
+    Sari: { phone: "+6285711112222", has_password: true, outlet_ids: [OUTLETS[1].id] },
+  };
+  const base = { personal_access: "staff_space", outlet_ids: null, has_password: false, invite_expires_at: null, bound_device_id: null, bound_at: null };
   put("employees", [
-    ...Object.values(CASHIERS).flat().map((c) => rec(c.id, { name: c.name, role: "cashier", email: null, phone: null, payroll: null, pin_hash: null, is_active: true })),
-    rec(uuid("k1"), { name: "Dapur Dago", role: "kitchen", email: null, phone: null, payroll: null, pin_hash: null, is_active: true }),
+    ...Object.values(CASHIERS).flat().map((c) =>
+      rec(c.id, { name: c.name, role: "cashier", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, ...account[c.name] })
+    ),
+    rec(uuid("k1"), { name: "Dapur Dago", role: "kitchen", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, personal_access: "none" }),
   ]);
   return m;
 }

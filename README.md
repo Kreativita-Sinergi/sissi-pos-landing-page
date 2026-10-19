@@ -104,6 +104,14 @@ email memuat `kunci` → terkunci 15 menit; nama APK memuat `rusak` → ditolak 
 Dengan server dev (`:8080`): `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1` dan `ADMIN_ORIGINS`
 server memuat `http://localhost:3000`.
 
+### Undangan karyawan — `/undangan/<kode>` & `/.well-known/assetlinks.json`
+Tautan undangan/reset password karyawan dari pemilik (Tim › karyawan › Undang, di app atau dasbor web). Halaman
+mengambil `GET {API}/invites/{kode}` di server, `noindex`, tanpa Referer. Dengan aplikasi terpasang, Android App
+Links membuka tautan langsung di aplikasi — butuh env `ANDROID_APP_LINKS_SHA256` (sidik jari SHA-256 kunci unggah
+**dan** kunci Play App Signing, dipisah koma; lihat `.env.example`). Env kosong → `assetlinks.json` = `[]`.
+Mode tiruan dasbor (`NEXT_PUBLIC_OWNER_MOCK=1`): kode apa saja (10 karakter) = undangan contoh, awalan `R` = reset
+password, awalan `0000` = tidak berlaku. Kontrak: `sissi-pos-service/docs/api.md` "Akun karyawan & Ruang Karyawan".
+
 ### Linter
 ```bash
 npm run lint

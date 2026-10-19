@@ -18,9 +18,11 @@ import {
   saveEmployee,
   savePin,
   type Employee,
+  type PersonalAccess,
   type Role,
 } from "@/lib/owner/team";
 import type { BusinessType } from "@/lib/owner/types";
+import { AccountSection } from "./AccountSection";
 import { PayrollDialog } from "./PayrollDialog";
 import { PinDialog } from "./PinDialog";
 import type { TeamCtx } from "./shared";
@@ -35,12 +37,14 @@ export function EmployeeSheet({
   ctx,
   selfId,
   businessType,
+  businessName,
   onClose,
 }: {
   target: EmployeeTarget;
   ctx: TeamCtx;
   selfId: string;
   businessType: BusinessType;
+  businessName: string;
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -83,6 +87,7 @@ export function EmployeeSheet({
             ctx={ctx}
             selfId={selfId}
             businessType={businessType}
+            businessName={businessName}
             setBusy={setBusy}
             setDirty={setDirty}
             onSaved={() => {
@@ -116,6 +121,7 @@ function EmployeeForm({
   ctx,
   selfId,
   businessType,
+  businessName,
   setBusy,
   setDirty,
   onSaved,
@@ -125,6 +131,7 @@ function EmployeeForm({
   ctx: TeamCtx;
   selfId: string;
   businessType: BusinessType;
+  businessName: string;
   setBusy: (v: boolean) => void;
   setDirty: (v: boolean) => void;
   onSaved: () => void;
@@ -137,6 +144,8 @@ function EmployeeForm({
     email: current?.email ?? "",
     role: (current?.role ?? "cashier") as Role,
     active: current?.is_active ?? true,
+    access: (current?.personal_access ?? "staff_space") as PersonalAccess,
+    outletIds: current?.outlet_ids ?? (null as string[] | null),
   }));
   const [f, setF] = useState(initial);
   const [pendingPin, setPendingPin] = useState<string | null>(null);
@@ -179,6 +188,9 @@ function EmployeeForm({
       if (!isEmail(email)) e.email = "Format email tidak valid";
       else if (others.some((o) => o.email === email)) e.email = "Email ini sudah dipakai karyawan lain.";
     }
+    if (f.role !== "owner" && f.access !== "none" && f.outletIds !== null && f.outletIds.length === 0) {
+      e.outlet_ids = "Pilih minimal satu outlet, atau aktifkan Semua outlet.";
+    }
     return e;
   };
 
@@ -198,6 +210,9 @@ function EmployeeForm({
           email: f.email.trim() ? f.email.trim().toLowerCase() : null,
           phone: f.phone.trim() ? normalizePhone(f.phone) : null,
           is_active: f.active,
+          // Akses & outlet hanya dikirim bila berubah (pemilik selalu "full" di server).
+          ...(f.role !== "owner" && f.access !== initial.access ? { personal_access: f.access } : {}),
+          ...(f.role !== "owner" && JSON.stringify(f.outletIds) !== JSON.stringify(initial.outletIds) ? { outlet_ids: f.outletIds } : {}),
         },
         current,
         pendingPin ?? undefined
@@ -327,6 +342,24 @@ function EmployeeForm({
         />
         {errors.is_active && <p className="mt-1 text-[13px] text-danger">{errors.is_active}</p>}
       </div>
+
+      {!isSelf && (
+        <AccountSection
+          id={id}
+          current={current}
+          role={f.role}
+          active={f.active}
+          phone={f.phone}
+          access={f.access}
+          outletIds={f.outletIds}
+          errors={errors}
+          dirty={JSON.stringify(f) !== JSON.stringify(initial) || pendingPin !== null}
+          ctx={ctx}
+          businessName={businessName}
+          onAccess={(access) => update({ access })}
+          onOutlets={(outletIds) => update({ outletIds })}
+        />
+      )}
 
       {/* PIN kasir */}
       <section className={cardClass} aria-labelledby={`${id}-pin-title`}>

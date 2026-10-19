@@ -6,6 +6,7 @@ import { Badge, btn, EmptyState, focusRing, Section, StatCard, tdClass, thClass 
 import { SearchBox } from "@/components/admin/filters";
 import { isPaid, payrollSummary, ROLE_LABEL, type Attendance, type Employee } from "@/lib/owner/team";
 import { zonedToday } from "@/lib/owner/tz";
+import { AccountBadge } from "./AccountSection";
 import { Avatar, type TeamCtx } from "./shared";
 
 // Tab Karyawan — cermin `employees_tab.dart`: ringkasan, cari, daftar (nama, peran, hari ini, PIN, gaji).
@@ -161,7 +162,14 @@ function EmployeeTable({
                     </span>
                   </button>
                 </td>
-                <td className={`${tdClass} hidden border-b border-border-subtle sm:table-cell`}>{ROLE_LABEL[e.role]}</td>
+                <td className={`${tdClass} hidden border-b border-border-subtle sm:table-cell`}>
+                  <span className="block">{ROLE_LABEL[e.role]}</span>
+                  {e.is_active && e.role !== "owner" && (
+                    <span className="mt-0.5 block">
+                      <AccountBadge employee={e} />
+                    </span>
+                  )}
+                </td>
                 {staff && (
                   <td className={`${tdClass} hidden border-b border-border-subtle md:table-cell`}>
                     {e.is_active ? <Badge tone={t.tone}>{t.label}</Badge> : <Badge>Nonaktif</Badge>}

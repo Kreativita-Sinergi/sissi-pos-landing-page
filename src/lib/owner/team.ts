@@ -35,6 +35,13 @@ export type PayrollConfig = {
   overtime_per_hour: number;
 };
 
+/**
+ * Akses dari HP pribadi (api.md "Akun karyawan & Ruang Karyawan"): tidak bisa login · Ruang Karyawan (bawaan) ·
+ * sesuai tugas. Pemilik selalu `full` (diabaikan server).
+ */
+export type PersonalAccess = "none" | "staff_space" | "full";
+export const PERSONAL_ACCESS: PersonalAccess[] = ["none", "staff_space", "full"];
+
 /** Karyawan tanpa `pin_hash` (diganti `has_pin`). */
 export type Employee = {
   id: string;
@@ -47,6 +54,14 @@ export type Employee = {
   is_active: boolean;
   has_pin: boolean;
   payroll: PayrollConfig | null;
+  personal_access: PersonalAccess;
+  /** `null` = semua outlet. */
+  outlet_ids: string[] | null;
+  /** Hanya baca (server). */
+  has_password: boolean;
+  invite_expires_at: string | null;
+  bound_device_id: string | null;
+  bound_at: string | null;
 };
 
 export type Attendance = SyncRecord & {
@@ -127,6 +142,13 @@ export function toEmployee(r: SyncRecord): Employee {
     is_active: r.is_active !== false,
     has_pin: typeof r.pin_hash === "string" && r.pin_hash !== "",
     payroll: parsePayroll(r.payroll),
+    // Baris lama (sebelum migrasi server) = Ruang Karyawan, semua outlet.
+    personal_access: role === "owner" ? "full" : PERSONAL_ACCESS.includes(r.personal_access as PersonalAccess) ? (r.personal_access as PersonalAccess) : "staff_space",
+    outlet_ids: Array.isArray(r.outlet_ids) ? r.outlet_ids.filter((x): x is string => typeof x === "string") : null,
+    has_password: r.has_password === true,
+    invite_expires_at: typeof r.invite_expires_at === "string" ? r.invite_expires_at : null,
+    bound_device_id: typeof r.bound_device_id === "string" ? r.bound_device_id : null,
+    bound_at: typeof r.bound_at === "string" ? r.bound_at : null,
   };
 }
 
@@ -373,6 +395,36 @@ export function payslipNumber(periodStart: string, employeeId: string): string {
 // ——— Label (app_id.arb / team_labels.dart) ———
 
 export const ROLE_LABEL: Record<Role, string> = { owner: "Pemilik", cashier: "Kasir", kitchen: "Dapur" };
+export const ACCESS_LABEL: Record<PersonalAccess, string> = {
+  none: "Tidak bisa login",
+  staff_space: "Ruang Karyawan",
+  full: "Sesuai tugas",
+};
+export const ACCESS_HINT: Record<PersonalAccess, string> = {
+  none: "Karyawan hanya memakai PIN di perangkat toko. Sesi di HP pribadinya dihentikan.",
+  staff_space: "Dari HP pribadi hanya absen, riwayat absen, slip gaji, dan pengajuan izin miliknya.",
+  full: "Dari HP pribadi bisa bekerja sesuai tugasnya (kasir/dapur) di outlet yang dipilih.",
+};
+
+/** Keadaan akun HP pribadi karyawan (untuk daftar & lembar ubah). */
+export type AccountState = "owner" | "disabled" | "bound" | "active" | "invited" | "none";
+export function accountState(e: Employee, now = Date.now()): AccountState {
+  if (e.role === "owner") return "owner";
+  if (e.personal_access === "none") return "disabled";
+  if (e.bound_device_id) return "bound";
+  const invited = !!e.invite_expires_at && Date.parse(e.invite_expires_at) > now;
+  if (invited) return "invited";
+  return e.has_password ? "active" : "none";
+}
+export const ACCOUNT_LABEL: Record<AccountState, string> = {
+  owner: "Pemilik",
+  disabled: "Tidak bisa login",
+  bound: "Terhubung ke HP",
+  active: "Akun dibuat",
+  invited: "Undangan terkirim",
+  none: "Belum diundang",
+};
+
 export const ROLE_HINT: Record<Role, string> = {
   owner: "Pemilik: semua menu, termasuk produk, laporan, tim, dan pengaturan.",
   cashier: "Kasir: transaksi, pesanan, riwayat, pelanggan, dan absen.",
@@ -547,7 +599,16 @@ async function pushOne(entity: WritableEntity, id: string, data: Record<string, 
   return outcome(r);
 }
 
-export type EmployeeDraft = { name: string; role: Role; email: string | null; phone: string | null; is_active: boolean };
+export type EmployeeDraft = {
+  name: string;
+  role: Role;
+  email: string | null;
+  phone: string | null;
+  is_active: boolean;
+  /** Hanya dikirim bila diisi (berubah dari data tersimpan). */
+  personal_access?: PersonalAccess;
+  outlet_ids?: string[] | null;
+};
 
 /**
  * Tambah (`base` null; `pin` opsional ikut dikirim sekali) atau ubah data karyawan. Hanya field form yang dikirim
@@ -555,8 +616,15 @@ export type EmployeeDraft = { name: string; role: Role; email: string | null; ph
  */
 export function saveEmployee(id: string, d: EmployeeDraft, base: Employee | null, pin?: string): Promise<TeamOutcome> {
   const data: Record<string, unknown> = { name: d.name, email: d.email, phone: d.phone, role: d.role, is_active: d.is_active };
+  if (d.personal_access !== undefined) data.personal_access = d.personal_access;
+  if (d.outlet_ids !== undefined) data.outlet_ids = d.outlet_ids;
   if (!base && pin) data.pin = pin;
   return pushOne("employees", id, data, base?.updated_at);
+}
+
+/** Lepas ikatan HP pribadi (`bound_device_id: null`) — karyawan bisa masuk lagi dari HP baru; sesi lama dicabut server. */
+export function unbindDevice(e: Employee): Promise<TeamOutcome> {
+  return pushOne("employees", e.id, { bound_device_id: null }, e.updated_at);
 }
 
 /** Setel/ganti PIN 6 digit (`setPin`) atau cabut (`pin: null`, `revokePin`). */

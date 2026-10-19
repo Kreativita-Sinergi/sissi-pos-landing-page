@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
       { source: "/dasbor", headers: ownerHeaders },
       { source: "/dasbor/:path*", headers: ownerHeaders },
       { source: "/masuk", headers: loginHeaders },
+      // Undangan karyawan: kode sekali pakai ada di URL → jangan diindeks/di-cache, jangan bocor lewat Referer.
+      { source: "/undangan/:path*", headers: adminHeaders.map((h) => (h.key === "Referrer-Policy" ? { ...h, value: "no-referrer" } : h)) },
     ];
   },
   turbopack: {

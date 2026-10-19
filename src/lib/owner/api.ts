@@ -28,6 +28,7 @@ import type {
   Change,
   ChangeResult,
   DataEntity,
+  EmployeeInvite,
   PullPage,
   StockRow,
   SubscriptionDetail,
@@ -62,6 +63,12 @@ export interface OwnerApi {
   changes(changes: Change[], idempotencyKey: string): Promise<{ results: ChangeResult[]; server_time: string }>;
   stock(q: { outlet_id?: string }, signal?: AbortSignal): Promise<StockRow[]>;
   subscription(signal?: AbortSignal): Promise<SubscriptionDetail>;
+  /**
+   * Undang karyawan login di HP pribadi / kirim tautan reset password (belum punya password → `invite` 7 hari, sudah →
+   * `reset_password` 24 jam; tautan lama batal). Paket Gratis → 403 `PRO_REQUIRED`; syarat gagal → 422 (`role`,
+   * `phone`, `personal_access`).
+   */
+  inviteEmployee(id: string): Promise<EmployeeInvite>;
 }
 
 const OWNER_BASE = `${API_BASE_URL}/owner`;
@@ -227,6 +234,9 @@ const httpApi: OwnerApi = {
       .data,
   stock: async (q, signal) => (await call<StockRow[]>("GET", `/stock${qs(q)}`, { signal })).data ?? [],
   subscription: async (signal) => (await call<SubscriptionDetail>("GET", "/subscription", { signal })).data,
+  // Kontrak menulis `POST /employees/{id}/invite` (Bearer app); dasbor memakai padanan sesi cookie di prefiks /owner.
+  inviteEmployee: async (id) =>
+    (await call<EmployeeInvite>("POST", `/employees/${enc(id)}/invite`, { body: {}, idempotencyKey: newId() })).data,
 };
 
 /** Tarik semua record satu entitas (mengikuti cursor) dan buang tombstone. */
