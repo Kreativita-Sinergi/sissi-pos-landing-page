@@ -6,13 +6,15 @@ import { useQueryState } from "@/components/admin/filters";
 import { useToast } from "@/components/admin/toast";
 import { btn, ErrorBlock, LoadingBar, PageHeader, SkeletonList, Tabs, useLoad } from "@/components/admin/ui";
 import { hasFeature } from "@/lib/owner/records";
-import { loadTeam, mergeRecord, payrollRows, recentMonths, type TeamData, type TeamOutcome } from "@/lib/owner/team";
+import { loadTeam, mergeRecord, payrollRows, recentMonths, type TeamData, type TeamEntity, type TeamOutcome } from "@/lib/owner/team";
 import { zonedToday } from "@/lib/owner/tz";
 import type { SyncRecord } from "@/lib/owner/types";
 import { useOwner } from "./OwnerShell";
 import { AttendanceTab } from "./team/AttendanceTab";
 import { EmployeeSheet, type EmployeeTarget } from "./team/EmployeeSheet";
 import { EmployeesTab } from "./team/EmployeesTab";
+import { LeaveDialog, type LeaveTarget } from "./team/LeaveDialog";
+import { LeaveTab } from "./team/LeaveTab";
 import { ManualAttendanceDialog, type ManualTarget } from "./team/ManualAttendanceDialog";
 import { PayrollDialog } from "./team/PayrollDialog";
 import { PayrollTab } from "./team/PayrollTab";
@@ -23,10 +25,12 @@ import { LockedCard, SyncNote } from "./ui";
 // Tim (kelola, setara menu Tim di aplikasi): Karyawan (tambah/ubah, peran, aktif, PIN), Kehadiran (papan hari ini,
 // riwayat sebulan, absen manual/koreksi), Gaji (pengaturan gaji, slip: terbitkan → tandai dibayar).
 // Kehadiran & Gaji = kunci Pro `staff`; daftar karyawan + PIN tetap Gratis (api.md "Kunci fitur Pro").
-// URL: ?tab=karyawan|kehadiran|gaji, ?bulan=YYYY-MM, ?lihat=riwayat, ?karyawan=<id> (filter riwayat).
+// Pengajuan (izin/sakit/cuti dari HP karyawan; kunci `staff`): setujui/tolak.
+// URL: ?tab=karyawan|kehadiran|pengajuan|gaji, ?bulan=YYYY-MM, ?lihat=riwayat, ?karyawan=<id> (filter riwayat),
+// ?saring=semua (pengajuan; bawaan Menunggu). Rute push `leave_request` = /tim?tab=pengajuan.
 
-type TabId = "karyawan" | "kehadiran" | "gaji";
-const TABS: TabId[] = ["karyawan", "kehadiran", "gaji"];
+type TabId = "karyawan" | "kehadiran" | "pengajuan" | "gaji";
+const TABS: TabId[] = ["karyawan", "kehadiran", "pengajuan", "gaji"];
 
 export function TeamView() {
   const { session, outletId } = useOwner();
@@ -41,14 +45,14 @@ export function TeamView() {
   const { state, reload } = useLoad<TeamData>((signal) => loadTeam(staff, signal), [staff ? 1 : 0]);
   const loaded = state.data;
   // Hasil simpan digabung di atas data tarikan (tanpa tarik ulang semuanya); dibuang saat data dimuat ulang.
-  const [patches, setPatches] = useState<{ base: TeamData; entity: "employees" | "attendances" | "payslips"; record: SyncRecord }[]>([]);
+  const [patches, setPatches] = useState<{ base: TeamData; entity: TeamEntity; record: SyncRecord }[]>([]);
   const data = useMemo(
     () => (loaded ? patches.filter((p) => p.base === loaded).reduce((d, p) => mergeRecord(d, p.entity, p.record), loaded) : undefined),
     [loaded, patches]
   );
 
   const merge = useCallback(
-    (entity: "employees" | "attendances" | "payslips", out: TeamOutcome) => {
+    (entity: TeamEntity, out: TeamOutcome) => {
       const record = out.record;
       if (loaded && record) setPatches((list) => [...list.filter((p) => p.base === loaded), { base: loaded, entity, record }]);
       if (out.status === "conflict") toast.error(out.message);
@@ -60,6 +64,8 @@ export function TeamView() {
   const [manual, setManual] = useState<ManualTarget>(null);
   const [slipFor, setSlipFor] = useState<string | null>(null);
   const [payrollFor, setPayrollFor] = useState<string | null>(null);
+  const [leaveOpen, setLeaveOpen] = useState<LeaveTarget>(null);
+  const pendingLeaves = data?.leaves.filter((r) => r.status === "pending").length ?? 0;
 
   const ctx: TeamCtx | null = data ? { data, merge, reload, staff } : null;
   const rows = useMemo(() => (data && staff ? payrollRows(data, month) : []), [data, staff, month]);
@@ -70,7 +76,7 @@ export function TeamView() {
     <>
       <PageHeader
         title="Tim"
-        description="Kelola karyawan, PIN kasir, kehadiran, dan gaji. Perubahan diterima perangkat kasir saat sinkron berikutnya."
+        description="Kelola karyawan, PIN kasir, kehadiran, pengajuan izin, dan gaji. Perubahan diterima perangkat kasir saat sinkron berikutnya."
         actions={
           tab === "karyawan" && data ? (
             <button type="button" className={btn.primary} onClick={() => setEmployee({ id: null, key: Date.now() })}>
@@ -83,10 +89,11 @@ export function TeamView() {
       <Tabs<TabId>
         label="Bagian tim"
         active={tab}
-        onChange={(t) => qs.update({ tab: t === "karyawan" ? null : t, karyawan: null })}
+        onChange={(t) => qs.update({ tab: t === "karyawan" ? null : t, karyawan: null, saring: null })}
         tabs={[
           { id: "karyawan", label: "Karyawan", count: data?.employees.length },
           { id: "kehadiran", label: "Kehadiran" },
+          { id: "pengajuan", label: "Pengajuan", count: staff && pendingLeaves > 0 ? pendingLeaves : undefined },
           { id: "gaji", label: "Gaji" },
         ]}
       />
@@ -103,8 +110,10 @@ export function TeamView() {
           <LoadingBar active={state.status === "loading"} />
           {tab === "karyawan" && <EmployeesTab ctx={ctx} selfId={session.user.id} onOpen={(id) => setEmployee({ id, key: Date.now() })} />}
           {tab !== "karyawan" && !staff && (
-            <LockedCard title={tab === "kehadiran" ? "Kehadiran karyawan" : "Gaji karyawan"}>
-              Catat absen masuk/pulang dengan PIN, pantau keterlambatan dan lembur, lalu hitung dan terbitkan slip gaji dengan paket Pro.
+            <LockedCard title={tab === "kehadiran" ? "Kehadiran karyawan" : tab === "pengajuan" ? "Pengajuan izin" : "Gaji karyawan"}>
+              {tab === "pengajuan"
+                ? "Karyawan mengajukan izin, sakit, atau cuti dari HP-nya; kamu setujui atau tolak di sini dan tanggalnya tercatat di Kehadiran. Termasuk paket Pro."
+                : "Catat absen masuk/pulang dengan PIN, pantau keterlambatan dan lembur, lalu hitung dan terbitkan slip gaji dengan paket Pro."}
             </LockedCard>
           )}
           {tab === "kehadiran" && staff && (
@@ -117,6 +126,14 @@ export function TeamView() {
               onMonth={(m) => qs.update({ bulan: m === thisMonth ? null : m }, "replace")}
               onEmployee={(id) => qs.update({ karyawan: id || null }, "replace")}
               onManual={(employeeId, date) => setManual({ employeeId, date, key: Date.now() })}
+            />
+          )}
+          {tab === "pengajuan" && staff && (
+            <LeaveTab
+              ctx={ctx}
+              filter={qs.get("saring") === "semua" ? "all" : "pending"}
+              onFilter={(f) => qs.update({ saring: f === "all" ? "semua" : null }, "replace")}
+              onOpen={(id) => setLeaveOpen({ id, key: Date.now() })}
             />
           )}
           {tab === "gaji" && staff && (
@@ -145,6 +162,14 @@ export function TeamView() {
                 businessId={session.business.id}
                 outletId={defaultOutlet}
                 onClose={() => setManual(null)}
+              />
+              <LeaveDialog
+                target={leaveOpen}
+                ctx={ctx}
+                owner={{ id: session.user.id, name: session.user.name }}
+                businessId={session.business.id}
+                fallbackOutlet={defaultOutlet}
+                onClose={() => setLeaveOpen(null)}
               />
               <PayslipSheet
                 row={slipRow}

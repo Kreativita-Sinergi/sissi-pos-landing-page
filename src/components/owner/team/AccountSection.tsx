@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Link2Off, Lock, MessageCircle, Send, Smartphone } from "lucide-react";
+import { Ban, Link2Off, Lock, MessageCircle, Send, Smartphone } from "lucide-react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/toast";
 import { Badge, btn, cardClass, CopyButton, errorMessage, formatDateTime, Notice, Spinner, Switch } from "@/components/admin/ui";
@@ -79,6 +79,8 @@ export function AccountSection({
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [unbinding, setUnbinding] = useState(false);
   const [unbindBusy, setUnbindBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [now] = useState(() => Date.now());
   const outlets = ctx.data.outlets;
 
@@ -115,6 +117,27 @@ export function AccountSection({
       } else setInviteError(errorMessage(err));
     } finally {
       setInviteBusy(false);
+    }
+  };
+
+  // Undangan/tautan reset yang masih berlaku (server bisa sudah lewat tanpa `updated_at` baru → bandingkan jam).
+  const invitePending = !!current?.invite_expires_at && Date.parse(current.invite_expires_at) > now;
+
+  const cancelInvite = async () => {
+    if (!current) return;
+    setCancelBusy(true);
+    try {
+      const api = await ownerApi();
+      await api.cancelInvite(current.id);
+      setInvite(null);
+      setCancelling(false);
+      toast.success(reset ? "Tautan reset password dibatalkan." : "Undangan dibatalkan.");
+      // `invite_expires_at` & `updated_at` berubah di server → tarik ulang.
+      ctx.reload();
+    } catch (err) {
+      toast.error(err instanceof ApiError && err.code === "PRO_REQUIRED" ? "Login karyawan di HP pribadi butuh Sissi Pro." : errorMessage(err));
+    } finally {
+      setCancelBusy(false);
     }
   };
 
@@ -191,7 +214,7 @@ export function AccountSection({
               <dt className="text-text-muted">Password</dt>
               <dd className="text-text-heading">{current.has_password ? "Sudah dibuat" : "Belum dibuat"}</dd>
             </div>
-            {current.invite_expires_at && Date.parse(current.invite_expires_at) > now && (
+            {invitePending && (
               <div className="flex flex-wrap gap-x-2">
                 <dt className="text-text-muted">Tautan berlaku sampai</dt>
                 <dd className="text-text-heading">{formatDateTime(current.invite_expires_at)}</dd>
@@ -214,6 +237,11 @@ export function AccountSection({
               <button type="button" className={btn.secondary} onClick={sendInvite} disabled={inviteBusy || !!inviteBlock}>
                 {inviteBusy ? <Spinner /> : <Send size={16} aria-hidden />}
                 {reset ? "Kirim tautan reset" : current.invite_expires_at ? "Undang ulang" : "Undang"}
+              </button>
+            )}
+            {ctx.staff && (invitePending || invite) && (
+              <button type="button" className={btn.ghost} onClick={() => setCancelling(true)}>
+                <Ban size={16} aria-hidden /> {reset ? "Batalkan tautan reset" : "Batalkan undangan"}
               </button>
             )}
             {current.bound_device_id && (
@@ -267,6 +295,19 @@ export function AccountSection({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={cancelling}
+        title={reset ? "Batalkan tautan reset?" : "Batalkan undangan?"}
+        confirmLabel={reset ? "Batalkan tautan" : "Batalkan undangan"}
+        cancelLabel="Kembali"
+        tone="danger"
+        busy={cancelBusy}
+        onClose={() => setCancelling(false)}
+        onConfirm={cancelInvite}
+      >
+        Tautan dan kode yang sudah dikirim ke {current?.name} tidak bisa dipakai lagi. Kamu bisa mengirim yang baru kapan saja.
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={unbinding}

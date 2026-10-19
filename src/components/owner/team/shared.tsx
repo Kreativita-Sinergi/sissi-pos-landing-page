@@ -11,6 +11,7 @@ import {
   type DayKind,
   type SlipStatus,
   type TeamData,
+  type TeamEntity,
   type TeamOutcome,
 } from "@/lib/owner/team";
 
@@ -19,7 +20,7 @@ import {
 export type TeamCtx = {
   data: TeamData;
   /** Gabungkan record hasil simpan (applied/conflict) ke data lokal. */
-  merge: (entity: "employees" | "attendances" | "payslips", out: TeamOutcome) => void;
+  merge: (entity: TeamEntity, out: TeamOutcome) => void;
   reload: () => void;
   staff: boolean;
 };

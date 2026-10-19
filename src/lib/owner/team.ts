@@ -14,6 +14,7 @@
 // setelah ditarik (yang disimpan di memori hanya `has_pin`), dan PIN tidak pernah disimpan di browser.
 
 import { pullAll, pushChanges } from "./api";
+import { toLeave, type LeaveRequest } from "./leavePlan";
 import { readAttendance, type AttendanceRules } from "./settings";
 import type { ChangeResult, SyncRecord, WritableEntity } from "./types";
 import { zonedDay, zonedHHMM, zoneOffsetMs, zonedToday } from "./tz";
@@ -73,7 +74,7 @@ export type Attendance = SyncRecord & {
   status: AttendanceStatus;
   late_minutes: number;
   note: string;
-  source: "pin" | "manual";
+  source: "pin" | "manual" | "self";
   edited_by: string | null;
   edit_reason: string;
 };
@@ -101,9 +102,13 @@ export type TeamData = {
   employees: Employee[];
   attendances: Attendance[];
   payslips: Payslip[];
+  /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
+  leaves: LeaveRequest[];
   rules: AttendanceRules;
   outlets: OutletLite[];
 };
+
+export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_requests";
 
 // ——— Normalisasi data tarikan ———
 
@@ -173,10 +178,11 @@ function toOutlet(r: SyncRecord): OutletLite {
 
 /** Tarik semua data tim. `staff=false` (paket Gratis) → kehadiran & slip tidak ditarik. */
 export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<TeamData> {
-  const [emp, att, slips, settings, outlets] = await Promise.all([
+  const [emp, att, slips, leaves, settings, outlets] = await Promise.all([
     pullAll("employees", signal),
     staff ? pullAll("attendances", signal) : Promise.resolve([]),
     staff ? pullAll("payslips", signal) : Promise.resolve([]),
+    staff ? pullAll("leave_requests", signal) : Promise.resolve([]),
     pullAll("business_settings", signal),
     pullAll("outlets", signal),
   ]);
@@ -184,13 +190,14 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     employees: emp.map(toEmployee),
     attendances: att.map(toAttendance),
     payslips: slips.map(toPayslip),
+    leaves: leaves.map(toLeave),
     rules: readAttendance(settings[0]?.settings),
     outlets: outlets.map(toOutlet),
   };
 }
 
 /** Ganti/ tambah satu record hasil simpan ke data lokal (tanpa tarik ulang semuanya). */
-export function mergeRecord(data: TeamData, entity: "employees" | "attendances" | "payslips", rec: SyncRecord): TeamData {
+export function mergeRecord(data: TeamData, entity: TeamEntity, rec: SyncRecord): TeamData {
   const upsert = <T extends { id: string }>(list: T[], item: T) => {
     const i = list.findIndex((x) => x.id === item.id);
     if (i < 0) return [...list, item];
@@ -200,6 +207,7 @@ export function mergeRecord(data: TeamData, entity: "employees" | "attendances" 
   };
   if (entity === "employees") return { ...data, employees: upsert(data.employees, toEmployee(rec)) };
   if (entity === "attendances") return { ...data, attendances: upsert(data.attendances, toAttendance(rec)) };
+  if (entity === "leave_requests") return { ...data, leaves: upsert(data.leaves, toLeave(rec)) };
   return { ...data, payslips: upsert(data.payslips, toPayslip(rec)) };
 }
 
@@ -584,7 +592,7 @@ function friendly(msg: string): string {
   return msg;
 }
 
-function outcome(r: ChangeResult | undefined): TeamOutcome {
+export function outcome(r: ChangeResult | undefined): TeamOutcome {
   if (!r) return { status: "rejected", record: null, message: "Server tidak mengembalikan hasil.", fields: {} };
   if (r.status === "applied") return { status: "applied", record: r.record ?? null };
   if (r.status === "conflict") return { status: "conflict", record: r.record ?? null, message: CONFLICT };

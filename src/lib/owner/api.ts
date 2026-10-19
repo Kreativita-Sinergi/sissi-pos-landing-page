@@ -69,6 +69,8 @@ export interface OwnerApi {
    * `phone`, `personal_access`).
    */
   inviteEmployee(id: string): Promise<EmployeeInvite>;
+  /** Batalkan undangan/tautan reset yang masih berlaku (idempoten). */
+  cancelInvite(id: string): Promise<void>;
 }
 
 const OWNER_BASE = `${API_BASE_URL}/owner`;
@@ -237,6 +239,10 @@ const httpApi: OwnerApi = {
   // Kontrak menulis `POST /employees/{id}/invite` (Bearer app); dasbor memakai padanan sesi cookie di prefiks /owner.
   inviteEmployee: async (id) =>
     (await call<EmployeeInvite>("POST", `/employees/${enc(id)}/invite`, { body: {}, idempotencyKey: newId() })).data,
+  // CORS /owner hanya GET/POST → pembatalan = `POST …/invite/cancel` (padanan `DELETE /employees/{id}/invite`).
+  cancelInvite: async (id) => {
+    await call<null>("POST", `/employees/${enc(id)}/invite/cancel`, { body: {}, idempotencyKey: newId() });
+  },
 };
 
 /** Tarik semua record satu entitas (mengikuti cursor) dan buang tombstone. */

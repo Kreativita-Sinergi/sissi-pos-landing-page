@@ -363,7 +363,8 @@ export type DataEntity =
   | "stock_opnames"
   | "purchase_orders"
   | "stock_transfers"
-  | "payslips";
+  | "payslips"
+  | "leave_requests";
 
 /**
  * Entitas yang bisa diubah web (`POST /owner/changes`). `outlets`: tambah (dalam kuota), ubah, hapus; metode bayar
@@ -394,7 +395,9 @@ export type WritableEntity =
   | "payslips"
   // Nomor 14: pembatalan transaksi (void/refund) & kas masuk/keluar shift buka.
   | "sales"
-  | "cash_movements";
+  | "cash_movements"
+  // Pengajuan izin/sakit/cuti: setujui/tolak (setujui = satu kiriman bersama absen manual per tanggal).
+  | "leave_requests";
 
 /** Record sync mentah: bentuk per entitas ada di api.md "Sync v1". */
 export type SyncRecord = { id: string; updated_at: string; deleted_at: string | null; [key: string]: unknown };

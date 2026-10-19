@@ -517,7 +517,7 @@ function writeSession(s: MockSession | null) {
   }
 }
 
-const ALL_FEATURES = ["insights", "multi_outlet", "kitchen_display", "self_order", "stock", "recipes"];
+const ALL_FEATURES = ["insights", "multi_outlet", "kitchen_display", "self_order", "stock", "recipes", "staff"];
 
 function plan(kind: MockSession["plan"]): OwnerPlan {
   if (kind === "free") {
@@ -931,10 +931,27 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
           throw invalid(`changes[${i}]`, "CONFIRM_REQUIRED: Konfirmasi password untuk mengubah metode pembayaran (QRIS & rekening)");
         }
       });
+      // Pengajuan (api.md "Kelola data › Pengajuan"): status final beku → conflict; absen di kiriman yang sama hanya
+      // diterapkan bila keputusan pengajuan diterapkan.
+      let leaveFailed = false;
       return {
         server_time: now,
         results: changes.map((c) => {
           const id = c.id;
+          if (c.entity === "leave_requests") {
+            const cur = store("leave_requests").get(id);
+            if (!cur || c.op === "delete") {
+              leaveFailed = true;
+              return { entity: c.entity, id, status: "rejected" as const, code: "FORBIDDEN", message: "Pengajuan tidak dapat dibuat/dihapus pemilik", details: [] };
+            }
+            if (cur.status !== "pending" || (c.base_updated_at && cur.updated_at !== c.base_updated_at)) {
+              leaveFailed = true;
+              return { entity: c.entity, id, status: "conflict" as const, code: "CONFLICT", record: cur };
+            }
+          }
+          if (c.entity === "attendances" && leaveFailed) {
+            return { entity: c.entity, id, status: "rejected" as const, code: "CONFLICT", message: "Pengajuan tidak diterapkan; absen tidak ditulis", details: [] };
+          }
           if (c.entity === "sales") {
             const sale = db().sales.find((x) => x.id === id);
             if (!sale) return { entity: c.entity, id, status: "rejected" as const, message: "Transaksi tidak ditemukan", details: [] };
@@ -1002,6 +1019,13 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         purpose: reset ? "reset_password" : "invite",
         expires_at: expires,
       };
+    },
+    async cancelInvite(id) {
+      const s = await guard();
+      if (s.plan === "free") throw new ApiError("Undang karyawan login di HP pribadi butuh Sissi Pro.", 403, "PRO_REQUIRED");
+      const e = store("employees").get(id);
+      if (!e || e.deleted_at) throw new ApiError("Karyawan tidak ditemukan.", 404, "NOT_FOUND");
+      if (e.invite_expires_at) store("employees").set(id, { ...e, invite_expires_at: null, updated_at: new Date().toISOString() });
     },
     async subscription() {
       const s = await guard();
@@ -1107,7 +1131,48 @@ function seedStore(): Map<string, Map<string, SyncRecord>> {
     ),
     rec(uuid("k1"), { name: "Dapur Dago", role: "kitchen", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, personal_access: "none" }),
   ]);
+  seedLeaves(put);
   return m;
+}
+
+/**
+ * Pengajuan contoh: tiga menunggu (Dewi sakit — kemarin sudah absen masuk; Bagas cuti lintas hari Minggu; Sari izin
+ * beralasan panjang) + disetujui/ditolak/dibatalkan. Tanggal relatif hari ini (WIB); libur bawaan = Minggu.
+ */
+function seedLeaves(put: (entity: string, rows: SyncRecord[]) => void) {
+  const today = wibDay(Date.now());
+  const wd = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0 = Minggu
+  const nextSunday = addDays(today, wd === 0 ? 7 : 7 - wd);
+  const [dewi, bagas, sari, yoga] = [uuid("c1"), uuid("c2"), uuid("c3"), uuid("c4")];
+  const at = (daysAgo: number, hour = 9) => new Date(Date.parse(`${addDays(today, -daysAgo)}T00:00:00Z`) - 7 * HOUR + hour * HOUR).toISOString();
+  const leave = (seed: string, d: Record<string, unknown>, createdDaysAgo: number) => ({
+    ...rec(uuid(`leave:${seed}`), { outlet_id: null, status: "pending", decided_by: null, decided_at: null, decision_note: "", ...d }),
+    created_at: at(createdDaysAgo, 7),
+    updated_at: at(createdDaysAgo, 7),
+  });
+  put("leave_requests", [
+    leave("dewi-sakit", { employee_id: dewi, outlet_id: OUTLETS[0].id, kind: "sick", date_from: addDays(today, -1), date_to: addDays(today, 1), reason: "Demam tinggi sejak semalam, sudah ke dokter. Surat dokter menyusul." }, 0),
+    leave("bagas-cuti", { employee_id: bagas, kind: "leave", date_from: addDays(nextSunday, -2), date_to: addDays(nextSunday, 1), reason: "Acara keluarga di Bandung (pernikahan kakak)." }, 1),
+    leave("sari-izin", {
+      employee_id: sari,
+      kind: "permit",
+      date_from: addDays(today, 3),
+      date_to: addDays(today, 3),
+      reason:
+        "Mengurus perpanjangan SIM dan KTP di kantor kecamatan karena antreannya panjang sekali, jadi kemungkinan baru selesai sore hari. Kalau sempat saya kabari untuk masuk setengah hari setelahnya.",
+    }, 2),
+    leave("yoga-sakit", { employee_id: yoga, kind: "sick", date_from: addDays(today, -10), date_to: addDays(today, -9), reason: "Flu dan batuk.", status: "approved", decided_by: USER.id, decided_at: at(10, 10), decision_note: "Semoga cepat sembuh" }, 11),
+    leave("dewi-izin", { employee_id: dewi, kind: "permit", date_from: addDays(today, -6), date_to: addDays(today, -6), reason: "Menghadiri wisuda adik.", status: "rejected", decided_by: USER.id, decided_at: at(12, 11), decision_note: "Hari itu ada pesanan besar, mohon ganti tanggal lain." }, 13),
+    leave("bagas-batal", { employee_id: bagas, kind: "permit", date_from: addDays(today, -4), date_to: addDays(today, -4), reason: "Antar orang tua kontrol ke rumah sakit.", status: "cancelled" }, 6),
+  ]);
+  // Dewi sudah absen masuk kemarin (PIN di perangkat toko) → tanggal itu dilewati saat pengajuan sakitnya disetujui.
+  const yesterday = addDays(today, -1);
+  put("attendances", [
+    rec(uuid(`att:${dewi}:${yesterday}`), {
+      outlet_id: OUTLETS[0].id, employee_id: dewi, date: yesterday, clock_in_at: at(1, 8), clock_out_at: at(1, 12),
+      status: "ontime", late_minutes: 0, note: "Pulang lebih awal, tidak enak badan", source: "pin", edited_by: null, edit_reason: "",
+    }),
+  ]);
 }
 
 const mockStore = seedStore();

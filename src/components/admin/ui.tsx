@@ -595,7 +595,7 @@ export function Tabs<T extends string>({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(t.id)}
-            className={`-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-[14px] font-semibold transition-colors ${
+            className={`-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[14px] sm:px-3 font-semibold transition-colors ${
               on ? "border-brand-deep text-brand-ink" : "border-transparent text-text-body hover:text-text-heading"
             } ${focusRing}`}
           >
