@@ -351,9 +351,11 @@ function generate(now: number): Db {
       const diff = closedAt === null ? null : r.weighted<number>([[0, 14], [-5000, 2], [-20000, 1], [2000, 2], [500, 1]]);
       // Contoh tanda "Hitungan server berbeda": shift 3 hari lalu di outlet pertama tercatat perangkat 15.000 lebih tinggi.
       const deviceExpected = closedAt !== null && back === 3 && o.weight === 1 ? expected + 15000 : expected;
+      // Contoh "Ditutup oleh": shift 2 hari lalu di outlet pertama ditutup kasir lain; selebihnya penutup = pembuka.
+      const closer = closedAt === null ? null : back === 2 && o.weight === 1 ? CASHIERS[o.id][back % 2 === 0 ? 1 : 0].name : cashier.name;
       shifts.push({
         id: shiftId, outlet_id: o.id, outlet_name: o.name, device_name: device.name, cashier_id: cashier.id, cashier_name: cashier.name,
-        status: closedAt === null ? "open" : "closed", opened_at: new Date(opened).toISOString(),
+        closed_by_name: closer, status: closedAt === null ? "open" : "closed", opened_at: new Date(opened).toISOString(),
         closed_at: closedAt === null ? null : new Date(closedAt).toISOString(), opening_cash: opening, expected_cash: deviceExpected,
         expected_cash_server: expected, expected_mismatch: deviceExpected !== expected,
         closing_cash: diff === null ? null : deviceExpected + diff, difference: diff, sales_count: counted.length,

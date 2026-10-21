@@ -98,6 +98,8 @@ export type ShiftListItem = {
   device_name: string | null;
   cashier_id: string;
   cashier_name: string;
+  /** Penutup shift (bisa beda dari pembuka `cashier_name`); `null` = tidak dicatat (klien lama) / masih buka. */
+  closed_by_name: string | null;
   status: "open" | "closed";
   opened_at: string;
   closed_at: string | null;

@@ -36,6 +36,9 @@ import { CashMovementDialog } from "./CashMovementDialog";
 import type { CashType } from "@/lib/owner/cashMovement";
 import { formatTime, PeriodFilter, SyncNote, usePeriod } from "./ui";
 
+/** Penutup shift tercatat & berbeda dari pembuka → tampilkan "Ditutup oleh …" (sama/null → tidak perlu). */
+const closedByOther = (s: ShiftListItem): s is ShiftListItem & { closed_by_name: string } => !!s.closed_by_name && s.closed_by_name !== s.cashier_name;
+
 // Shift & kas (GET /owner/shifts, /owner/shifts/{id}). Selisih kas: merah bila kurang, kuning bila lebih.
 // `expected_mismatch` (shift tertutup yang kas seharusnya dari perangkat ≠ hitungan server) ditandai "Hitungan server
 // berbeda". Shift yang sedang buka bisa dicatati kas masuk/keluar dari web (api.md "Nomor 14").
@@ -139,6 +142,7 @@ export function ShiftsView() {
                             <span className="block text-[12.5px] tabular-nums text-text-muted">
                               {formatStamp(s.opened_at)} – {s.closed_at ? formatTime(s.closed_at) : "sekarang"}
                             </span>
+                            {closedByOther(s) && <span className="block text-[12px] text-text-muted">Ditutup oleh {s.closed_by_name}</span>}
                             <span className="block text-[12px] text-text-muted">
                               {[showOutlet ? s.outlet_name : null, s.device_name, `${s.sales_count.toLocaleString("id-ID")} trx · ${formatRupiah(s.sales_total)}`].filter(Boolean).join(" · ")}
                             </span>
@@ -216,7 +220,11 @@ export function ShiftDetailView() {
       <PageHeader
         title={s ? `Shift ${s.cashier_name}` : "Detail shift"}
         back={back}
-        description={s ? `${s.outlet_name}${s.device_name ? ` · ${s.device_name}` : ""} · ${formatDateTime(s.opened_at)} – ${s.closed_at ? formatDateTime(s.closed_at) : "masih buka"}` : undefined}
+        description={
+          s
+            ? `${s.outlet_name}${s.device_name ? ` · ${s.device_name}` : ""} · ${formatDateTime(s.opened_at)} – ${s.closed_at ? formatDateTime(s.closed_at) : "masih buka"}${closedByOther(s) ? ` · Ditutup oleh ${s.closed_by_name}` : ""}`
+            : undefined
+        }
         actions={s && <ShiftStatus s={s} />}
       />
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
