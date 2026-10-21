@@ -6,11 +6,14 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/toast";
 import { btn, cardClass, errorMessage, Field, inputClass, Notice, Spinner, Switch } from "@/components/admin/ui";
 import { Sheet } from "@/components/owner/catalog/bits";
-import { Segmented, useUnsavedWarning } from "@/components/owner/editing";
+import { ChipGroup, Segmented, useUnsavedWarning } from "@/components/owner/editing";
 import { newId } from "@/lib/owner/api";
 import {
   isEmail,
   isPaid,
+  JOB_TITLE_MAX,
+  JOB_TITLE_PRESETS,
+  normalizeJobTitle,
   normalizePhone,
   payrollSummary,
   ROLE_HINT,
@@ -28,7 +31,11 @@ import { PinDialog } from "./PinDialog";
 import type { TeamCtx } from "./shared";
 
 // Tambah/ubah karyawan — cermin `employee_form_screen.dart`: nama, HP, email, peran, aktif, PIN (atur/ganti/cabut),
-// dan kartu gaji. Karyawan baru: PIN dipilih dulu lalu ikut terkirim sekali bersama data karyawan.
+// jabatan, dan kartu gaji. Peran `staff` (Karyawan absen saja) tanpa PIN & tanpa akses "Sesuai tugas". Karyawan baru: PIN dipilih dulu lalu ikut terkirim sekali bersama data karyawan.
+
+const OTHER_JOB = "__other";
+type JobChoice = (typeof JOB_TITLE_PRESETS)[number] | typeof OTHER_JOB | null;
+const isPreset = (v: string): v is (typeof JOB_TITLE_PRESETS)[number] => (JOB_TITLE_PRESETS as readonly string[]).includes(v);
 
 export type EmployeeTarget = { id: string | null; key: number } | null;
 
@@ -146,6 +153,9 @@ function EmployeeForm({
     active: current?.is_active ?? true,
     access: (current?.personal_access ?? "staff_space") as PersonalAccess,
     outletIds: current?.outlet_ids ?? (null as string[] | null),
+    // Jabatan: pilihan umum, atau "Lainnya" + teks bebas.
+    jobChoice: (current?.job_title ? (isPreset(current.job_title) ? current.job_title : OTHER_JOB) : null) as JobChoice,
+    jobOther: current?.job_title && !isPreset(current.job_title) ? current.job_title : "",
   }));
   const [f, setF] = useState(initial);
   const [pendingPin, setPendingPin] = useState<string | null>(null);
@@ -165,6 +175,8 @@ function EmployeeForm({
 
   const update = (patch: Partial<typeof f>) => {
     const next = { ...f, ...patch };
+    // Karyawan (absen saja) tidak boleh akses "Sesuai tugas" → turunkan ke Ruang Karyawan.
+    if (next.role === "staff" && next.access === "full") next.access = "staff_space";
     setF(next);
     setErrors({});
     setFormError(null);
@@ -188,6 +200,11 @@ function EmployeeForm({
       if (!isEmail(email)) e.email = "Format email tidak valid";
       else if (others.some((o) => o.email === email)) e.email = "Email ini sudah dipakai karyawan lain.";
     }
+    if (f.jobChoice === OTHER_JOB) {
+      const t = f.jobOther.trim();
+      if (!t) e.job_title = "Tulis jabatannya, atau pilih jabatan lain.";
+      else if (t.length > JOB_TITLE_MAX) e.job_title = `Maksimal ${JOB_TITLE_MAX} karakter`;
+    }
     if (f.role !== "owner" && f.access !== "none" && f.outletIds !== null && f.outletIds.length === 0) {
       e.outlet_ids = "Pilih minimal satu outlet, atau aktifkan Semua outlet.";
     }
@@ -201,6 +218,8 @@ function EmployeeForm({
     if (Object.keys(e).length) return;
     setBusy(true);
     setFormError(null);
+    const jobTitle = f.jobChoice === OTHER_JOB ? normalizeJobTitle(f.jobOther) : f.jobChoice;
+    const pinToSend = f.role === "staff" ? null : pendingPin;
     try {
       const out = await saveEmployee(
         current?.id ?? newIdValue,
@@ -210,17 +229,18 @@ function EmployeeForm({
           email: f.email.trim() ? f.email.trim().toLowerCase() : null,
           phone: f.phone.trim() ? normalizePhone(f.phone) : null,
           is_active: f.active,
+          ...(jobTitle !== (current?.job_title ?? null) ? { job_title: jobTitle } : {}),
           // Akses & outlet hanya dikirim bila berubah (pemilik selalu "full" di server).
           ...(f.role !== "owner" && f.access !== initial.access ? { personal_access: f.access } : {}),
           ...(f.role !== "owner" && JSON.stringify(f.outletIds) !== JSON.stringify(initial.outletIds) ? { outlet_ids: f.outletIds } : {}),
         },
         current,
-        pendingPin ?? undefined
+        pinToSend ?? undefined
       );
       ctx.merge("employees", out);
       if (out.status === "applied") {
         setPendingPin(null);
-        toast.success(isNew ? `${f.name.trim()} ditambahkan${pendingPin ? " dengan PIN" : ""}.` : "Data karyawan tersimpan.");
+        toast.success(isNew ? `${f.name.trim()} ditambahkan${pinToSend ? " dengan PIN" : ""}.` : "Data karyawan tersimpan.");
         onSaved();
       } else {
         if (out.status === "rejected") setErrors(out.fields);
@@ -272,7 +292,12 @@ function EmployeeForm({
   const roles: { value: Role; label: string }[] = [
     { value: "cashier", label: ROLE_LABEL.cashier },
     ...(kitchenRole || f.role === "kitchen" ? [{ value: "kitchen" as Role, label: ROLE_LABEL.kitchen }] : []),
+    { value: "staff", label: ROLE_LABEL.staff },
     { value: "owner", label: ROLE_LABEL.owner },
+  ];
+  const jobOptions: { value: Exclude<JobChoice, null>; label: string }[] = [
+    ...JOB_TITLE_PRESETS.map((v) => ({ value: v, label: v })),
+    { value: OTHER_JOB, label: "Lainnya" },
   ];
   const hasPin = current ? current.has_pin : pendingPin !== null;
   const payrollEmployee = current;
@@ -323,13 +348,42 @@ function EmployeeForm({
         {isSelf ? (
           <p className="text-[14px] font-semibold text-text-heading">{ROLE_LABEL[f.role]}</p>
         ) : (
-          <Segmented label="Peran" options={roles} value={f.role} onChange={(r) => update({ role: r })} />
+          <div className="max-w-full overflow-x-auto">
+            <Segmented label="Peran" options={roles} value={f.role} onChange={(r) => update({ role: r })} />
+          </div>
         )}
         <p className="mt-1.5 text-[13px] text-text-muted">{isSelf ? "Kamu tidak dapat mengubah peranmu sendiri." : ROLE_HINT[f.role]}</p>
         {errors.role && <p className="mt-1 text-[13px] text-danger">{errors.role}</p>}
         {!kitchenRole && !isSelf && (
           <p className="mt-1 text-[12.5px] text-text-muted">Peran Dapur tersedia untuk usaha kuliner atau bila fitur dapur outlet diaktifkan.</p>
         )}
+      </div>
+      <div>
+        <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Jabatan (opsional)</p>
+        <ChipGroup
+          label="Jabatan"
+          options={jobOptions}
+          selected={f.jobChoice ? [f.jobChoice] : []}
+          onChange={(next) => update({ jobChoice: (next.filter((v) => v !== f.jobChoice)[0] ?? null) as JobChoice })}
+        />
+        {f.jobChoice === OTHER_JOB && (
+          <div className="mt-3">
+            <Field id={`${id}-job`} label="Nama jabatan" error={errors.job_title}>
+              <input
+                id={`${id}-job`}
+                className={inputClass}
+                placeholder="Mis. Kasir senior"
+                autoComplete="off"
+                maxLength={JOB_TITLE_MAX}
+                value={f.jobOther}
+                aria-invalid={!!errors.job_title || undefined}
+                onChange={(e) => update({ jobOther: e.target.value })}
+              />
+            </Field>
+          </div>
+        )}
+        {f.jobChoice !== OTHER_JOB && errors.job_title && <p className="mt-1 text-[13px] text-danger">{errors.job_title}</p>}
+        <p className="mt-1.5 text-[13px] text-text-muted">Hanya label di daftar & slip — tidak mengubah izin karyawan.</p>
       </div>
       <div className={`${cardClass} px-4 py-3`}>
         <Switch
@@ -361,7 +415,14 @@ function EmployeeForm({
         />
       )}
 
-      {/* PIN kasir */}
+      {/* PIN kasir — Karyawan (absen saja) tidak memakai PIN (server menghapus PIN saat peran berubah ke staff). */}
+      {f.role === "staff" ? (
+        <Notice tone={current?.has_pin && initial.role !== "staff" ? "warning" : "info"}>
+          {current?.has_pin && initial.role !== "staff"
+            ? "Karyawan (absen saja) tidak memakai PIN. PIN lama akan dihapus saat disimpan."
+            : "Karyawan (absen saja) tidak memakai PIN dan tidak bisa membuka kasir. Absennya lewat HP pribadi (Ruang Karyawan) atau dicatat lewat Tim › Absen."}
+        </Notice>
+      ) : (
       <section className={cardClass} aria-labelledby={`${id}-pin-title`}>
         <div className="border-b border-border-subtle px-4 py-3">
           <h3 id={`${id}-pin-title`} className="text-[14px] font-semibold text-text-heading">
@@ -401,6 +462,7 @@ function EmployeeForm({
           </button>
         )}
       </section>
+      )}
 
       {/* Gaji */}
       <section className={cardClass} aria-labelledby={`${id}-pay-title`}>

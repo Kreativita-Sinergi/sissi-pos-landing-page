@@ -4,14 +4,14 @@ import React, { useMemo, useState } from "react";
 import { ChevronRight, IdCard, KeyRound, UserPlus } from "lucide-react";
 import { Badge, btn, EmptyState, focusRing, Section, StatCard, tdClass, thClass } from "@/components/admin/ui";
 import { SearchBox } from "@/components/admin/filters";
-import { isPaid, payrollSummary, ROLE_LABEL, type Attendance, type Employee } from "@/lib/owner/team";
+import { isPaid, payrollSummary, ROLE_LABEL, roleLine, type Attendance, type Employee } from "@/lib/owner/team";
 import { zonedToday } from "@/lib/owner/tz";
 import { AccountBadge } from "./AccountSection";
 import { Avatar, type TeamCtx } from "./shared";
 
 // Tab Karyawan — cermin `employees_tab.dart`: ringkasan, cari, daftar (nama, peran, hari ini, PIN, gaji).
 
-const ROLE_ORDER: Record<string, number> = { owner: 0, cashier: 1, kitchen: 2 };
+const ROLE_ORDER: Record<string, number> = { owner: 0, cashier: 1, kitchen: 2, staff: 3 };
 
 /** Keadaan hari ini (`todayStateOf`). */
 function todayState(row: Attendance | undefined): { label: string; tone: "neutral" | "success" | "brand" | "danger" | "warning" } {
@@ -35,7 +35,7 @@ export function EmployeesTab({ ctx, selfId, onOpen }: { ctx: TeamCtx; selfId: st
   const list = useMemo(() => {
     const term = q.trim().toLowerCase();
     return [...ctx.data.employees]
-      .filter((e) => !term || [e.name, e.email ?? "", e.phone ?? ""].some((v) => v.toLowerCase().includes(term)))
+      .filter((e) => !term || [e.name, e.email ?? "", e.phone ?? "", e.job_title ?? ""].some((v) => v.toLowerCase().includes(term)))
       .sort(
         (a, b) =>
           Number(b.is_active) - Number(a.is_active) ||
@@ -46,7 +46,8 @@ export function EmployeesTab({ ctx, selfId, onOpen }: { ctx: TeamCtx; selfId: st
 
   const active = ctx.data.employees.filter((e) => e.is_active);
   const working = active.filter((e) => todayState(todayRows.get(e.id)).label === "Bekerja").length;
-  const noPin = active.filter((e) => !e.has_pin).length;
+  // Karyawan (absen saja) memang tanpa PIN — tidak dihitung.
+  const noPin = active.filter((e) => !e.has_pin && e.role !== "staff").length;
 
   if (ctx.data.employees.length <= 1 && !q) {
     // Hanya pemilik: ajak menambah karyawan (`teamEmpty*`).
@@ -154,7 +155,7 @@ function EmployeeTable({
                       </span>
                       <span className="block truncate text-[12.5px] text-text-muted">
                         <span className="sm:hidden">
-                          {ROLE_LABEL[e.role]}
+                          {roleLine(e)}
                           {e.phone || e.email || !e.is_active ? " · " : ""}
                         </span>
                         {[e.phone, e.email, e.is_active ? null : "Nonaktif"].filter(Boolean).join(" · ")}
@@ -164,6 +165,7 @@ function EmployeeTable({
                 </td>
                 <td className={`${tdClass} hidden border-b border-border-subtle sm:table-cell`}>
                   <span className="block">{ROLE_LABEL[e.role]}</span>
+                  {e.job_title && <span className="block text-[12.5px] text-text-muted">{e.job_title}</span>}
                   {e.is_active && e.role !== "owner" && (
                     <span className="mt-0.5 block">
                       <AccountBadge employee={e} />
@@ -176,7 +178,11 @@ function EmployeeTable({
                   </td>
                 )}
                 <td className={`${tdClass} border-b border-border-subtle`}>
-                  {e.has_pin ? (
+                  {e.role === "staff" && !e.has_pin ? (
+                    <span className="text-[13px] whitespace-nowrap text-text-muted">
+                      Tanpa <span className="hidden sm:inline">PIN</span>
+                    </span>
+                  ) : e.has_pin ? (
                     <span className="inline-flex items-center gap-1 text-[13px] whitespace-nowrap text-success">
                       <KeyRound size={14} aria-hidden /> <span className="sr-only sm:not-sr-only">PIN </span>aktif
                     </span>

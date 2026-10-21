@@ -21,7 +21,8 @@ import { zonedDay, zonedHHMM, zoneOffsetMs, zonedToday } from "./tz";
 
 // ——— Tipe record ———
 
-export type Role = "owner" | "cashier" | "kitchen";
+/** `staff` = Karyawan (absen saja): tanpa akses POS & tanpa PIN (api.md "Peran `staff` & jabatan"). */
+export type Role = "owner" | "cashier" | "kitchen" | "staff";
 export type PayType = "none" | "daily" | "monthly" | "hourly";
 export type AttendanceStatus = "ontime" | "late" | "permit" | "sick" | "leave" | "absent";
 export type SlipStatus = "draft" | "issued" | "paid";
@@ -42,6 +43,8 @@ export type PayrollConfig = {
  */
 export type PersonalAccess = "none" | "staff_space" | "full";
 export const PERSONAL_ACCESS: PersonalAccess[] = ["none", "staff_space", "full"];
+/** Pilihan akses per peran: `staff` tidak boleh `full` (server menolak). */
+export const accessOptionsFor = (role: Role): PersonalAccess[] => (role === "staff" ? ["none", "staff_space"] : PERSONAL_ACCESS);
 
 /** Karyawan tanpa `pin_hash` (diganti `has_pin`). */
 export type Employee = {
@@ -52,6 +55,8 @@ export type Employee = {
   email: string | null;
   phone: string | null;
   role: Role;
+  /** Jabatan (label bebas, 1–40 karakter); tidak memengaruhi izin. */
+  job_title: string | null;
   is_active: boolean;
   has_pin: boolean;
   payroll: PayrollConfig | null;
@@ -137,7 +142,8 @@ export const isPaid = (c: PayrollConfig | null): c is PayrollConfig => !!c && c.
 
 /** Record `employees` → Employee; `pin_hash` dibuang di sini (tidak pernah disimpan di state). */
 export function toEmployee(r: SyncRecord): Employee {
-  const role = r.role === "owner" || r.role === "kitchen" ? r.role : "cashier";
+  const role: Role = r.role === "owner" || r.role === "kitchen" || r.role === "staff" ? r.role : "cashier";
+  const access = PERSONAL_ACCESS.includes(r.personal_access as PersonalAccess) ? (r.personal_access as PersonalAccess) : "staff_space";
   return {
     id: r.id,
     updated_at: r.updated_at,
@@ -146,11 +152,12 @@ export function toEmployee(r: SyncRecord): Employee {
     email: typeof r.email === "string" ? r.email : null,
     phone: typeof r.phone === "string" ? r.phone : null,
     role,
+    job_title: normalizeJobTitle(r.job_title),
     is_active: r.is_active !== false,
     has_pin: typeof r.pin_hash === "string" && r.pin_hash !== "",
     payroll: parsePayroll(r.payroll),
     // Baris lama (sebelum migrasi server) = Ruang Karyawan, semua outlet.
-    personal_access: role === "owner" ? "full" : PERSONAL_ACCESS.includes(r.personal_access as PersonalAccess) ? (r.personal_access as PersonalAccess) : "staff_space",
+    personal_access: role === "owner" ? "full" : role === "staff" && access === "full" ? "staff_space" : access,
     outlet_ids: Array.isArray(r.outlet_ids) ? r.outlet_ids.filter((x): x is string => typeof x === "string") : null,
     has_password: r.has_password === true,
     invite_expires_at: typeof r.invite_expires_at === "string" ? r.invite_expires_at : null,
@@ -404,7 +411,21 @@ export function payslipNumber(periodStart: string, employeeId: string): string {
 
 // ——— Label (app_id.arb / team_labels.dart) ———
 
-export const ROLE_LABEL: Record<Role, string> = { owner: "Pemilik", cashier: "Kasir", kitchen: "Dapur" };
+export const ROLE_LABEL: Record<Role, string> = { owner: "Pemilik", cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan (absen saja)" };
+
+/** Pilihan jabatan umum (disusun klien; hanya mengisi `job_title` teks). "Lainnya" = ketik sendiri. */
+export const JOB_TITLE_PRESETS = ["CS", "Pelayan", "Barista", "Kurir", "Admin", "Kebersihan", "Keamanan"] as const;
+export const JOB_TITLE_MAX = 40;
+
+/** `job_title` → string ter-trim atau `null` (kosong/spasi = null, cermin server). */
+export function normalizeJobTitle(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t ? t : null;
+}
+
+/** "Kasir · Barista" — peran + jabatan (bila ada) untuk daftar. */
+export const roleLine = (e: Pick<Employee, "role" | "job_title">): string => (e.job_title ? `${ROLE_LABEL[e.role]} · ${e.job_title}` : ROLE_LABEL[e.role]);
 export const ACCESS_LABEL: Record<PersonalAccess, string> = {
   none: "Tidak bisa login",
   staff_space: "Ruang Karyawan",
@@ -439,6 +460,7 @@ export const ROLE_HINT: Record<Role, string> = {
   owner: "Pemilik: semua menu, termasuk produk, laporan, tim, dan pengaturan.",
   cashier: "Kasir: transaksi, pesanan, riwayat, pelanggan, dan absen.",
   kitchen: "Dapur: layar dapur dan pesanan.",
+  staff: "Karyawan (absen saja): tanpa akses kasir dan tanpa PIN. Absen, slip gaji, dan pengajuan dari HP pribadi (Ruang Karyawan); tanpa HP pribadi, absennya dicatat lewat Tim › Absen.",
 };
 export const PAY_TYPE_LABEL: Record<PayType, string> = { monthly: "Bulanan", daily: "Harian", hourly: "Per jam", none: "Tidak digaji" };
 export const PAY_TYPE_HINT: Record<PayType, string> = {
@@ -615,6 +637,8 @@ export type EmployeeDraft = {
   email: string | null;
   phone: string | null;
   is_active: boolean;
+  /** Hanya dikirim bila diisi (berubah dari data tersimpan); `null` = hapus jabatan. */
+  job_title?: string | null;
   /** Hanya dikirim bila diisi (berubah dari data tersimpan). */
   personal_access?: PersonalAccess;
   outlet_ids?: string[] | null;
@@ -626,9 +650,11 @@ export type EmployeeDraft = {
  */
 export function saveEmployee(id: string, d: EmployeeDraft, base: Employee | null, pin?: string): Promise<TeamOutcome> {
   const data: Record<string, unknown> = { name: d.name, email: d.email, phone: d.phone, role: d.role, is_active: d.is_active };
+  if (d.job_title !== undefined) data.job_title = d.job_title;
   if (d.personal_access !== undefined) data.personal_access = d.personal_access;
   if (d.outlet_ids !== undefined) data.outlet_ids = d.outlet_ids;
-  if (!base && pin) data.pin = pin;
+  // `staff` tanpa PIN: server menolak `pin` bukan null untuk peran itu.
+  if (!base && pin && d.role !== "staff") data.pin = pin;
   return pushOne("employees", id, data, base?.updated_at);
 }
 

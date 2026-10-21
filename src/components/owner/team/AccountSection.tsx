@@ -11,8 +11,8 @@ import {
   ACCESS_HINT,
   ACCESS_LABEL,
   ACCOUNT_LABEL,
+  accessOptionsFor,
   accountState,
-  PERSONAL_ACCESS,
   ROLE_LABEL,
   unbindDevice,
   type AccountState,
@@ -177,7 +177,7 @@ export function AccountSection({
         <div>
           <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Akses dari HP pribadi</p>
           <div className="max-w-full overflow-x-auto">
-            <Segmented label="Akses dari HP pribadi" options={PERSONAL_ACCESS.map((v) => ({ value: v, label: ACCESS_LABEL[v] }))} value={access} onChange={onAccess} />
+            <Segmented label="Akses dari HP pribadi" options={accessOptionsFor(role).map((v) => ({ value: v, label: ACCESS_LABEL[v] }))} value={access} onChange={onAccess} />
           </div>
           <p className="mt-1.5 text-[13px] text-text-muted">
             {access === "full" ? ACCESS_HINT.full.replace("kasir/dapur", ROLE_LABEL[role].toLowerCase()) : ACCESS_HINT[access]}

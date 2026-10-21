@@ -897,6 +897,8 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         { id: uuid("c5"), name: "Putra", role: "cashier", is_active: false, deleted: false },
         { id: uuid("c6"), name: "Lina", role: "cashier", is_active: false, deleted: true },
         { id: uuid("k1"), name: "Dapur Dago", role: "kitchen", is_active: true, deleted: false },
+        { id: uuid("staff:wulan"), name: "Wulan", role: "staff", is_active: true, deleted: false },
+        { id: uuid("staff:joko"), name: "Joko", role: "staff", is_active: true, deleted: false },
       ];
       return list;
     },
@@ -981,6 +983,24 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
             return { entity: c.entity, id, status: "rejected" as const, code: "LAST_OUTLET", message: "Minimal harus ada satu outlet", details: [], record: cur };
           }
           const rec: SyncRecord = { ...(cur ?? {}), ...(c.data ?? {}), id, updated_at: now, deleted_at: c.op === "delete" ? now : null };
+          if (c.entity === "employees") {
+            // Aturan peran `staff` & `job_title` (api.md "Peran `staff` & jabatan").
+            const reject = (field: string, message: string) => ({ entity: c.entity, id, status: "rejected" as const, code: "VALIDATION_ERROR", message, details: [{ field, message }], record: cur });
+            const d = c.data ?? {};
+            if ("job_title" in d) {
+              const t = typeof d.job_title === "string" ? d.job_title.trim() : "";
+              if (t.length > 40) return reject("job_title", "Jabatan maksimal 40 karakter");
+              rec.job_title = t || null;
+            }
+            if (rec.role === "staff") {
+              if ("pin" in d && d.pin !== null) return reject("pin", "Karyawan (absen saja) tidak memakai PIN");
+              if (d.personal_access === "full") return reject("personal_access", "Karyawan (absen saja) tidak bisa akses sesuai tugas");
+              if (cur?.role !== "staff") {
+                rec.pin_hash = null;
+                if (rec.personal_access === "full") rec.personal_access = "staff_space";
+              }
+            }
+          }
           if (c.entity === "employees" && c.data && "bound_device_id" in c.data) {
             if (c.data.bound_device_id !== null) {
               return { entity: c.entity, id, status: "rejected" as const, message: "bound_device_id hanya boleh null", details: [{ field: "bound_device_id", message: "Hanya boleh dilepas" }], record: cur };
@@ -1005,7 +1025,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       if (s.plan === "free") throw new ApiError("Undang karyawan login di HP pribadi butuh Sissi Pro.", 403, "PRO_REQUIRED");
       const e = store("employees").get(id);
       if (!e || e.deleted_at) throw new ApiError("Karyawan tidak ditemukan.", 404, "NOT_FOUND");
-      if (e.is_active === false || (e.role !== "cashier" && e.role !== "kitchen")) throw invalid("role", "Hanya kasir atau dapur yang aktif yang bisa diundang");
+      if (e.is_active === false || (e.role !== "cashier" && e.role !== "kitchen" && e.role !== "staff")) throw invalid("role", "Hanya karyawan aktif (bukan pemilik) yang bisa diundang");
       if (!e.phone) throw invalid("phone", "Isi no. HP karyawan dulu — no. HP dipakai untuk masuk");
       if (e.personal_access === "none") throw invalid("personal_access", "Izinkan akses dari HP pribadi dulu");
       const reset = e.has_password === true;
@@ -1118,9 +1138,10 @@ function seedStore(): Map<string, Map<string, SyncRecord>> {
   ));
   put("customers", CUSTOMERS.map((c) => rec(c.id, { name: c.name, phone: c.phone, email: null, notes: "", birthday: null, is_member: true })));
   // Akun HP pribadi (api.md "Akun karyawan & Ruang Karyawan"): Dewi terikat HP, Bagas diundang, Sari punya akun
-  // (HP dilepas), Yoga belum diundang (tanpa no. HP), Dapur tidak bisa login.
+  // (HP dilepas), Yoga belum diundang (tanpa no. HP), Dapur tidak bisa login. Karyawan (absen saja): Wulan (CS,
+  // diundang ke Ruang Karyawan) & Joko (Kebersihan, tanpa HP pribadi — absennya dicatat lewat Tim › Absen).
   const account: Record<string, Record<string, unknown>> = {
-    Dewi: { phone: "+6281234567789", personal_access: "full", outlet_ids: [OUTLETS[0].id], has_password: true, bound_device_id: uuid("dev:dewi"), bound_at: new Date(Date.now() - 9 * DAY).toISOString() },
+    Dewi: { job_title: "Kasir senior", phone: "+6281234567789", personal_access: "full", outlet_ids: [OUTLETS[0].id], has_password: true, bound_device_id: uuid("dev:dewi"), bound_at: new Date(Date.now() - 9 * DAY).toISOString() },
     Bagas: { phone: "+6281298765432", invite_expires_at: new Date(Date.now() + 5 * DAY).toISOString() },
     Sari: { phone: "+6285711112222", has_password: true, outlet_ids: [OUTLETS[1].id] },
   };
@@ -1130,6 +1151,8 @@ function seedStore(): Map<string, Map<string, SyncRecord>> {
       rec(c.id, { name: c.name, role: "cashier", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, ...account[c.name] })
     ),
     rec(uuid("k1"), { name: "Dapur Dago", role: "kitchen", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, personal_access: "none" }),
+    rec(uuid("staff:wulan"), { name: "Wulan", role: "staff", job_title: "CS", email: null, phone: "+6281355556666", payroll: null, pin_hash: null, is_active: true, ...base, invite_expires_at: new Date(Date.now() + 6 * DAY).toISOString() }),
+    rec(uuid("staff:joko"), { name: "Joko", role: "staff", job_title: "Kebersihan", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, personal_access: "none" }),
   ]);
   seedLeaves(put);
   return m;

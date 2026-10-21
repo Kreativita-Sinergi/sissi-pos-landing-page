@@ -17,7 +17,7 @@ export type OwnerBusiness = {
 };
 
 /** GET /owner/staff — semua pengguna bisnis untuk filter (termasuk nonaktif/terhapus). */
-export type StaffRole = "owner" | "cashier" | "kitchen";
+export type StaffRole = "owner" | "cashier" | "kitchen" | "staff";
 /** Hasil `POST /employees/{id}/invite` (api.md "Akun karyawan & Ruang Karyawan"); kode tidak bisa dibaca ulang. */
 export type EmployeeInvite = {
   code: string;
