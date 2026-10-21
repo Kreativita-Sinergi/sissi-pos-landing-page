@@ -46,7 +46,7 @@ export function EmployeesTab({ ctx, selfId, onOpen }: { ctx: TeamCtx; selfId: st
 
   const active = ctx.data.employees.filter((e) => e.is_active);
   const working = active.filter((e) => todayState(todayRows.get(e.id)).label === "Bekerja").length;
-  // Karyawan (absen saja) memang tanpa PIN — tidak dihitung.
+  // PIN opsional untuk Karyawan (absen saja) — tidak dihitung.
   const noPin = active.filter((e) => !e.has_pin && e.role !== "staff").length;
 
   if (ctx.data.employees.length <= 1 && !q) {
@@ -178,11 +178,7 @@ function EmployeeTable({
                   </td>
                 )}
                 <td className={`${tdClass} border-b border-border-subtle`}>
-                  {e.role === "staff" && !e.has_pin ? (
-                    <span className="text-[13px] whitespace-nowrap text-text-muted">
-                      Tanpa <span className="hidden sm:inline">PIN</span>
-                    </span>
-                  ) : e.has_pin ? (
+                  {e.has_pin ? (
                     <span className="inline-flex items-center gap-1 text-[13px] whitespace-nowrap text-success">
                       <KeyRound size={14} aria-hidden /> <span className="sr-only sm:not-sr-only">PIN </span>aktif
                     </span>

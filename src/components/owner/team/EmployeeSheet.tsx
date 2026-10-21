@@ -31,7 +31,7 @@ import { PinDialog } from "./PinDialog";
 import type { TeamCtx } from "./shared";
 
 // Tambah/ubah karyawan — cermin `employee_form_screen.dart`: nama, HP, email, peran, aktif, PIN (atur/ganti/cabut),
-// jabatan, dan kartu gaji. Peran `staff` (Karyawan absen saja) tanpa PIN & tanpa akses "Sesuai tugas". Karyawan baru: PIN dipilih dulu lalu ikut terkirim sekali bersama data karyawan.
+// jabatan, dan kartu gaji. Peran `staff` (Karyawan absen saja): PIN hanya untuk absen, tanpa akses "Sesuai tugas". Karyawan baru: PIN dipilih dulu lalu ikut terkirim sekali bersama data karyawan.
 
 const OTHER_JOB = "__other";
 type JobChoice = (typeof JOB_TITLE_PRESETS)[number] | typeof OTHER_JOB | null;
@@ -219,7 +219,7 @@ function EmployeeForm({
     setBusy(true);
     setFormError(null);
     const jobTitle = f.jobChoice === OTHER_JOB ? normalizeJobTitle(f.jobOther) : f.jobChoice;
-    const pinToSend = f.role === "staff" ? null : pendingPin;
+    const pinToSend = pendingPin;
     try {
       const out = await saveEmployee(
         current?.id ?? newIdValue,
@@ -415,20 +415,17 @@ function EmployeeForm({
         />
       )}
 
-      {/* PIN kasir — Karyawan (absen saja) tidak memakai PIN (server menghapus PIN saat peran berubah ke staff). */}
-      {f.role === "staff" ? (
-        <Notice tone={current?.has_pin && initial.role !== "staff" ? "warning" : "info"}>
-          {current?.has_pin && initial.role !== "staff"
-            ? "Karyawan (absen saja) tidak memakai PIN. PIN lama akan dihapus saat disimpan."
-            : "Karyawan (absen saja) tidak memakai PIN dan tidak bisa membuka kasir. Absennya lewat HP pribadi (Ruang Karyawan) atau dicatat lewat Tim › Absen."}
-        </Notice>
-      ) : (
+      {/* PIN kasir — untuk Karyawan (absen saja) PIN hanya dipakai absen di perangkat toko. */}
       <section className={cardClass} aria-labelledby={`${id}-pin-title`}>
         <div className="border-b border-border-subtle px-4 py-3">
           <h3 id={`${id}-pin-title`} className="text-[14px] font-semibold text-text-heading">
-            PIN kasir
+            {f.role === "staff" ? "PIN absen" : "PIN kasir"}
           </h3>
-          <p className="mt-0.5 text-[13px] text-text-muted">6 digit untuk membuka kasir terkunci, absen, dan menyetujui pembatalan (pemilik).</p>
+          <p className="mt-0.5 text-[13px] text-text-muted">
+            {f.role === "staff"
+              ? "PIN hanya untuk absen di perangkat toko — tidak membuka kasir."
+              : "6 digit untuk membuka kasir terkunci, absen, dan menyetujui pembatalan (pemilik)."}
+          </p>
         </div>
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <span className="inline-flex items-center gap-2 text-[14px] text-text-heading">
@@ -462,7 +459,6 @@ function EmployeeForm({
           </button>
         )}
       </section>
-      )}
 
       {/* Gaji */}
       <section className={cardClass} aria-labelledby={`${id}-pay-title`}>

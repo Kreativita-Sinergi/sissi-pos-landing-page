@@ -993,12 +993,8 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
               rec.job_title = t || null;
             }
             if (rec.role === "staff") {
-              if ("pin" in d && d.pin !== null) return reject("pin", "Karyawan (absen saja) tidak memakai PIN");
               if (d.personal_access === "full") return reject("personal_access", "Karyawan (absen saja) tidak bisa akses sesuai tugas");
-              if (cur?.role !== "staff") {
-                rec.pin_hash = null;
-                if (rec.personal_access === "full") rec.personal_access = "staff_space";
-              }
+              if (cur?.role !== "staff" && rec.personal_access === "full") rec.personal_access = "staff_space";
             }
           }
           if (c.entity === "employees" && c.data && "bound_device_id" in c.data) {

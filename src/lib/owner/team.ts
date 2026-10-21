@@ -21,7 +21,7 @@ import { zonedDay, zonedHHMM, zoneOffsetMs, zonedToday } from "./tz";
 
 // ——— Tipe record ———
 
-/** `staff` = Karyawan (absen saja): tanpa akses POS & tanpa PIN (api.md "Peran `staff` & jabatan"). */
+/** `staff` = Karyawan (absen saja): tanpa akses POS; PIN opsional hanya untuk absen (api.md "Peran `staff` & jabatan"). */
 export type Role = "owner" | "cashier" | "kitchen" | "staff";
 export type PayType = "none" | "daily" | "monthly" | "hourly";
 export type AttendanceStatus = "ontime" | "late" | "permit" | "sick" | "leave" | "absent";
@@ -460,7 +460,7 @@ export const ROLE_HINT: Record<Role, string> = {
   owner: "Pemilik: semua menu, termasuk produk, laporan, tim, dan pengaturan.",
   cashier: "Kasir: transaksi, pesanan, riwayat, pelanggan, dan absen.",
   kitchen: "Dapur: layar dapur dan pesanan.",
-  staff: "Karyawan (absen saja): tanpa akses kasir dan tanpa PIN. Absen, slip gaji, dan pengajuan dari HP pribadi (Ruang Karyawan); tanpa HP pribadi, absennya dicatat lewat Tim › Absen.",
+  staff: "Karyawan (absen saja): tanpa akses kasir. Absen, slip gaji, dan pengajuan dari HP pribadi (Ruang Karyawan), atau absen dengan PIN di perangkat toko lewat Tim › Absen.",
 };
 export const PAY_TYPE_LABEL: Record<PayType, string> = { monthly: "Bulanan", daily: "Harian", hourly: "Per jam", none: "Tidak digaji" };
 export const PAY_TYPE_HINT: Record<PayType, string> = {
@@ -653,8 +653,7 @@ export function saveEmployee(id: string, d: EmployeeDraft, base: Employee | null
   if (d.job_title !== undefined) data.job_title = d.job_title;
   if (d.personal_access !== undefined) data.personal_access = d.personal_access;
   if (d.outlet_ids !== undefined) data.outlet_ids = d.outlet_ids;
-  // `staff` tanpa PIN: server menolak `pin` bukan null untuk peran itu.
-  if (!base && pin && d.role !== "staff") data.pin = pin;
+  if (!base && pin) data.pin = pin;
   return pushOne("employees", id, data, base?.updated_at);
 }
 
