@@ -45,6 +45,7 @@ const TONE_CLASS: Record<Tone, string> = {
 const KIND_ICON: Record<ActivityKind, React.ComponentType<{ size?: number; "aria-hidden"?: boolean }>> = {
   void: Ban,
   refund: Undo2,
+  partial_refund: Undo2,
   manual_discount: Percent,
   shift_closed: Wallet,
   cash_in: ArrowDownLeft,
@@ -58,6 +59,8 @@ function toneOf(a: ActivityItem): Tone {
     case "void":
     case "refund":
       return "danger";
+    case "partial_refund":
+      return "warning";
     case "manual_discount":
       return "warning";
     case "shift_closed":
@@ -92,6 +95,15 @@ function describe(a: ActivityItem): { main: React.ReactNode; extra: string[] } {
         main: (
           <>
             <strong className="font-semibold">{who(a.actor)}</strong> {a.kind === "void" ? "membatalkan transaksi" : "mengembalikan dana transaksi"} {receipt}
+          </>
+        ),
+        extra: [amount, note ? `alasan: ${note}` : null, a.approver ? `disetujui ${a.approver}` : null].filter((x): x is string => !!x),
+      };
+    case "partial_refund":
+      return {
+        main: (
+          <>
+            <strong className="font-semibold">{who(a.actor)}</strong> merefund sebagian barang transaksi {receipt}
           </>
         ),
         extra: [amount, note ? `alasan: ${note}` : null, a.approver ? `disetujui ${a.approver}` : null].filter((x): x is string => !!x),
@@ -159,7 +171,7 @@ function describe(a: ActivityItem): { main: React.ReactNode; extra: string[] } {
 function hrefOf(a: ActivityItem): string | null {
   if (a.kind === "change") return changeHref(a);
   if (!a.ref_id) return null;
-  if (a.kind === "void" || a.kind === "refund" || a.kind === "manual_discount") return `/dasbor/transaksi/${a.ref_id}`;
+  if (a.kind === "void" || a.kind === "refund" || a.kind === "partial_refund" || a.kind === "manual_discount") return `/dasbor/transaksi/${a.ref_id}`;
   if (a.kind === "shift_closed" || a.kind === "cash_in" || a.kind === "cash_out") return `/dasbor/shift/${a.ref_id}`;
   return null;
 }
@@ -422,7 +434,18 @@ async function loadSummary(base: ActivityQuery, signal: AbortSignal): Promise<Su
   // Jumlah per jenis dari meta.total (per_page=1); tutup kasir & perubahan data diambil penuh untuk menghitung
   // selisih kurang dan perubahan metode pembayaran.
   const others = ACTIVITY_KINDS.filter((k) => k !== "shift_closed" && k !== "change");
-  const totals = Promise.all(others.map((k) => api.activity({ ...base, kind: [k], page: 1, per_page: 1 }, signal).then((r) => [k, r.meta.total] as const)));
+  // `partial_refund` (2026-10-21) belum dikenal server lama → 0, jangan gagalkan ringkasan.
+  const totals = Promise.all(
+    others.map((k) =>
+      api
+        .activity({ ...base, kind: [k], page: 1, per_page: 1 }, signal)
+        .then((r) => [k, r.meta.total] as const)
+        .catch((err: unknown) => {
+          if (k === "partial_refund" && !signal.aborted) return [k, 0] as const;
+          throw err;
+        })
+    )
+  );
   const [pairs, c, ch] = await Promise.all([totals, loadRows(base, "shift_closed", signal), loadRows(base, "change", signal)]);
   const counts = Object.fromEntries([...pairs, ["shift_closed", c.total], ["change", ch.total]]) as Record<ActivityKind, number>;
   const shortRows = c.rows.filter((r) => r.difference !== null && r.difference < 0);
@@ -444,7 +467,13 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
         icon={<Ban size={14} aria-hidden />}
         value={cancelled}
         tone={cancelled > 0 ? "danger" : "neutral"}
-        hint={`${c.void.toLocaleString("id-ID")} batal · ${c.refund.toLocaleString("id-ID")} dikembalikan`}
+        hint={
+          <>
+            {c.void.toLocaleString("id-ID")} batal · {c.refund.toLocaleString("id-ID")} dikembalikan
+            {/* Refund sebagian: transaksinya tetap lunas — bukan bagian dari angka kartu. */}
+            {c.partial_refund > 0 && <span className="block">+{c.partial_refund.toLocaleString("id-ID")} refund sebagian (tidak termasuk)</span>}
+          </>
+        }
       />
       <StatCard
         label="Selisih kas kurang"

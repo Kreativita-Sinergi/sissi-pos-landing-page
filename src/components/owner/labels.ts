@@ -39,10 +39,35 @@ export const DEPOSIT_STATE: Record<string, { short: string; long: string; tone: 
   refunded: { short: "DP dikembalikan", long: "DP dikembalikan", tone: "danger" },
 };
 
+type BadgeTone = "success" | "warning" | "danger" | "neutral" | "brand";
+
+/**
+ * Lencana DP reservasi + pesanan awal (B3), cermin `depositBadgeOf` app: DP ber-pesanan awal = "DP · Pesanan awal";
+ * pesanan awal tanpa DP = "Pesanan awal" (tanpa label DP), dan bila reservasinya batal/tidak datang = "Pesanan awal perlu
+ * dihapus". `extra` = lencana tambahan (DP perlu diproses yang ber-pesanan awal). `null` = bukan transaksi DP.
+ */
+export function depositBadge(
+  deposit: string | null | undefined,
+  { preorder = false, noMoney = false, long = false }: { preorder?: boolean; noMoney?: boolean; long?: boolean } = {}
+): { label: string; tone: BadgeTone; extra?: string } | null {
+  const dp = deposit ? DEPOSIT_STATE[deposit] : undefined;
+  if (!dp) return null;
+  if (preorder && deposit === "held") {
+    const label = noMoney ? "Pesanan awal" : "DP · Pesanan awal";
+    return { label: long ? `${label} · tamu belum datang` : label, tone: "brand" };
+  }
+  if (preorder && deposit === "to_process") {
+    if (noMoney) return { label: "Pesanan awal perlu dihapus", tone: "warning" };
+    return { label: long ? dp.long : dp.short, tone: dp.tone, extra: "Pesanan awal" };
+  }
+  return { label: long ? dp.long : dp.short, tone: dp.tone };
+}
+
 /** Label penanda pembayaran (`sale_payments.purpose`). */
 export const PAYMENT_PURPOSE: Record<string, string> = {
   deposit: "DP reservasi",
   deposit_refund: "DP dikembalikan",
+  refund: "Refund sebagian",
 };
 
 export const METHODS: Record<string, string> = {
@@ -94,11 +119,12 @@ export function planLabel(p: { plan: string; status: string; days_left: number |
 export const hourLabel = (h: number) => `${String(h).padStart(2, "0")}.00`;
 
 /** Jenis log aktivitas (`GET /owner/activity`), urutan tampil chip. */
-export const ACTIVITY_KINDS = ["void", "refund", "manual_discount", "shift_closed", "cash_in", "cash_out", "new_device", "change"] as const;
+export const ACTIVITY_KINDS = ["void", "refund", "partial_refund", "manual_discount", "shift_closed", "cash_in", "cash_out", "new_device", "change"] as const;
 
 export const ACTIVITY_KIND: Record<string, string> = {
   void: "Pembatalan",
   refund: "Pengembalian dana",
+  partial_refund: "Refund sebagian",
   manual_discount: "Diskon manual",
   shift_closed: "Tutup kasir",
   cash_in: "Kas masuk",

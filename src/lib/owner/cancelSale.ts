@@ -10,6 +10,13 @@
 //  - transaksi DP reservasi yang masih `open` (= "Kembalikan DP", D10 app `SaleRepository.cancel`): pengembalian
 //    ber-`purpose: "deposit_refund"` + re-date (`paid_at` = sekarang, `shift_id` null) — api.md "DP reservasi";
 //    transaksi reservasi yang sudah ditagih = pembatalan biasa (tanggal omzet tetap).
+//  - "Kembalikan DP" atas PESANAN AWAL (B3: DP open tanpa meja ber-item, `deposit ∈ {held,to_process} ∧ items_count > 0`)
+//    WAJIB membawa `items: []` di perubahan pembatalan yang sama (api.md "Pesanan awal (B3)" butir 5) — server
+//    mengosongkan pesanan awal sehingga record batal 0 item; jangan kirim pengosongan terpisah.
+//  - Batal/refund penuh SESUDAH refund sebagian (api.md "Refund sebagian per item" › kompatibilitas): `refundPlan`
+//    menjumlah bersih per metode termasuk pembayaran negatif ber-`purpose: "refund"` (metode bebas, jadi bisa lewat
+//    metode lain: dikurangkan dari metode positif) → hanya SISA yang dikembalikan (Σ bersih transaksi = 0);
+//    pengembalian dari web tidak pernah ber-`purpose: "refund"` (ditolak server).
 // Bedanya dengan app: stok barang & poin pelanggan TIDAK dikembalikan otomatis (gerakan stok `refund` dan mutasi poin
 // hanya dari app) — ditampilkan sebagai catatan di dialog.
 import { ApiError } from "@/lib/sissiApi";
@@ -34,11 +41,41 @@ export const canRefund = (status: string) => status === "paid" || status === "pa
 /** Pembatalan = "Kembalikan DP" (transaksi DP reservasi yang masih `open`; cermin app). */
 export const isDepositRefund = (sale: Pick<SaleDetail, "status" | "reservation_id">) => !!sale.reservation_id && sale.status === "open";
 
-/** Uang yang harus dikembalikan per metode asal (bersih, termasuk pengembalian sebelumnya); hanya yang > 0. */
+/**
+ * Transaksi pesanan awal reservasi (B3): DP masih dipegang (tamu belum datang) dan sudah ber-item. Diturunkan dari
+ * `deposit` server (`held|to_process` = open tanpa meja) + `items_count` — tanpa field baru (api.md "Pesanan awal (B3)").
+ */
+export const isPreorderDeposit = (sale: { deposit?: string | null; items_count?: number | null }) =>
+  (sale.deposit === "held" || sale.deposit === "to_process") && (sale.items_count ?? 0) > 0;
+
+type CancelTarget = Pick<SaleDetail, "id" | "outlet_id" | "updated_at" | "status" | "reservation_id"> & {
+  deposit?: string | null;
+  items_count?: number | null;
+};
+
+/** Pesanan awal reservasi TANPA DP (tidak ada uang dipegang): "Hapus pesanan awal", bukan "Kembalikan DP" (istilah app). */
+export const isPreorderWithoutDeposit = (sale: { deposit?: string | null; items_count?: number | null; paid_total: number }) =>
+  isPreorderDeposit(sale) && sale.paid_total <= 0;
+
+/**
+ * Uang yang harus dikembalikan per metode asal: bersih per metode (termasuk pengembalian sebelumnya), lalu metode yang
+ * bersihnya NEGATIF (refund sebagian / sisa DP yang dikembalikan lewat metode lain — metode bebas) mengurangi metode
+ * positif, mulai dari yang terbesar. Jadi Σ rencana = max(0, Σ semua pembayaran) dan Σ sesudah batal = 0 (server
+ * menolak pengembalian yang melebihi Σ dibayar). Hanya yang > 0, urutan metode pertama muncul.
+ */
 export function refundPlan(payments: Pick<SaleDetail["payments"][number], "method" | "amount">[]): { method: string; amount: number }[] {
   const net = new Map<string, number>();
   for (const p of payments) net.set(p.method, (net.get(p.method) ?? 0) + p.amount);
-  return [...net].filter(([, v]) => v > 0).map(([method, amount]) => ({ method, amount }));
+  const plan = [...net].filter(([, v]) => v > 0).map(([method, amount]) => ({ method, amount }));
+  let owed = [...net.values()].reduce((a, v) => (v < 0 ? a - v : a), 0);
+  // sort stabil: seri → urutan metode pertama muncul.
+  for (const p of [...plan].sort((a, b) => b.amount - a.amount)) {
+    if (owed <= 0) break;
+    const take = Math.min(p.amount, owed);
+    p.amount -= take;
+    owed -= take;
+  }
+  return plan.filter((p) => p.amount > 0);
 }
 
 export type RefundLine = { from: string; method: PaymentMethod; amount: number };
@@ -54,7 +91,7 @@ export function cancelProblem(input: CancelInput): string | null {
 
 /** Perubahan `sales` siap kirim. */
 export function cancelChange(
-  sale: Pick<SaleDetail, "id" | "outlet_id" | "updated_at" | "status" | "reservation_id">,
+  sale: CancelTarget,
   input: CancelInput,
   ownerId: string,
   now = new Date()
@@ -74,6 +111,9 @@ export function cancelChange(
       approved_by: ownerId,
       // Re-date: pembatalan DP dihitung pada hari diproses, di luar laci kasir.
       ...(deposit ? { paid_at: at, shift_id: null } : {}),
+      // Pesanan awal: kosongkan item dalam pembatalan yang sama (butir 5). Hanya untuk transaksi yang menurut server
+      // belum bermeja — `items: []` atas pesanan meja yang sudah berjalan ditolak server.
+      ...(deposit && isPreorderDeposit(sale) ? { items: [] } : {}),
       payments: input.refunds
         .filter((r) => r.amount > 0)
         .map((r) => ({
@@ -95,6 +135,9 @@ export function cancelChange(
 
 export type CancelOutcome = { ok: true } | { ok: false; message: string; reload: boolean };
 
+/** Pesanan awal yang di server sudah bermeja (tamu didudukkan di perangkat lain): `items: []` ditolak (butir 5). */
+export const SEATED_ELSEWHERE = "Tamu reservasi ini sudah didudukkan dan pesanannya berjalan di perangkat kasir. Muat ulang lalu ulangi.";
+
 function friendly(msg: string): string {
   if (msg === "Uang yang sudah diterima harus dicatat dikembalikan saat membatalkan") {
     return "Ada pembayaran yang belum terlihat di dasbor (mungkin baru tersinkron dari perangkat). Muat ulang lalu ulangi.";
@@ -105,12 +148,13 @@ function friendly(msg: string): string {
 
 function resultMessage(r: ChangeResult | undefined): string {
   if (!r) return "Server tidak mengembalikan hasil.";
+  if ((r.details ?? []).some((d) => d.field === "items")) return SEATED_ELSEWHERE;
   const details = [...new Set((r.details ?? []).map((d) => friendly(d.message)).filter(Boolean))];
   return details.length ? details.join(" ") : friendly(r.message || "Pembatalan ditolak server.");
 }
 
 /** Kirim pembatalan. Galat jaringan dilempar; 422 permintaan (guard server) → `{ ok: false }`. */
-export async function cancelSale(sale: Pick<SaleDetail, "id" | "outlet_id" | "updated_at" | "status" | "reservation_id">, input: CancelInput, ownerId: string): Promise<CancelOutcome> {
+export async function cancelSale(sale: CancelTarget, input: CancelInput, ownerId: string): Promise<CancelOutcome> {
   let r: ChangeResult | undefined;
   try {
     [r] = await pushChanges([cancelChange(sale, input, ownerId)]);

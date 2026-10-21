@@ -24,6 +24,7 @@ import { ownerApi } from "@/lib/owner/api";
 import { csvDateTime, downloadCsv, slug } from "@/lib/owner/csv";
 import { zoneLabel } from "@/lib/owner/tz";
 import type { SaleListItem, SalesPage, SalesSort, StaffMember } from "@/lib/owner/types";
+import { refundedTotalOf } from "@/lib/owner/saleRefunds";
 import { labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATUS_SHORT } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SalesTable } from "./parts";
@@ -238,7 +239,7 @@ function ExportSales({
       }
       downloadCsv(
         filename,
-        [`waktu_${zoneLabel().toLowerCase()}`, "no_struk", "outlet", "kasir", "pelanggan", "meja", "jenis_pesanan", "status", "metode", "total", "dibayar", "jumlah_item"],
+        [`waktu_${zoneLabel().toLowerCase()}`, "no_struk", "outlet", "kasir", "pelanggan", "meja", "jenis_pesanan", "status", "metode", "total", "refund_sebagian", "dibayar", "jumlah_item"],
         rows.slice(0, EXPORT_LIMIT).map((s) => [
           csvDateTime(s.paid_at),
           s.receipt_no,
@@ -250,6 +251,7 @@ function ExportSales({
           labelOf(SALE_STATUS, s.status),
           labelOf(METHODS, s.payment_method),
           s.total,
+          refundedTotalOf(s),
           s.paid_total,
           s.items_count,
         ])

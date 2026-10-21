@@ -13,18 +13,22 @@ import {
   canRefund,
   canVoid,
   isDepositRefund,
+  isPreorderDeposit,
+  isPreorderWithoutDeposit,
   REFUND_METHODS,
   refundPlan,
   type RefundLine,
 } from "@/lib/owner/cancelSale";
 import type { PaymentMethod, SaleDetail } from "@/lib/owner/types";
+import { hasPartialRefund, netTotalOf, refundedTotalOf } from "@/lib/owner/saleRefunds";
 import { Segmented } from "./editing";
 import { labelOf, METHODS } from "./labels";
 import { useOwner } from "./OwnerShell";
 
 // Panel "Batalkan / Refund" transaksi (alur & label mengikuti app: cancel_sale_sheet.dart): jenis pembatalan, alasan
 // (pilihan cepat + keterangan), uang yang dikembalikan per metode asal (bisa dikembalikan lewat metode lain), lalu
-// konfirmasi tegas. Dari web pengembalian tidak masuk laci kasir mana pun (`shift_id` null).
+// konfirmasi tegas. Dari web pengembalian tidak masuk laci kasir mana pun (`shift_id` null). Sesudah refund sebagian
+// hanya sisa uang per metode yang dikembalikan; pesanan awal reservasi ikut dihapus saat DP dikembalikan.
 
 export function CancelSaleDialog({
   sale,
@@ -40,7 +44,14 @@ export function CancelSaleDialog({
   onDone: (reload: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const title = sale && isDepositRefund(sale) ? "Kembalikan DP" : kind === "refunded" ? "Refund transaksi" : "Batalkan transaksi";
+  const title =
+    sale && isDepositRefund(sale)
+      ? isPreorderWithoutDeposit(sale)
+        ? "Hapus pesanan awal"
+        : "Kembalikan DP"
+      : kind === "refunded"
+        ? "Refund transaksi"
+        : "Batalkan transaksi";
   return (
     <Modal open={sale !== null} title={sale ? `${title} · ${sale.receipt_no}` : title} onClose={onClose} dismissible={!busy} icon={<Ban size={20} aria-hidden className="text-danger" />}>
       {sale && <CancelBody key={`${sale.id}:${kind}`} sale={sale} initialKind={kind} busy={busy} setBusy={setBusy} onClose={onClose} onDone={onDone} />}
@@ -83,8 +94,14 @@ function CancelBody({
   const cashBack = refunds.some((r) => r.method === "cash");
   const isRefund = kind === "refunded";
   const deposit = isDepositRefund(sale);
+  const preorder = deposit && isPreorderDeposit(sale);
+  // Pesanan awal tanpa DP: tidak ada DP yang dikembalikan — istilah app "Hapus pesanan awal".
+  const preorderOnly = deposit && isPreorderWithoutDeposit(sale);
+  const partial = hasPartialRefund(sale);
   const actionLabel = deposit
-    ? `Kembalikan DP ${formatRupiah(total)}`
+    ? preorderOnly || (preorder && total === 0)
+      ? "Hapus pesanan awal"
+      : `Kembalikan DP ${formatRupiah(total)}`
     : isRefund
       ? `Refund ${formatRupiah(total)}`
       : total > 0
@@ -98,7 +115,15 @@ function CancelBody({
     try {
       const r = await cancelSale(sale, { kind, reason, refunds }, session.user.id);
       if (r.ok) {
-        toast.success(deposit ? `DP ${sale.receipt_no} dikembalikan` : isRefund ? `Refund ${sale.receipt_no} dicatat` : `Transaksi ${sale.receipt_no} dibatalkan`);
+        toast.success(
+          preorderOnly
+            ? `Pesanan awal ${sale.receipt_no} dihapus`
+            : deposit
+              ? `DP ${sale.receipt_no} dikembalikan`
+              : isRefund
+                ? `Refund ${sale.receipt_no} dicatat`
+                : `Transaksi ${sale.receipt_no} dibatalkan`
+        );
         onDone(true);
         onClose();
       } else {
@@ -139,15 +164,17 @@ function CancelBody({
       <div className="flex flex-col gap-4">
         <Notice tone="danger" icon={<AlertTriangle size={17} aria-hidden />} title={isRefund ? "Refund tidak bisa dibatalkan" : "Pembatalan tidak bisa diurungkan"}>
           <p className="text-[13.5px]">
-            {deposit
-              ? `DP reservasi ${sale.receipt_no} (${formatRupiah(sale.paid_total)}) akan dikembalikan dan transaksinya ditutup. `
-              : `Transaksi ${sale.receipt_no} (${formatRupiah(sale.total)}) akan ${isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam omzet. `}
+            {preorderOnly
+              ? `Pesanan awal ${sale.receipt_no} (${sale.items_count.toLocaleString("id-ID")} porsi) dihapus dan transaksinya ditutup. Belum dimasak dan tidak ada DP yang perlu dikembalikan. `
+              : deposit
+                ? `DP reservasi ${sale.receipt_no} (${formatRupiah(sale.paid_total)}) akan dikembalikan dan transaksinya ditutup${preorder ? "; pesanan awalnya ikut dihapus" : ""}. `
+                : `Transaksi ${sale.receipt_no} (${formatRupiah(partial ? netTotalOf(sale) : sale.total)}${partial ? " setelah refund sebagian" : ""}) akan ${isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam omzet. `}
             Tercatat di Aktivitas atas nama {session.user.name}.
           </p>
         </Notice>
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-[12px] border border-border-subtle px-3.5 py-3 text-[14px]">
           <dt className="text-text-muted">Jenis</dt>
-          <dd className="text-right font-semibold">{isRefund ? "Refund penuh" : "Void"}</dd>
+          <dd className="text-right font-semibold">{preorderOnly ? "Hapus pesanan awal" : deposit ? "Kembalikan DP" : isRefund ? "Refund penuh" : "Void"}</dd>
           <dt className="text-text-muted">Alasan</dt>
           <dd className="text-right font-semibold break-words">{reason.trim()}</dd>
           {refunds.map((r) => (
@@ -160,7 +187,7 @@ function CancelBody({
           <dd className="text-right font-bold tabular-nums">{formatRupiah(total)}</dd>
         </dl>
         {total > 0 && moneyNote}
-        {stockNote}
+        {!deposit && stockNote}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" className={btn.secondary} onClick={() => setStep("form")} disabled={busy}>
             Kembali
@@ -188,6 +215,22 @@ function CancelBody({
       {serverError && (
         <Notice tone="danger" role="alert">
           {serverError}
+        </Notice>
+      )}
+      {partial && (
+        <Notice tone="info" icon={<Info size={17} aria-hidden />}>
+          <p className="text-[13.5px]">
+            Transaksi ini sudah direfund sebagian {formatRupiah(refundedTotalOf(sale))}. Yang dikembalikan sekarang hanya sisa uangnya per metode.
+          </p>
+        </Notice>
+      )}
+      {preorder && (
+        <Notice tone="info" icon={<Info size={17} aria-hidden />}>
+          <p className="text-[13.5px]">
+            {preorderOnly
+              ? `Pesanan awal (${sale.items_count.toLocaleString("id-ID")} porsi) dihapus dan reservasinya ditutup. Belum dimasak, stok belum terpotong, dan tidak ada DP yang perlu dikembalikan.`
+              : "Reservasi ini punya pesanan awal. Pesanan awal ikut dihapus saat DP dikembalikan (belum dimasak, stok belum terpotong)."}
+          </p>
         </Notice>
       )}
       {bothKinds && (
@@ -250,7 +293,7 @@ function CancelBody({
             {refunds.map((r) => (
               <li key={r.from} className="flex flex-col gap-1.5">
                 <span className="text-[13px] text-text-body">
-                  Dibayar {labelOf(METHODS, r.from)} <strong className="tabular-nums">{formatRupiah(r.amount)}</strong> · kembalikan lewat:
+                  {partial ? "Sisa" : "Dibayar"} {labelOf(METHODS, r.from)} <strong className="tabular-nums">{formatRupiah(r.amount)}</strong> · kembalikan lewat:
                 </span>
                 <Segmented<PaymentMethod>
                   label={`Kembalikan ${labelOf(METHODS, r.from)} lewat`}
@@ -264,7 +307,8 @@ function CancelBody({
         )}
       </div>
       {total > 0 && moneyNote}
-      {stockNote}
+      {/* DP/pesanan awal tidak memotong stok (pesanan awal belum dimasak) — catatan stok hanya untuk transaksi biasa. */}
+      {!deposit && stockNote}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" className={btn.secondary} onClick={onClose} disabled={busy}>

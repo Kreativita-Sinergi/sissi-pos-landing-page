@@ -5,22 +5,92 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Badge, focusRing, formatRupiah, tdClass, thClass } from "@/components/admin/ui";
 import type { SaleListItem } from "@/lib/owner/types";
-import { DEPOSIT_STATE, labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATUS_SHORT, SALE_STATUS_TONE } from "./labels";
+import { depositBadge, labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATUS_SHORT, SALE_STATUS_TONE } from "./labels";
 import { formatShortDate, formatStamp, formatTime, zonedDay } from "@/lib/owner/tz";
+import { isPreorderDeposit } from "@/lib/owner/cancelSale";
+import { hasPartialRefund, refundedTotalOf, shownTotalOf } from "@/lib/owner/saleRefunds";
 
 /**
  * Status transaksi. Transaksi DP reservasi ([deposit], api.md `SaleListItem.deposit`) memakai label DP-nya
- * (tertahan/perlu diproses/hangus/dikembalikan); pesanan reservasi biasa = status + penanda "DP".
+ * (tertahan/perlu diproses/hangus/dikembalikan); pesanan reservasi biasa = status + penanda "DP". DP yang sudah
+ * ber-item (pesanan awal B3, [preorder]) diberi penanda "Pesanan awal"; transaksi lunas yang direfund sebagian
+ * ([partialRefund]) diberi penanda "Refund sebagian".
  */
-export function SaleStatusBadge({ status, long = false, deposit }: { status: string; long?: boolean; deposit?: string | null }) {
-  const dp = deposit ? DEPOSIT_STATE[deposit] : undefined;
-  if (dp) return <Badge tone={dp.tone}>{long ? dp.long : dp.short}</Badge>;
-  const badge = <Badge tone={SALE_STATUS_TONE[status] ?? "neutral"}>{labelOf(long ? SALE_STATUS : SALE_STATUS_SHORT, status)}</Badge>;
-  if (deposit !== "order") return badge;
+export function SaleStatusBadge({
+  status,
+  long = false,
+  deposit,
+  preorder = false,
+  noMoney = false,
+  partialRefund = false,
+}: {
+  status: string;
+  long?: boolean;
+  deposit?: string | null;
+  preorder?: boolean;
+  /** Tidak ada uang DP dipegang (`paid_total` ≤ 0): pesanan awal tanpa DP tidak dilabeli "DP". */
+  noMoney?: boolean;
+  partialRefund?: boolean;
+}) {
+  const dp = depositBadge(deposit, { preorder, noMoney, long });
+  const badge = dp ? (
+    <Badge tone={dp.tone}>{dp.label}</Badge>
+  ) : (
+    <Badge tone={SALE_STATUS_TONE[status] ?? "neutral"}>{labelOf(long ? SALE_STATUS : SALE_STATUS_SHORT, status)}</Badge>
+  );
+  const extra: string[] = [];
+  if (dp?.extra) extra.push(dp.extra);
+  if (!dp && deposit === "order") extra.push(long ? "Reservasi ber-DP" : "DP");
+  if (partialRefund) extra.push("Refund sebagian");
+  if (!extra.length) return badge;
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {badge}
-      <Badge tone="neutral">{long ? "Reservasi ber-DP" : "DP"}</Badge>
+      {extra.map((t) => (
+        <Badge key={t} tone={t === "Refund sebagian" ? "warning" : "neutral"}>
+          {t}
+        </Badge>
+      ))}
+    </span>
+  );
+}
+
+/** Badge status satu baris daftar/detail (DP, pesanan awal, refund sebagian diturunkan dari datanya). */
+export function SaleRowBadge({
+  s,
+  long = false,
+  partialRefund = true,
+}: {
+  s: Pick<SaleListItem, "status" | "deposit" | "items_count" | "total" | "paid_total" | "refunded_total">;
+  long?: boolean;
+  /** `false` = tanpa lencana "Refund sebagian" (baris yang sudah menulisnya sebagai teks). */
+  partialRefund?: boolean;
+}) {
+  return (
+    <SaleStatusBadge
+      status={s.status}
+      deposit={s.deposit}
+      long={long}
+      preorder={isPreorderDeposit(s)}
+      noMoney={s.paid_total <= 0}
+      partialRefund={partialRefund && hasPartialRefund(s)}
+    />
+  );
+}
+
+/** Nominal daftar: tagihan setelah refund sebagian; transaksi batal/refund penuh tetap nilai asli (dicoret). */
+export const shownTotal = shownTotalOf;
+
+/**
+ * Di bawah nominal daftar (yang sudah = total setelah refund): "−Rp…" refund sebagian. Total awal ditulis untuk pembaca
+ * layar (dan `title` untuk tetikus) — ringkas agar kolom total tidak melebar di HP.
+ */
+function PartialRefundHint({ s }: { s: Pick<SaleListItem, "status" | "total" | "refunded_total"> }) {
+  if (!hasPartialRefund(s)) return null;
+  return (
+    <span className="block text-[12px] font-normal tabular-nums text-danger" title={`Refund sebagian · total awal ${formatRupiah(s.total)}`}>
+      <span className="sr-only">Total setelah refund sebagian; total awal {formatRupiah(s.total)}, refund sebagian </span>-
+      {formatRupiah(refundedTotalOf(s))}
     </span>
   );
 }
@@ -101,14 +171,15 @@ export function SalesTable({
                 </td>
                 <td className={`${tdClass} hidden border-b border-border-subtle text-text-body sm:table-cell`}>{labelOf(METHODS, s.payment_method)}</td>
                 <td className={`${tdClass} border-b border-border-subtle text-right font-semibold tabular-nums whitespace-nowrap`}>
-                  <span className={s.status === "void" || s.status === "refunded" ? "text-text-muted line-through" : ""}>{formatRupiah(s.total)}</span>
+                  <span className={s.status === "void" || s.status === "refunded" ? "text-text-muted line-through" : ""}>{formatRupiah(shownTotal(s))}</span>
+                  <PartialRefundHint s={s} />
                   {(s.status === "unpaid" || s.status === "partial") && (
                     <span className="block text-[12px] font-normal text-warning">sisa {formatRupiah(s.total - s.paid_total)}</span>
                   )}
-                  {isHeldDeposit(s) && <span className="block text-[12px] font-normal text-text-muted">DP {formatRupiah(s.paid_total)}</span>}
+                  {isHeldDeposit(s) && s.paid_total > 0 && <span className="block text-[12px] font-normal text-text-muted">DP {formatRupiah(s.paid_total)}</span>}
                 </td>
                 <td className={`${tdClass} border-b border-border-subtle`}>
-                  <SaleStatusBadge status={s.status} deposit={s.deposit} />
+                  <SaleRowBadge s={s} />
                 </td>
                 <td className={`${tdClass} border-b border-border-subtle text-text-muted`}>
                   <ChevronRight size={16} aria-hidden className="group-hover:text-text-heading" />
@@ -164,10 +235,17 @@ export function RecentSalesList({
               </span>
               <span className="shrink-0 text-right">
                 <span className={`block text-[14px] font-semibold tabular-nums ${cancelled ? "text-text-muted line-through" : "text-text-heading"}`}>
-                  {formatRupiah(s.total)}
+                  {formatRupiah(shownTotal(s))}
                 </span>
+                <PartialRefundHint s={s} />
                 <span className="block text-[12px] text-text-muted">
-                  {s.status === "paid" && !s.deposit ? labelOf(METHODS, s.payment_method) : <SaleStatusBadge status={s.status} deposit={s.deposit} />}
+                  {/* Refund sebagian: nominal di atas + teks pendek (bukan lencana "Lunas" + "Refund sebagian" sebaris yang
+                      melebarkan kolom kanan di HP). */}
+                  {s.status === "paid" && !s.deposit
+                    ? hasPartialRefund(s)
+                      ? "Refund sebagian"
+                      : labelOf(METHODS, s.payment_method)
+                    : <SaleRowBadge s={s} partialRefund={false} />}
                 </span>
               </span>
               <ChevronRight size={16} aria-hidden className="shrink-0 text-text-muted group-hover:text-text-heading" />

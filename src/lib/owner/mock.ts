@@ -16,6 +16,7 @@ import { ApiError } from "@/lib/sissiApi";
 import type { OwnerApi } from "./api";
 import type { StaffMember, SyncRecord } from "./types";
 import { normalizeZone } from "./tz";
+import { shownTotalOf } from "./saleRefunds";
 import type {
   ActivityFieldChange,
   ActivityItem,
@@ -313,6 +314,63 @@ function generate(now: number): Db {
         });
       }
 
+      // Contoh refund sebagian per item (api.md "Refund sebagian per item"): 1 porsi dari baris ber-qty ≥ 2 transaksi
+      // lunas pertama outlet utama (hari ini & kemarin); uangnya pembayaran negatif tunai ber-purpose "refund".
+      if (o.weight === 1 && back <= 1) {
+        const target = daySales.find((x) => x.status === "paid" && !x.reservation_id && x.items.some((l) => l.quantity >= 2));
+        if (target) {
+          const index = target.items.findIndex((l) => l.quantity >= 2);
+          const line = target.items[index];
+          const amount = Math.round((line.subtotal / line.quantity) * (target.total / target.subtotal));
+          const at = new Date(target.t + 20 * 60_000).toISOString();
+          const payId = uuid(`refund-pay:${target.id}`);
+          target.payments = [
+            ...target.payments,
+            { id: payId, method: "cash", amount: -amount, received: 0, change: 0, paid_at: at, cashier_name: target.cashier_name, purpose: "refund" },
+          ];
+          target.paid_total -= amount;
+          target.refunded_total = amount;
+          target.refunds = [
+            {
+              id: uuid(`refund:${target.id}`), refunded_at: at, cashier_id: target.cashier_id, approved_by: USER.id, reason: "Pesanan salah, 1 porsi dikembalikan",
+              amount, lines: [{ index, line_id: null, quantity: 1, amount }], payments: [{ id: payId, method: "cash", amount: -amount }],
+            },
+          ];
+        }
+        // Kasus tepi (tinjauan visual): hari ini refund sebagian QRIS yang uangnya dikembalikan TUNAI (metode bebas —
+        // "Refund sisa" dari web hanya boleh mengembalikan sisa); kemarin refund sebagian lalu refund penuh (status refunded).
+        const other = daySales.find((x) => x !== target && x.status === "paid" && !x.reservation_id && x.payment_method === "qris" && x.items.length > 1);
+        if (other) {
+          const line = other.items[0];
+          const amount = Math.round((line.subtotal / line.quantity) * (other.total / other.subtotal));
+          const at = new Date(other.t + 30 * 60_000).toISOString();
+          const payId = uuid(`refund-pay2:${other.id}`);
+          other.payments = [
+            ...other.payments,
+            { id: payId, method: "cash", amount: -amount, received: 0, change: 0, paid_at: at, cashier_name: other.cashier_name, purpose: "refund" },
+          ];
+          other.refunded_total = amount;
+          other.refunds = [
+            {
+              id: uuid(`refund2:${other.id}`), refunded_at: at, cashier_id: other.cashier_id, approved_by: USER.id, reason: "Menu kosong, uang dikembalikan tunai",
+              amount, lines: [{ index: 0, line_id: null, quantity: 1, amount }], payments: [{ id: payId, method: "cash", amount: -amount }],
+            },
+          ];
+          if (back === 1) {
+            // Lalu sisanya direfund penuh (dari aplikasi): uang sisa lewat metode asal, status refunded.
+            const rest = other.total - amount;
+            other.payments = [
+              ...other.payments,
+              { id: uuid(`refund-full:${other.id}`), method: "qris", amount: -rest, received: null, change: null, paid_at: new Date(other.t + 60 * 60_000).toISOString(), cashier_name: other.cashier_name },
+            ];
+            other.status = "refunded";
+            other.void_reason = "Pelanggan komplain, sisa pesanan dikembalikan";
+            other.approved_by_name = USER.name;
+          }
+          other.paid_total = other.payments.reduce((a, p) => a + p.amount, 0);
+        }
+      }
+
       // Pesanan berjalan (open) hari ini.
       if (back === 0) {
         const openCount = o.weight === 1 ? 3 : 1;
@@ -345,6 +403,31 @@ function generate(now: number): Db {
             change_amount: 0, notes: null, void_reason: null, approved_by_name: null, settled_at: null, due_at: null, queue_no: null,
             customer: null, items: [], discounts: [], taxes: [], t, day, hour: wibHour(t), shift_id: shiftId,
             payments: [{ id: uuid(`dp-pay:${day}`), method: "qris", amount: 100000, received: null, change: null, paid_at: new Date(t).toISOString(), cashier_name: cashier.name, purpose: "deposit" }],
+          });
+          // Pesanan awal reservasi (B3): DP open tanpa meja yang sudah ber-item (perkiraan).
+          const pt = now - 35 * 60_000;
+          const pre = [makeLine(r), makeLine(r)];
+          const preSub = pre.reduce((a, l) => a + l.subtotal, 0);
+          daySales.push({
+            id: uuid(`dp-pre:${day}:${o.id}`), receipt_no: `${o.code}-DP-2`, paid_at: new Date(pt).toISOString(), outlet_id: o.id, outlet_name: o.name,
+            cashier_id: cashier.id, cashier_name: cashier.name, customer_name: "Pak Joko", table_name: null, order_type: "dine_in",
+            status: "open", payment_method: "cash", total: preSub, paid_total: 50000, items_count: pre.reduce((a, l) => a + l.quantity, 0),
+            reservation_id: uuid(`rsv-pre:${day}`), deposit: "held", subtotal: preSub, discount_total: 0, service_fee: 0, tax_total: 0, rounding: 0,
+            amount_paid: 50000, change_amount: 0, notes: "Ulang tahun, siapkan lilin", void_reason: null, approved_by_name: null, settled_at: null, due_at: null,
+            queue_no: null, customer: null, items: pre, discounts: [], taxes: [], t: pt, day, hour: wibHour(pt), shift_id: shiftId,
+            payments: [{ id: uuid(`dp-pre-pay:${day}`), method: "cash", amount: 50000, received: 50000, change: 0, paid_at: new Date(pt).toISOString(), cashier_name: cashier.name, purpose: "deposit" }],
+          });
+          // Pesanan awal TANPA DP yang reservasinya dibatalkan (to_process, paid_total 0): "Pesanan awal perlu dihapus".
+          const nt = now - 25 * 60_000;
+          const free = [makeLine(r)];
+          const freeSub = free.reduce((a, l) => a + l.subtotal, 0);
+          daySales.push({
+            id: uuid(`dp-free:${day}:${o.id}`), receipt_no: `${o.code}-DP-3`, paid_at: new Date(nt).toISOString(), outlet_id: o.id, outlet_name: o.name,
+            cashier_id: cashier.id, cashier_name: cashier.name, customer_name: "Mbak Sari", table_name: null, order_type: "dine_in",
+            status: "open", payment_method: "credit", total: freeSub, paid_total: 0, items_count: free.reduce((a, l) => a + l.quantity, 0),
+            reservation_id: uuid(`rsv-free:${day}`), deposit: "to_process", subtotal: freeSub, discount_total: 0, service_fee: 0, tax_total: 0, rounding: 0,
+            amount_paid: 0, change_amount: 0, notes: null, void_reason: null, approved_by_name: null, settled_at: null, due_at: null,
+            queue_no: null, customer: null, items: free, discounts: [], taxes: [], t: nt, day, hour: wibHour(nt), shift_id: shiftId, payments: [],
           });
         }
       }
@@ -384,7 +467,7 @@ function generate(now: number): Db {
 }
 
 // Perubahan dari web (pembatalan transaksi, kas masuk/keluar) disimpan terpisah lalu diterapkan di atas data bangkitan.
-type SaleCancel = { status: "void" | "refunded"; reason: string; refunds: SaleDetail["payments"] };
+type SaleCancel = { status: "void" | "refunded"; reason: string; refunds: SaleDetail["payments"]; clearItems: boolean };
 const saleCancels = new Map<string, SaleCancel>();
 const extraMovements = new Map<string, ShiftDetail["cash_movements"]>();
 
@@ -397,6 +480,14 @@ function applyOverlays(d: Db): Db {
     s.approved_by_name = USER.name;
     s.payments = [...s.payments, ...c.refunds];
     s.paid_total = s.payments.reduce((a, p) => a + p.amount, 0);
+    // Pesanan awal dikosongkan dalam pembatalan yang sama (B3 butir 5).
+    if (c.clearItems && s.reservation_id) {
+      s.items = [];
+      s.items_count = 0;
+      s.subtotal = s.total = s.discount_total = s.service_fee = s.tax_total = s.rounding = 0;
+      s.discounts = [];
+      s.taxes = [];
+    }
     if (s.reservation_id && s.items_count === 0) s.deposit = "refunded";
   }
   for (const sh of d.shifts) {
@@ -434,7 +525,7 @@ function aggregate(sales: RawSale[]): Agg {
   const a: Agg = { revenue: 0, transactions: 0, items_sold: 0, cost: 0, nwc: 0, without: 0, discounts: 0, tax: 0, service: 0, rounding: 0, net: 0 };
   for (const s of sales) {
     if (!countedStatus(s.status)) continue;
-    a.revenue += s.total;
+    a.revenue += s.total - (s.refunded_total ?? 0);
     a.transactions++;
     a.discounts += s.discount_total + s.items.reduce((x, l) => x + l.discount, 0);
     a.tax += s.tax_total;
@@ -493,6 +584,10 @@ function cancelled(sales: RawSale[]) {
   return { count: c.length, amount: c.reduce((a, s) => a + s.total, 0) };
 }
 
+function sumPay(sales: RawSale[], pick: (p: SaleDetail["payments"][number]) => boolean): number {
+  return sales.flatMap((s) => s.payments).filter(pick).reduce((a, p) => a + p.amount, 0);
+}
+
 function credit(sales: RawSale[]) {
   const c = sales.filter((s) => s.status === "unpaid" || s.status === "partial");
   return { outstanding: c.reduce((a, s) => a + (s.total - s.paid_total), 0), count: c.length };
@@ -504,6 +599,7 @@ function listItem(s: RawSale): SaleListItem {
     cashier_id: s.cashier_id, cashier_name: s.cashier_name, customer_name: s.customer_name, table_name: s.table_name,
     order_type: s.order_type, status: s.status, payment_method: s.payment_method, total: s.total, paid_total: s.paid_total,
     items_count: s.items_count, reservation_id: s.reservation_id ?? null, deposit: s.deposit ?? null,
+    refunded_total: s.refunded_total ?? 0,
   };
 }
 
@@ -806,7 +902,8 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       return {
         items: rows.slice((page - 1) * perPage, page * perPage).map(listItem),
         meta: { page, per_page: perPage, total: rows.length },
-        summary: { count: rows.length, total: rows.reduce((a, x) => a + x.total, 0) },
+        // = nominal baris (transaksi berlaku: setelah refund sebagian; batal: nilai asli) — api.md GET /owner/sales.
+        summary: { count: rows.length, total: rows.reduce((a, x) => a + shownTotalOf(x), 0) },
       };
     },
 
@@ -849,7 +946,21 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         notes: sh.notes,
         per_method: [...methods.entries()].filter(([, v]) => v !== 0).map(([method, amount]) => ({ method, amount })).sort((a, b) => b.amount - a.amount),
         cash_movements: sh.movements,
-        cancelled: cancelled(ss),
+        // Shift: nilai batal yang belum tercakup refund sebagian (uangnya sudah di partial_refunds) — tidak dobel.
+        cancelled: (() => {
+          const c = cancelled(ss);
+          return { ...c, amount: c.amount - ss.filter((x) => cancelledStatus(x.status)).reduce((a, x) => a + (x.refunded_total ?? 0), 0) };
+        })(),
+        deposits: {
+          received: sumPay(ss, (p) => p.purpose === "deposit" && p.amount > 0),
+          refunded: -sumPay(ss, (p) => p.purpose === "deposit_refund" && p.amount < 0),
+          cash_received: sumPay(ss, (p) => p.purpose === "deposit" && p.amount > 0 && p.method === "cash"),
+          cash_refunded: -sumPay(ss, (p) => p.purpose === "deposit_refund" && p.amount < 0 && p.method === "cash"),
+        },
+        partial_refunds: {
+          total: -sumPay(ss, (p) => p.purpose === "refund" && p.amount < 0),
+          cash: -sumPay(ss, (p) => p.purpose === "refund" && p.amount < 0 && p.method === "cash"),
+        },
       };
     },
     async activity(q) {
@@ -866,6 +977,9 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         const ref = { outlet_id: x.outlet_id, outlet_name: x.outlet_name, actor: x.cashier_name, ref_id: x.id, receipt_no: x.receipt_no };
         if (x.status === "void" || x.status === "refunded") {
           out.push({ ...base, ...ref, kind: x.status === "void" ? "void" : "refund", at: x.paid_at, approver: x.approved_by_name, amount: x.total, note: x.void_reason });
+        }
+        for (const rf of x.refunds ?? []) {
+          if (inDay(rf.refunded_at)) out.push({ ...base, ...ref, kind: "partial_refund", at: rf.refunded_at, approver: USER.name, amount: rf.amount, note: rf.reason });
         }
         if (x.discount_total > 0) out.push({ ...base, ...ref, kind: "manual_discount", at: x.paid_at, amount: x.discount_total, note: "Diskon nota 10%" });
       }
@@ -974,10 +1088,16 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
           if (c.entity === "sales") {
             const sale = db().sales.find((x) => x.id === id);
             if (!sale) return { entity: c.entity, id, status: "rejected" as const, message: "Transaksi tidak ditemukan", details: [] };
-            const d = (c.data ?? {}) as { status?: "void" | "refunded"; void_reason?: string; payments?: { id: string; method: string; amount: number; paid_at: string }[] };
+            const d = (c.data ?? {}) as {
+              status?: "void" | "refunded";
+              void_reason?: string;
+              items?: unknown[];
+              payments?: { id: string; method: string; amount: number; paid_at: string }[];
+            };
             saleCancels.set(id, {
               status: d.status === "refunded" ? "refunded" : "void",
               reason: d.void_reason ?? "",
+              clearItems: Array.isArray(d.items) && d.items.length === 0,
               refunds: (d.payments ?? []).map((p) => ({ id: p.id, method: p.method, amount: p.amount, received: null, change: null, paid_at: p.paid_at, cashier_name: USER.name, purpose: (p as { purpose?: "deposit_refund" }).purpose ?? null })),
             });
             cache = null;

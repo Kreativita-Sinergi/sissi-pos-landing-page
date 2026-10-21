@@ -98,7 +98,10 @@ function roleOf(header: string): Role | null {
 class Sheet {
   readonly roles = new Map<Role, number>();
   readonly fields = new Set<FieldKey>();
-  constructor(readonly source: XlsxSheet) {
+  // Tanpa parameter property: tes unit memuat modul ini lewat type stripping Node.
+  readonly source: XlsxSheet;
+  constructor(source: XlsxSheet) {
+    this.source = source;
     (source.rows[0]?.cells ?? []).forEach((h, i) => {
       const r = roleOf(h);
       if (r && !this.roles.has(r)) this.roles.set(r, i);
@@ -212,8 +215,8 @@ export function parseImportWorkbook(workbook: XlsxSheet[], service: boolean): Im
       const packText = s.cell(row, "packSize");
       const pack = packText === null ? null : parseQty(packText);
       if (packText !== null && (pack === null || pack <= 0)) issues.push("packInvalid");
-      // Susut (HPP tahap 4): persen 0–90. Angka 0 < x < 1 tanpa "%" ambigu (sel Excel berformat persen tersimpan
-      // 0,35 — pembaca .xlsx web tidak membaca format sel) → ditolak, bukan ditebak.
+      // Susut (HPP tahap 4): persen 0–90. Sel Excel berformat persen (tersimpan 0,35) sudah dibaca `xlsx.ts` sebagai
+      // "35%" (format sel di styles.xml, seperti app). Angka 0 < x < 1 TANPA format persen tetap ambigu → ditolak.
       const wasteText = s.cell(row, "waste");
       const wasteBp = wasteText === null ? 0 : wastePercentBp(wasteText);
       if (wasteBp === null) issues.push("wasteInvalid");

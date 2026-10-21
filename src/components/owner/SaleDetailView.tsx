@@ -14,15 +14,18 @@ import { labelOf, METHODS, orderTypeLabel, PAYMENT_PURPOSE } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SettleCreditDialog } from "./credit/SettleCreditDialog";
 import { CancelSaleDialog } from "./CancelSaleDialog";
-import { canRefund, canVoid, isDepositRefund, type CancelKind } from "@/lib/owner/cancelSale";
-import { isHeldDeposit, SaleStatusBadge } from "./parts";
+import { canRefund, canVoid, isDepositRefund, isPreorderDeposit, isPreorderWithoutDeposit, type CancelKind } from "@/lib/owner/cancelSale";
+import { hasPartialRefund, netTotalOf, outstandingOf, receiptTotals, refundedQtyByIndex, refundedTotalOf, refundEntries } from "@/lib/owner/saleRefunds";
+import { isHeldDeposit, SaleRowBadge } from "./parts";
 
 // Detail transaksi (GET /owner/sales/{id}) dalam bentuk struk. Kasbon (`unpaid|partial`) bisa dilunasi/dicicil dari
 // sini (POST /owner/changes `sale_payments`, di luar laci kasir) — tersedia juga untuk paket Gratis (pelunasan kasbon
 // tetap boleh, api.md "Batas transaksi Gratis"). Transaksi juga bisa dibatalkan (void) / direfund dari sini (api.md
 // "Nomor 14": `sales` upsert status void/refunded + pengembalian negatif di luar laci kasir). Transaksi DP reservasi
 // (`deposit`, api.md "DP reservasi" › Dasbor pemilik) diberi label & penjelasan; DP yang masih dipegang bisa
-// dikembalikan ("Kembalikan DP" = pembatalan ber-`deposit_refund`), DP hangus tetap lewat aplikasi.
+// dikembalikan ("Kembalikan DP" = pembatalan ber-`deposit_refund`), DP hangus tetap lewat aplikasi. DP yang sudah
+// ber-item = pesanan awal reservasi (B3; item & total = perkiraan). Refund sebagian per item (dicatat dari aplikasi)
+// ditampilkan per baris (qty kembali), riwayatnya, dan total sesudah refund (api.md "Refund sebagian per item").
 
 export function BackLink({ href, label }: { href: string; label: string }) {
   const router = useRouter();
@@ -71,7 +74,7 @@ export function SaleDetailView() {
         title={s ? `Struk ${s.receipt_no}` : "Detail transaksi"}
         back={back}
         description={s ? `${formatDateTime(s.paid_at)} ${zoneLabel()} · ${s.outlet_name}` : undefined}
-        actions={s && <SaleStatusBadge status={s.status} deposit={s.deposit} long />}
+        actions={s && <SaleRowBadge s={s} long />}
       />
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
       {!s && state.status === "loading" && (
@@ -105,9 +108,17 @@ function Line({ label, value, strong, tone }: { label: React.ReactNode; value: s
 
 function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => void; onCancel?: (kind: CancelKind) => void }) {
   const cancelled = s.status === "void" || s.status === "refunded";
-  const outstanding = s.total - s.paid_total;
+  // Bukan `total − paid_total`: paid_total sudah dikurangi uang refund sebagian (kasbon palsu pada transaksi lunas).
+  const outstanding = outstandingOf(s);
   const heldDeposit = isHeldDeposit(s);
   const depositRefund = isDepositRefund(s);
+  const preorder = isPreorderDeposit(s);
+  const preorderOnly = isPreorderWithoutDeposit(s);
+  const partial = hasPartialRefund(s);
+  const refunded = refundedTotalOf(s);
+  const totals = receiptTotals(s);
+  const returnedQty = refundedQtyByIndex(s.refunds);
+  const history = refundEntries(s);
   const lineDiscounts = s.items.reduce((a, i) => a + i.discount, 0);
   const meta: [string, React.ReactNode][] = [
     ["Kasir", s.cashier_name],
@@ -128,26 +139,62 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
         <Notice
           tone="danger"
           icon={<Ban size={17} aria-hidden />}
-          title={s.deposit === "refunded" ? "DP dikembalikan" : s.status === "void" ? "Transaksi dibatalkan" : "Uang dikembalikan"}
+          title={
+            s.deposit === "refunded"
+              ? s.payments.length > 0
+                ? "DP dikembalikan"
+                : "Reservasi ditutup"
+              : s.status === "void"
+                ? "Transaksi dibatalkan"
+                : "Uang dikembalikan"
+          }
         >
           <p>Alasan: {s.void_reason || "—"}</p>
           {s.approved_by_name && <p>Disetujui oleh {s.approved_by_name}</p>}
           <p className="mt-1 text-[13px]">Tidak dihitung dalam omzet.</p>
         </Notice>
       )}
+      {partial && (
+        <Notice tone="warning" icon={<Undo2 size={17} aria-hidden />} title={`Refund sebagian ${formatRupiah(refunded)}`}>
+          <p>
+            Sebagian barang sudah dikembalikan. Total setelah refund <strong className="font-semibold tabular-nums">{formatRupiah(netTotalOf(s))}</strong>{" "}
+            (dari {formatRupiah(s.total)}) — angka inilah yang dihitung omzet pada tanggal transaksi.
+          </p>
+        </Notice>
+      )}
       {heldDeposit && (
         <Notice
           tone={s.deposit === "to_process" ? "warning" : "info"}
           icon={<CalendarClock size={17} aria-hidden />}
-          title={s.deposit === "to_process" ? "DP perlu diproses" : "DP reservasi · tamu belum datang"}
+          title={
+            preorderOnly
+              ? s.deposit === "to_process"
+                ? "Pesanan awal perlu dihapus"
+                : "Pesanan awal · tamu belum datang"
+              : s.deposit === "to_process"
+                ? "DP perlu diproses"
+                : "DP reservasi · tamu belum datang"
+          }
         >
-          <p>
-            Uang muka <strong className="font-semibold tabular-nums">{formatRupiah(s.paid_total)}</strong> dipegang untuk reservasi meja dan belum
-            dihitung omzet maupun pesanan berjalan. Omzet dicatat pada hari tamu datang dan ditagih.
-          </p>
+          {s.paid_total > 0 ? (
+            <p>
+              Uang muka <strong className="font-semibold tabular-nums">{formatRupiah(s.paid_total)}</strong> dipegang untuk reservasi meja dan belum
+              dihitung omzet maupun pesanan berjalan. Omzet dicatat pada hari tamu datang dan ditagih.
+            </p>
+          ) : (
+            <p>Reservasi meja tanpa DP. Belum dihitung omzet maupun pesanan berjalan; omzet dicatat pada hari tamu datang dan ditagih.</p>
+          )}
+          {preorder && (
+            <p className="mt-1 text-[13px]">
+              Ada pesanan awal (menu dipesan di muka). Harga item dikunci saat dipesan; promo, diskon, biaya layanan, dan pembulatan dihitung ulang
+              saat tamu datang dan ditagih, jadi totalnya masih perkiraan.
+            </p>
+          )}
           {s.deposit === "to_process" && (
             <p className="mt-1 text-[13px]">
-              Reservasinya dibatalkan atau tamu tidak datang. Kembalikan DP dari sini, atau jadikan DP hangus lewat aplikasi kasir (Meja › Reservasi).
+              {preorderOnly
+                ? "Reservasinya dibatalkan atau tamu tidak datang. Hapus pesanan awalnya dari sini atau lewat aplikasi kasir (Meja › Reservasi); tidak ada DP yang perlu dikembalikan."
+                : "Reservasinya dibatalkan atau tamu tidak datang. Kembalikan DP dari sini, atau jadikan DP hangus lewat aplikasi kasir (Meja › Reservasi)."}
             </p>
           )}
         </Notice>
@@ -183,6 +230,9 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
           ))}
         </dl>
 
+        {preorder && (
+          <h2 className="px-4 pt-4 text-[13px] font-semibold uppercase tracking-wide text-text-muted sm:px-5">Pesanan awal · perkiraan</h2>
+        )}
         <ul className="divide-y divide-border-subtle px-4 sm:px-5">
           {s.items.map((it, i) => (
             <li key={i} className="py-3">
@@ -208,6 +258,11 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
               )}
               {it.discount > 0 && <p className="text-[13px] tabular-nums text-danger">Diskon item -{formatRupiah(it.discount)}</p>}
               {it.note && <p className="mt-0.5 text-[13px] italic text-text-muted">Catatan: {it.note}</p>}
+              {(returnedQty.get(i) ?? 0) > 0 && (
+                <p className="text-[13px] font-medium tabular-nums text-danger">
+                  Dikembalikan {(returnedQty.get(i) ?? 0).toLocaleString("id-ID")} dari {it.quantity.toLocaleString("id-ID")}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -226,7 +281,10 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
             : s.tax_total > 0 && <Line label="Pajak" value={formatRupiah(s.tax_total)} />}
           {s.rounding !== 0 && <Line label="Pembulatan" value={formatRupiah(s.rounding)} />}
           <div className="mt-1 border-t border-border-subtle pt-2">
-            <Line label="Total" value={formatRupiah(s.total)} strong />
+            <Line label={preorder ? "Perkiraan total" : "Total"} value={formatRupiah(s.total)} strong={totals.totalStrong} />
+            {/* Batal/refund penuh sesudah refund sebagian: hanya riwayat, tanpa "Total setelah refund". */}
+            {totals.refunded !== null && <Line label="Refund sebagian" value={`-${formatRupiah(totals.refunded)}`} tone="danger" />}
+            {totals.netTotal !== null && <Line label="Total setelah refund" value={formatRupiah(totals.netTotal)} strong />}
           </div>
         </div>
 
@@ -272,6 +330,44 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
           </div>
         </div>
 
+        {history.length > 0 && (
+          <div className="border-t border-dashed border-border-active px-4 py-4 sm:px-5">
+            <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-text-muted">Riwayat refund sebagian</h2>
+            <ul className="flex flex-col gap-3">
+              {history.map((r) => (
+                <li key={r.id} className="text-[14px]">
+                  <Line
+                    label={
+                      <>
+                        <span className="font-medium text-text-heading">
+                          Refund sebagian{r.methods.length ? ` · ${r.methods.map((m) => labelOf(METHODS, m)).join(", ")}` : ""}
+                        </span>
+                        <span className="block text-[12.5px] text-text-muted">
+                          {formatDateTime(r.at)}
+                          {r.reason ? ` · ${r.reason}` : ""}
+                        </span>
+                      </>
+                    }
+                    value={`-${formatRupiah(r.amount)}`}
+                    tone="danger"
+                  />
+                  <ul className="mt-0.5 text-[13px] text-text-body">
+                    {r.lines.map((l, k) => (
+                      <li key={k} className="flex justify-between gap-4">
+                        <span className="min-w-0">
+                          {l.quantity.toLocaleString("id-ID")} × {l.name}
+                          {l.variant_name ? ` · ${l.variant_name}` : ""}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-text-muted">{formatRupiah(l.amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {s.notes && (
           <p className="border-t border-dashed border-border-active px-4 py-3 text-[13.5px] text-text-body sm:px-5">
             <span className="font-semibold text-text-heading">Catatan:</span> {s.notes}
@@ -282,11 +378,12 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           {canRefund(s.status) && (
             <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("refunded")} disabled={!onCancel}>
-              <Undo2 size={16} aria-hidden /> Refund
+              <Undo2 size={16} aria-hidden /> {partial ? "Refund sisa" : "Refund"}
             </button>
           )}
           <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("void")} disabled={!onCancel}>
-            {depositRefund ? <Undo2 size={16} aria-hidden /> : <Ban size={16} aria-hidden />} {depositRefund ? "Kembalikan DP" : "Batalkan transaksi"}
+            {depositRefund ? <Undo2 size={16} aria-hidden /> : <Ban size={16} aria-hidden />}{" "}
+            {depositRefund ? (preorderOnly ? "Hapus pesanan awal" : "Kembalikan DP") : "Batalkan transaksi"}
           </button>
         </div>
       )}

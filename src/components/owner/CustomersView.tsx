@@ -38,7 +38,7 @@ import { CONFLICT_MESSAGE, deleteRecord, detailMap, hasFeature, saveErrorText, s
 import type { SaleListItem, SyncRecord } from "@/lib/owner/types";
 import { zonedToday } from "@/lib/owner/tz";
 import { useOwner } from "./OwnerShell";
-import { formatStamp, SaleStatusBadge } from "./parts";
+import { formatStamp, SaleRowBadge, shownTotal } from "./parts";
 import { LockedCard, SyncNote } from "./ui";
 import { CustomerCreditList } from "./credit/CustomerCredit";
 
@@ -760,8 +760,12 @@ function CustomerDetailBody({
                       {s.receipt_no} · {s.outlet_name}
                     </span>
                   </span>
-                  <span className="ml-auto text-right font-semibold tabular-nums">{formatRupiah(s.total)}</span>
-                  <SaleStatusBadge status={s.status} />
+                  <span
+                    className={`ml-auto text-right font-semibold tabular-nums ${s.status === "void" || s.status === "refunded" ? "text-text-muted line-through" : ""}`}
+                  >
+                    {formatRupiah(shownTotal(s))}
+                  </span>
+                  <SaleRowBadge s={s} />
                 </Link>
               </li>
             ))}

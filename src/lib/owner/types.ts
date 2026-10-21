@@ -92,6 +92,8 @@ export type SaleListItem = {
   /** DP reservasi (2026-10-21; server lama: tidak ada). */
   reservation_id?: string | null;
   deposit?: DepositState | null;
+  /** Σ refund sebagian per item (2026-10-21; server lama: tidak ada). `total` tetap nilai asli. */
+  refunded_total?: number;
 };
 
 /**
@@ -101,8 +103,23 @@ export type SaleListItem = {
  */
 export type DepositState = "held" | "to_process" | "order" | "forfeited" | "refunded";
 
-/** Penanda pembayaran DP (`sale_payments.purpose`). */
-export type PaymentPurpose = "deposit" | "deposit_refund";
+/** Penanda pembayaran (`sale_payments.purpose`): DP reservasi, atau `refund` = refund sebagian per item (2026-10-21). */
+export type PaymentPurpose = "deposit" | "deposit_refund" | "refund";
+
+/**
+ * Satu refund sebagian per item (`sales.refunds[]`, api.md "Refund sebagian per item (2026-10-21)"; ditulis server).
+ * `lines[].index` = posisi baris di `SaleDetail.items`; `payments` = ringkasan pembayaran negatifnya.
+ */
+export type SaleRefund = {
+  id: string;
+  refunded_at: string;
+  cashier_id: string;
+  approved_by: string | null;
+  reason: string;
+  amount: number;
+  lines: { index: number; line_id: string | null; quantity: number; amount: number }[];
+  payments: { id: string; method: PaymentMethod | (string & {}); amount: number }[];
+};
 
 export type ShiftListItem = {
   id: string;
@@ -265,6 +282,8 @@ export type SaleDetail = SaleListItem & {
   discounts: { name: string; amount: number }[];
   taxes: { name: string; rate_bp: number; amount: number }[];
   payments: SalePayment[];
+  /** Refund sebagian per item, terlama dulu (2026-10-21; server lama: tidak ada). */
+  refunds?: SaleRefund[];
 };
 
 export type ShiftDetail = ShiftListItem & {
@@ -281,6 +300,8 @@ export type ShiftDetail = ShiftListItem & {
   cancelled: { count: number; amount: number };
   /** DP reservasi di shift (2026-10-21; nilai positif, sudah termasuk di uang shift). */
   deposits?: { received: number; refunded: number; cash_received: number; cash_refunded: number };
+  /** Refund sebagian per item di shift (2026-10-21; nilai positif, sudah termasuk di uang shift; server lama: tidak ada). */
+  partial_refunds?: { total: number; cash: number };
 };
 
 export type SalesSort = "newest" | "oldest" | "total_desc";
@@ -314,7 +335,7 @@ export type SalesPage = {
 export type ShiftsPage = { items: ShiftListItem[]; meta: PageMeta };
 
 /** Jenis entri log aktivitas (`GET /owner/activity`). */
-export type ActivityKind = "void" | "refund" | "manual_discount" | "shift_closed" | "cash_in" | "cash_out" | "new_device" | "change";
+export type ActivityKind = "void" | "refund" | "partial_refund" | "manual_discount" | "shift_closed" | "cash_in" | "cash_out" | "new_device" | "change";
 
 /** Satu kolom yang berubah pada entri `change` (nilai JSON apa adanya; kolom rahasia → before/after `null`). */
 export type ActivityFieldChange = { field: string; before: unknown; after: unknown };
@@ -330,7 +351,7 @@ export type ActivityItem = {
   outlet_id: string | null;
   outlet_name: string | null;
   actor: string | null;
-  /** Yang menyetujui (void/refund). */
+  /** Yang menyetujui (void/refund/partial_refund). */
   approver: string | null;
   ref_id: string | null;
   receipt_no: string | null;

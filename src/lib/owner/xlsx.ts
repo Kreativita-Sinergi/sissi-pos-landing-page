@@ -1,5 +1,6 @@
 // Baca/tulis .xlsx sederhana — port `sissi-app/lib/core/share/xlsx.dart` (perilaku sama: nomor baris = nomor baris
-// Excel, baris kosong dilewati, angka tanpa ekor desimal palsu, rumus = hasil tersimpan, boolean → true/false).
+// Excel, baris kosong dilewati, angka tanpa ekor desimal palsu, rumus = hasil tersimpan, boolean → true/false, sel angka
+// berformat persen ditulis seperti tampilannya: Excel menyimpan `35%` sebagai `0.35` → "35%").
 // Zip memakai `fflate` (kecil, tanpa dependensi); XML diurai dengan pola sederhana karena SpreadsheetML datar
 // (row/c/v/t tidak bersarang). Modul ini dimuat dinamis (`await import("@/lib/owner/xlsx")`) hanya saat impor/unduh.
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
@@ -57,7 +58,8 @@ function text(body: string | null): string {
 
 /**
  * Membaca semua lembar .xlsx menjadi teks sel. Angka ditulis tanpa ekor desimal palsu Excel (`15000`, `0.5`; pemisah
- * desimal `decimalSeparator`). Melempar `XlsxFormatError` bila bukan .xlsx sah.
+ * desimal `decimalSeparator`); sel angka berformat persen (`styles.xml`) → angka tampilan + "%" (`0.35` → `35%`).
+ * Melempar `XlsxFormatError` bila bukan .xlsx sah.
  */
 export function readXlsx(bytes: Uint8Array, decimalSeparator = "."): XlsxSheet[] {
   let total = 0;
@@ -89,6 +91,7 @@ export function readXlsx(bytes: Uint8Array, decimalSeparator = "."): XlsxSheet[]
     targets.set(id, target.startsWith("/") ? target.slice(1) : target.startsWith("xl/") ? target : `xl/${target}`);
   }
   const shared = elements(doc("xl/sharedStrings.xml") ?? "", "si").map((si) => text(si.body));
+  const percent = percentStyles(doc("xl/styles.xml"));
 
   const sheets: XlsxSheet[] = [];
   elements(workbook, "sheet").forEach((s, i) => {
@@ -96,12 +99,34 @@ export function readXlsx(bytes: Uint8Array, decimalSeparator = "."): XlsxSheet[]
     const path = (rid && targets.get(rid)) || `xl/worksheets/sheet${i + 1}.xml`;
     const sheet = doc(path);
     if (sheet === null) return;
-    sheets.push({ name: attr(s.attrs, "name") ?? `Sheet${i + 1}`, rows: readRows(sheet, shared, decimalSeparator) });
+    sheets.push({ name: attr(s.attrs, "name") ?? `Sheet${i + 1}`, rows: readRows(sheet, shared, decimalSeparator, percent) });
   });
   return sheets;
 }
 
-function readRows(sheet: string, shared: string[], decimal: string): CsvRow[] {
+/**
+ * Indeks gaya sel (`<c s="…">`, urutan `<xf>` di `cellXfs`) yang format angkanya persen: format bawaan 9 (`0%`) /
+ * 10 (`0.00%`) atau format kustom (`numFmt`) yang memuat `%` di luar teks berkutip / karakter ber-escape.
+ */
+export function percentStyles(styles: string | null): Set<number> {
+  const out = new Set<number>();
+  if (!styles) return out;
+  const custom = new Set<number>();
+  for (const f of elements(styles, "numFmt")) {
+    const id = Number.parseInt(attr(f.attrs, "numFmtId") ?? "", 10);
+    const code = (attr(f.attrs, "formatCode") ?? "").replace(/"[^"]*"/g, "").replace(/\\./g, "");
+    if (Number.isFinite(id) && code.includes("%")) custom.add(id);
+  }
+  const xfs = elements(styles, "cellXfs")[0];
+  if (!xfs?.body) return out;
+  elements(xfs.body, "xf").forEach((xf, i) => {
+    const id = Number.parseInt(attr(xf.attrs, "numFmtId") ?? "", 10);
+    if (id === 9 || id === 10 || custom.has(id)) out.add(i);
+  });
+  return out;
+}
+
+function readRows(sheet: string, shared: string[], decimal: string, percent: Set<number>): CsvRow[] {
   const rows: CsvRow[] = [];
   let nextLine = 1;
   for (const row of elements(sheet, "row")) {
@@ -113,7 +138,7 @@ function readRows(sheet: string, shared: string[], decimal: string): CsvRow[] {
     for (const c of elements(row.body ?? "", "c")) {
       const col = column(attr(c.attrs, "r")) ?? nextCol;
       nextCol = col + 1;
-      const value = cellValue(c.attrs, c.body, shared, decimal);
+      const value = cellValue(c.attrs, c.body, shared, decimal, percent);
       if (!value) continue;
       while (cells.length < col) cells.push("");
       cells[col] = value;
@@ -138,7 +163,7 @@ function column(ref: string | null): number | null {
   return seen ? n - 1 : null;
 }
 
-function cellValue(attrs: string, body: string | null, shared: string[], decimal: string): string {
+function cellValue(attrs: string, body: string | null, shared: string[], decimal: string, percent: Set<number>): string {
   const type = attr(attrs, "t");
   if (type === "inlineStr") {
     const inline = elements(body ?? "", "is")[0];
@@ -157,9 +182,19 @@ function cellValue(attrs: string, body: string | null, shared: string[], decimal
     case "str":
     case "e":
       return raw;
-    default:
+    default: {
+      const style = Number.parseInt(attr(attrs, "s") ?? "", 10);
+      if (percent.has(style)) return `${xlsxPercent(raw).replace(".", decimal)}%`;
       return xlsxNumber(raw).replace(".", decimal);
+    }
   }
+}
+
+/** Nilai sel berformat persen (`0.35`) → angka tampilan (`35`). Bukan angka → apa adanya. */
+export function xlsxPercent(raw: string): string {
+  const d = raw.trim() ? Number(raw) : NaN;
+  if (!Number.isFinite(d)) return raw;
+  return xlsxNumber(String(d * 100));
 }
 
 /** Angka Excel → teks rapi: `15000.000000000002` → `15000`, `1.5E-3` → `0.0015`. Bukan angka → apa adanya. */

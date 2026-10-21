@@ -305,6 +305,17 @@ function ShiftBody({ s, onChanged }: { s: ShiftDetail; onChanged: () => void }) 
                 <dd className="font-semibold tabular-nums text-danger">-{formatRupiah(s.deposits.refunded)}</dd>
               </div>
             )}
+            {/* Refund sebagian per item (cermin baris "Refund sebagian" shift app): transaksi tetap lunas, bukan batal;
+                sudah termasuk di uang shift & per metode, tunainya mengurangi kas seharusnya. */}
+            {!!s.partial_refunds?.total && (
+              <div className="flex justify-between gap-4 py-2">
+                <dt className="text-text-body">
+                  Refund sebagian
+                  {s.partial_refunds.cash > 0 && <span className="block text-[12.5px] text-text-muted">Refund sebagian (tunai) {formatRupiah(s.partial_refunds.cash)}</span>}
+                </dt>
+                <dd className="font-semibold tabular-nums text-danger">-{formatRupiah(s.partial_refunds.total)}</dd>
+              </div>
+            )}
           </dl>
           <h3 className="mt-4 mb-1 text-[13px] font-semibold uppercase tracking-wide text-text-muted">Per metode bayar</h3>
           {s.per_method.length === 0 ? (
