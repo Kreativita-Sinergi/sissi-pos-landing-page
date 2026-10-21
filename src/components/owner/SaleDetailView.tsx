@@ -14,7 +14,15 @@ import { labelOf, METHODS, orderTypeLabel, PAYMENT_PURPOSE } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SettleCreditDialog } from "./credit/SettleCreditDialog";
 import { CancelSaleDialog } from "./CancelSaleDialog";
-import { canRefund, canVoid, isDepositRefund, isPreorderDeposit, isPreorderWithoutDeposit, type CancelKind } from "@/lib/owner/cancelSale";
+import {
+  canDeletePreorderFromWeb,
+  canRefund,
+  canVoid,
+  isDepositRefund,
+  isPreorderDeposit,
+  isPreorderWithoutDeposit,
+  type CancelKind,
+} from "@/lib/owner/cancelSale";
 import { hasPartialRefund, netTotalOf, outstandingOf, receiptTotals, refundedQtyByIndex, refundedTotalOf, refundEntries } from "@/lib/owner/saleRefunds";
 import { discountApprover, isDiscountUnapproved, lineDiscountReason } from "@/lib/owner/saleDiscount";
 import { isHeldDeposit, SaleRowBadge } from "./parts";
@@ -403,10 +411,15 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
               <Undo2 size={16} aria-hidden /> {partial ? "Refund sisa" : "Refund"}
             </button>
           )}
-          <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("void")} disabled={!onCancel}>
-            {depositRefund ? <Undo2 size={16} aria-hidden /> : <Ban size={16} aria-hidden />}{" "}
-            {depositRefund ? (preorderOnly ? "Hapus pesanan awal" : "Kembalikan DP") : "Batalkan transaksi"}
-          </button>
+          {canDeletePreorderFromWeb(s) ? (
+            <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("void")} disabled={!onCancel}>
+              {depositRefund ? <Undo2 size={16} aria-hidden /> : <Ban size={16} aria-hidden />}{" "}
+              {depositRefund ? (preorderOnly ? "Hapus pesanan awal" : "Kembalikan DP") : "Batalkan transaksi"}
+            </button>
+          ) : (
+            // Reservasi masih Direservasi: pesanan awal diubah/dihapus lewat aplikasi.
+            <p className="text-[12.5px] text-text-muted sm:text-right">Reservasi masih aktif — ubah atau hapus pesanan awal lewat aplikasi kasir.</p>
+          )}
         </div>
       )}
     </div>

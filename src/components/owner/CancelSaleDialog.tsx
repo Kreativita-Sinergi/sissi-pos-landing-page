@@ -15,6 +15,7 @@ import {
   isDepositRefund,
   isPreorderDeposit,
   isPreorderWithoutDeposit,
+  reservationStillActive,
   REFUND_METHODS,
   refundPlan,
   type RefundLine,
@@ -97,6 +98,8 @@ function CancelBody({
   const preorder = deposit && isPreorderDeposit(sale);
   // Pesanan awal tanpa DP: tidak ada DP yang dikembalikan — istilah app "Hapus pesanan awal".
   const preorderOnly = deposit && isPreorderWithoutDeposit(sale);
+  // Reservasi masih Direservasi: pembatalan ini hanya menutup transaksinya, bukan reservasinya.
+  const stillActive = deposit && reservationStillActive(sale);
   const partial = hasPartialRefund(sale);
   const actionLabel = deposit
     ? preorderOnly || (preorder && total === 0)
@@ -167,7 +170,7 @@ function CancelBody({
             {preorderOnly
               ? `Pesanan awal ${sale.receipt_no} (${sale.items_count.toLocaleString("id-ID")} porsi) dihapus dan transaksinya ditutup. Belum dimasak dan tidak ada DP yang perlu dikembalikan. `
               : deposit
-                ? `DP reservasi ${sale.receipt_no} (${formatRupiah(sale.paid_total)}) akan dikembalikan dan transaksinya ditutup${preorder ? "; pesanan awalnya ikut dihapus" : ""}. `
+                ? `DP reservasi ${sale.receipt_no} (${formatRupiah(sale.paid_total)}) akan dikembalikan dan transaksinya ditutup${preorder ? "; pesanan awalnya ikut dihapus" : ""}. ${stillActive ? "Reservasinya tetap aktif (Direservasi); bila tamu datang, pesanannya dilayani sebagai pesanan biasa. " : ""}`
                 : `Transaksi ${sale.receipt_no} (${formatRupiah(partial ? netTotalOf(sale) : sale.total)}${partial ? " setelah refund sebagian" : ""}) akan ${isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam omzet. `}
             Tercatat di Aktivitas atas nama {session.user.name}.
           </p>
@@ -228,7 +231,7 @@ function CancelBody({
         <Notice tone="info" icon={<Info size={17} aria-hidden />}>
           <p className="text-[13.5px]">
             {preorderOnly
-              ? `Pesanan awal (${sale.items_count.toLocaleString("id-ID")} porsi) dihapus dan reservasinya ditutup. Belum dimasak, stok belum terpotong, dan tidak ada DP yang perlu dikembalikan.`
+              ? `Pesanan awal (${sale.items_count.toLocaleString("id-ID")} porsi) dihapus${stillActive ? "; reservasinya tetap aktif (Direservasi)" : ""}. Belum dimasak, stok belum terpotong, dan tidak ada DP yang perlu dikembalikan.`
               : "Reservasi ini punya pesanan awal. Pesanan awal ikut dihapus saat DP dikembalikan (belum dimasak, stok belum terpotong)."}
           </p>
         </Notice>

@@ -10,7 +10,8 @@ import { strToU8, zipSync } from "fflate";
 const { hasPartialRefund, netTotalOf, outstandingOf, receiptTotals, refundedQtyByIndex, refundedTotalOf, refundEntries, shownTotalOf } = await import(
   "../src/lib/owner/saleRefunds.ts"
 );
-const { cancelChange, isDepositRefund, isPreorderDeposit, isPreorderWithoutDeposit, refundPlan } = await import("../src/lib/owner/cancelSale.ts");
+const { canDeletePreorderFromWeb, cancelChange, isDepositRefund, isPreorderDeposit, isPreorderWithoutDeposit, refundPlan, reservationStillActive } =
+  await import("../src/lib/owner/cancelSale.ts");
 const { depositBadge } = await import("../src/components/owner/labels.ts");
 const { percentStyles, readXlsx, xlsxPercent } = await import("../src/lib/owner/xlsx.ts");
 const { readImportXlsx } = await import("../src/lib/owner/productImportXlsx.ts");
@@ -272,3 +273,18 @@ test("impor Excel: susut 0,35 berformat persen = 35%; tanpa format persen ditola
   assert.ok(bawang.issues.includes("wasteInvalid"));
   assert.equal(minyak.wasteBp, 1200);
 });
+
+// Regresi bughunt: reservasi yang masih Direservasi tidak "ditutup" oleh pembatalan dari dasbor; pesanan awal tanpa DP
+// tidak dihapus dari dasbor selama reservasi aktif (pembawanya tidak bisa dibuat ulang di app).
+test("pesanan awal reservasi aktif: tidak dihapus dari dasbor; Kembalikan DP tidak menutup reservasi", () => {
+  const held = { deposit: "held", items_count: 4, paid_total: 0 };
+  const queued = { ...held, deposit: "to_process" };
+  assert.equal(reservationStillActive(held), true);
+  assert.equal(reservationStillActive(queued), false);
+  assert.equal(canDeletePreorderFromWeb(held), false);
+  assert.equal(canDeletePreorderFromWeb(queued), true);
+  // Ber-DP (Kembalikan DP, relokasi DP diantisipasi) & transaksi biasa tetap bisa dibatalkan.
+  assert.equal(canDeletePreorderFromWeb({ ...held, paid_total: 50_000 }), true);
+  assert.equal(canDeletePreorderFromWeb({ deposit: null, items_count: 2, paid_total: 0 }), true);
+});
+

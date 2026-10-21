@@ -58,6 +58,20 @@ export const isPreorderWithoutDeposit = (sale: { deposit?: string | null; items_
   isPreorderDeposit(sale) && sale.paid_total <= 0;
 
 /**
+ * Reservasi pembawa DP/pesanan awal masih **Direservasi** (`deposit: "held"`): pembatalan dari dasbor hanya menutup
+ * transaksinya, reservasinya tetap aktif (bukan "reservasinya ditutup").
+ */
+export const reservationStillActive = (sale: { deposit?: string | null }) => sale.deposit === "held";
+
+/**
+ * "Hapus pesanan awal" dari dasbor hanya untuk reservasi yang sudah batal/tidak datang (`to_process`). Selama reservasi
+ * masih Direservasi, pesanan awal diubah/dihapus lewat aplikasi (mem-void pembawanya dari dasbor membuat reservasi itu
+ * tidak bisa lagi menerima DP/pesanan awal — id pembawa tetap per reservasi).
+ */
+export const canDeletePreorderFromWeb = (sale: { deposit?: string | null; items_count?: number | null; paid_total: number }) =>
+  !(isPreorderWithoutDeposit(sale) && reservationStillActive(sale));
+
+/**
  * Uang yang harus dikembalikan per metode asal: bersih per metode (termasuk pengembalian sebelumnya), lalu metode yang
  * bersihnya NEGATIF (refund sebagian / sisa DP yang dikembalikan lewat metode lain — metode bebas) mengurangi metode
  * positif, mulai dari yang terbesar. Jadi Σ rencana = max(0, Σ semua pembayaran) dan Σ sesudah batal = 0 (server
