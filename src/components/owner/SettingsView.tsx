@@ -25,7 +25,9 @@ import {
   type AttendanceRules,
   isHHMM,
   type Loyalty,
+  mergeReceipt,
   mergeSection,
+  paperLabel,
   mergeTaxes,
   mergeTiers,
   type Obj,
@@ -34,6 +36,8 @@ import {
   readAttendance,
   readLoyalty,
   readReceipt,
+  readReceiptLogo,
+  readReceiptPaper,
   readRounding,
   readServiceFee,
   readTaxes,
@@ -480,6 +484,10 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
   const { draft, setDraft, dirty, reset } = useDraft<Receipt>(readReceipt(settings));
   const saver = useSaver(onRecord);
   const set = <K extends keyof Receipt>(k: K, v: Receipt[K]) => setDraft({ ...draft, [k]: v });
+  const logoUrl = readReceiptLogo(settings);
+  // Preset dari aplikasi (huruf kecil / kertas kecil / Lainnya) hanya ditampilkan bila ukurannya belum diubah di sini.
+  const savedPaper = readReceiptPaper(settings);
+  const appPaper = savedPaper && draft.paper_mm === readReceipt(settings).paper_mm ? savedPaper : null;
   return (
     <EditSection
       id="struk"
@@ -496,12 +504,7 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
         saver.run(
           () =>
             saveRecord("outlets", rec.id, rec, {
-              settings: mergeSection(settings, "receipt", {
-                ...draft,
-                header: draft.header.trim(),
-                footer: draft.footer.trim(),
-                instagram: draft.instagram.trim().replace(/^@+/, ""),
-              }),
+              settings: mergeReceipt(settings, draft),
             }),
           "Pengaturan struk disimpan.",
           (r) => setDraft(readReceipt(settingsOf(r as Rec)))
@@ -543,11 +546,21 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
                 { value: 80, label: "80 mm" },
               ]}
             />
+            <p className="mt-1.5 text-[12.5px] text-text-muted">
+              {appPaper && appPaper.preset !== "58" && appPaper.preset !== "80" ? `Dipilih di aplikasi: ${paperLabel(appPaper)}. ` : ""}
+              Ukuran bawaan outlet; kertas tiap printer diatur di aplikasi.
+            </p>
           </div>
-          <Switch id={`${uid}-logo`} label="Tampilkan logo" description="Logo usaha di atas struk (diatur di aplikasi)." checked={draft.show_logo} onChange={(v) => set("show_logo", v)} />
+          <Switch
+            id={`${uid}-logo`}
+            label="Tampilkan logo"
+            description={logoUrl ? "Logo toko dicetak hitam-putih di atas struk. Ganti logo dari aplikasi (Pengaturan › Struk)." : "Belum ada logo. Unggah logo dari aplikasi (Pengaturan › Struk)."}
+            checked={draft.show_logo}
+            onChange={(v) => set("show_logo", v)}
+          />
           <Switch id={`${uid}-rate`} label="Tampilkan tarif pajak" description="Mis. “PB1 10%” alih-alih “PB1”." checked={draft.show_tax_rate} onChange={(v) => set("show_tax_rate", v)} />
         </div>
-        <ReceiptPreview receipt={draft} outletName={String(rec.name ?? "")} address={String(rec.address ?? "")} businessName={businessName} taxes={readTaxes(settings)} />
+        <ReceiptPreview receipt={draft} logoUrl={logoUrl} outletName={String(rec.name ?? "")} address={String(rec.address ?? "")} businessName={businessName} taxes={readTaxes(settings)} />
       </div>
     </EditSection>
   );
@@ -564,12 +577,14 @@ function Row({ l, r, bold }: { l: string; r: string; bold?: boolean }) {
 
 function ReceiptPreview({
   receipt,
+  logoUrl,
   outletName,
   address,
   businessName,
   taxes,
 }: {
   receipt: Receipt;
+  logoUrl: string;
   outletName: string;
   address: string;
   businessName: string;
@@ -594,7 +609,10 @@ function ReceiptPreview({
         }`}
       >
         <div className="text-center">
-          {receipt.show_logo && <div className="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#2b2620] text-[10px] font-bold text-white">{(businessName[0] ?? "S").toUpperCase()}</div>}
+          {receipt.show_logo && logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- berkas unggahan API (domain bebas), tanpa optimasi.
+            <img src={logoUrl} alt="" className="mx-auto mb-1 max-h-[64px] max-w-full object-contain grayscale contrast-200" />
+          )}
           <div className="font-bold">{outletName || businessName}</div>
           {address && <div className="break-words">{address}</div>}
           {receipt.header && <div className="mt-1 whitespace-pre-line break-words">{receipt.header}</div>}

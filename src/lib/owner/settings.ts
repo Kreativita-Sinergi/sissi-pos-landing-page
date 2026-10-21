@@ -89,6 +89,80 @@ export function readReceipt(settings: unknown): Receipt {
   };
 }
 
+// ——— Struk: logo & ukuran kertas (2026-10-21, kontrak "Struk satu sumber: logo & ukuran kertas") ———
+// Logo diunggah & diolah hitam-putih di aplikasi; ukuran kertas yang dipakai mencetak = milik printer di aplikasi.
+// Web hanya menampilkan `logo_url` dan preset `paper`, tidak pernah menulis `logo_url`/`logo_style` (server
+// menggabung `receipt` per kunci; web mengirim objek tersimpan + bagian yang diedit, jadi kunci itu tetap utuh).
+
+export type PaperSpec = { preset: string; columns: number; dots: number; font: "a" | "b" };
+
+/** Preset kertas (sama dengan app). `custom` = "Lainnya" (kolom & titik bebas dalam rentang). */
+export const PAPER_PRESETS: Record<string, PaperSpec> = {
+  "58": { preset: "58", columns: 32, dots: 384, font: "a" },
+  "58b": { preset: "58b", columns: 42, dots: 384, font: "b" },
+  "80": { preset: "80", columns: 48, dots: 576, font: "a" },
+  "80b": { preset: "80b", columns: 64, dots: 576, font: "b" },
+  "44": { preset: "44", columns: 24, dots: 288, font: "a" },
+};
+const PAPER_LABELS: Record<string, string> = {
+  "58": "58 mm",
+  "58b": "58 mm, huruf kecil",
+  "80": "80 mm",
+  "80b": "80 mm, huruf kecil",
+  "44": "Kertas kecil 44–48 mm",
+};
+
+/** Label preset untuk ditampilkan (mis. "58 mm, huruf kecil · 42 kolom"). */
+export function paperLabel(p: PaperSpec): string {
+  const name = PAPER_LABELS[p.preset] ?? `Lainnya${p.font === "b" ? ", huruf kecil" : ""}`;
+  return `${name} · ${p.columns} kolom`;
+}
+
+/** Keluarga `paper_mm` dari lebar titik (80 bila ≥ 512 titik). */
+export const paperFamily = (dots: number): 58 | 80 => (dots >= 512 ? 80 : 58);
+
+/**
+ * `receipt.paper` tersimpan (null bila tidak ada/rusak). Preset dikenal = nilai tabel; `custom`/preset versi depan =
+ * isian bila dalam rentang. Bila keluarganya ≠ `paper_mm` (app/web lama mengubah 58↔80), `paper_mm` menang → null.
+ */
+export function readReceiptPaper(settings: unknown): PaperSpec | null {
+  const r = obj(obj(settings).receipt);
+  const p = r.paper;
+  if (!isObj(p)) return null;
+  const preset = str(p.preset);
+  let spec: PaperSpec | null = PAPER_PRESETS[preset] ?? null;
+  if (!spec) {
+    const ok = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
+    if (!ok(p.columns, 16, 64) || !ok(p.dots, 200, 640)) return null;
+    spec = { preset, columns: p.columns as number, dots: p.dots as number, font: p.font === "b" ? "b" : "a" };
+  }
+  const mm = r.paper_mm === 80 ? 80 : 58;
+  return paperFamily(spec.dots) === mm ? spec : null;
+}
+
+/** URL logo struk tersimpan ("" = tanpa logo). */
+export const readReceiptLogo = (settings: unknown): string => str(obj(obj(settings).receipt).logo_url).trim();
+
+/**
+ * Bagian struk diedit web → objek `settings` baru. Kunci `receipt` yang tidak dikenal web (logo_url, logo_style,
+ * merchant_copy, …) tetap utuh. Bila web mengubah ukuran 58↔80 sehingga keluarga `paper` tidak cocok lagi, `paper`
+ * diganti preset dasar ukuran baru (app membaca hal yang sama lewat rekonsiliasi; ini menjaga data tetap selaras).
+ */
+export function mergeReceipt(settings: unknown, draft: Receipt): Obj {
+  const old = obj(obj(settings).receipt);
+  const value: Obj = {
+    ...draft,
+    header: draft.header.trim(),
+    footer: draft.footer.trim(),
+    instagram: draft.instagram.trim().replace(/^@+/, ""),
+  };
+  if (isObj(old.paper)) {
+    const dots = typeof old.paper.dots === "number" ? old.paper.dots : PAPER_PRESETS[str(old.paper.preset)]?.dots;
+    if (dots === undefined || paperFamily(dots) !== draft.paper_mm) value.paper = { ...PAPER_PRESETS[String(draft.paper_mm)] };
+  }
+  return mergeSection(settings, "receipt", value);
+}
+
 export function readTransaction(settings: unknown): TransactionSettings {
   const s = obj(obj(settings).transaction);
   return {
