@@ -118,6 +118,7 @@ export const LEGACY_SLUGS: Record<string, string> = {};
 
 const UPDATED = "12 Oktober 2026";
 const UPDATED_NEW = "13 Oktober 2026";
+const UPDATED_OCT21 = "21 Oktober 2026";
 
 const HP = { device: "hp" as const, width: 390, height: 844 };
 const TABLET = { device: "tablet" as const, width: 1280, height: 800 };
@@ -995,10 +996,10 @@ export const GUIDES: GuideItem[] = [
     slug: "hpp-resep-dan-bahan-baku",
     category: "produk",
     title: "Harga modal (HPP), resep & bahan baku",
-    description: "Pilih Modal manual atau Resep, buat bahan baku dari form, dan pahami urutan HPP.",
+    description: "Pilih Modal manual atau Resep, isi resep per porsi atau per adonan, atur susut bahan, dan pahami satuan yang terkunci.",
     audience: ["Pemilik"],
-    readMinutes: 5,
-    lastUpdated: UPDATED,
+    readMinutes: 8,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "HPP (harga pokok penjualan) adalah modal per porsi atau per barang. Sissi memakainya untuk menghitung laba kotor. HPP bisa ditulis langsung (Modal manual) atau dihitung dari resep bahan baku.",
     steps: [
@@ -1015,11 +1016,53 @@ export const GUIDES: GuideItem[] = [
         title: "Mengisi resep",
         steps: [
           "Di form produk, pada “HPP (harga modal)” pilih “Resep”.",
-          "Ketuk “Tambah bahan”, pilih bahan baku, lalu isi “Jumlah” per porsi.",
+          "Pada “Cara isi takaran”, biarkan “Per porsi”. Ketuk “Tambah bahan”, pilih bahan baku, lalu isi “Jumlah” per porsi.",
           "Bahan belum ada? Ketuk “Buat bahan baku baru”: isi nama, satuan, stok minimum, dan harga beli awal, lalu langsung isi takarannya.",
           "Hasilnya tampil sebagai “HPP … · margin …%”.",
         ],
         description: "Untuk produk bervarian, resep bisa dibuat untuk “Semua varian” atau per varian. Varian tanpa resep sendiri memakai resep “Semua varian”.",
+      },
+      {
+        id: "resep-per-adonan",
+        title: "Resep per adonan (sekali masak)",
+        description:
+          "Cocok untuk menu yang dimasak sekaligus banyak, mis. nasi goreng, rendang, atau sambal. Kamu cukup menulis bahan untuk sekali masak; Sissi menghitung takaran per porsinya.",
+        steps: [
+          "Di resep, pada “Cara isi takaran” pilih “Per adonan”.",
+          "Isi “Hasil sekali masak”, mis. 10 porsi (ketik angkanya atau pakai tombol − / +).",
+          "Ketuk “Tambah bahan”, lalu isi “Takaran bersih” untuk sekali masak: berat yang sudah dikupas atau dibersihkan, belum dimasak.",
+          "Cek baris di bawah tiap bahan, mis. “Dipotong stok 25 g per porsi (susut 20%)”, lalu simpan produk.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/resep-per-adonan-tablet.png",
+          alt: "Resep Nasi Goreng Kampung diisi per adonan: hasil 10 porsi dengan beras, bawang merah, dan minyak goreng",
+          caption: "Takaran sekali masak untuk 10 porsi; stok tetap dipotong per porsi.",
+        },
+        callout: {
+          type: "warning",
+          text: "Bila bahan dicatat dalam satuan besar (mis. liter) dan takaran per porsinya kecil, takaran dibulatkan dan muncul peringatan kuning. Untuk bahan baru seperti ini, pilih satuan g atau ml.",
+        },
+      },
+      {
+        id: "susut-bahan",
+        title: "Susut bahan saat dibersihkan",
+        steps: [
+          "Buka “Inventori” › “Bahan baku”, pilih bahannya, lalu “Ubah bahan”.",
+          "Isi “Susut saat dibersihkan (%)”, mis. 20 untuk bawang merah yang dikupas. Paling banyak 90%.",
+          "Cek pratinjaunya, mis. “Beli 1.000 g → terpakai ± 800 g (susut 20%)”, lalu ketuk “Simpan”.",
+          "Bila bahan dipakai resep per adonan, muncul “Hitung ulang resep?” berisi perubahan modal menu. Ketuk “Simpan & hitung ulang”.",
+        ],
+        points: [
+          "Susut hanya untuk bagian yang dibuang sebelum dimasak (kulit, tulang, bonggol). Susut saat dimasak tidak dihitung.",
+          "Resep yang diisi per porsi tidak ikut berubah. Buka resepnya bila ingin menerapkan susut.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/bahan-susut-tablet.png",
+          alt: "Form Ubah bahan baku Bawang merah dengan susut saat dibersihkan 20%",
+          caption: "Susut 20%: beli 1.000 g, terpakai sekitar 800 g.",
+        },
       },
       {
         id: "urutan-hpp",
@@ -1048,6 +1091,28 @@ export const GUIDES: GuideItem[] = [
         description:
           "Bahan baku dikelola di “Inventori” › “Bahan baku”: tambah lewat “Bahan baru”, catat pembelian lewat “Bahan masuk”, dan kurangi stok lewat “Kurangi / sesuaikan” (alasan Limbah, Hilang/rusak, atau Koreksi hitung).",
       },
+      {
+        id: "satuan-terkunci",
+        title: "Satuan bahan terkunci",
+        description:
+          "Satuan bahan (mis. g, kg, l) tidak bisa diganti lagi setelah bahan punya riwayat: pernah ada stok masuk atau keluar, dipakai resep atau resep pilihan ekstra, atau tercantum di PO, opname, atau transfer. Kolom “Satuan” tampil dengan ikon gembok beserta sebabnya. Ini menjaga stok dan harga rata-rata yang sudah tercatat tetap benar, karena Sissi tidak mengubah angka lama secara otomatis.",
+        steps: [
+          "Perlu satuan lain? Di form “Ubah bahan baku”, ketuk “Buat bahan baku baru” di bawah kolom “Satuan”.",
+          "Isi nama dan satuan yang benar, lalu simpan.",
+          "Pakai bahan baru itu di resep menu, dan catat stoknya lewat “Bahan masuk”.",
+        ],
+        points: [
+          "Terkunci karena PO? Hapus PO itu (bila masih draf) untuk membuka kunci.",
+          "Terkunci karena resep? Keluarkan bahan dari resep itu untuk membuka kunci.",
+          "Bahan yang belum punya riwayat apa pun bebas diganti satuannya.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/bahan-satuan-terkunci-tablet.png",
+          alt: "Form Ubah bahan baku Susu UHT full cream dengan kolom Satuan terkunci dan tombol Buat bahan baku baru",
+          caption: "Satuan terkunci karena bahan sudah punya riwayat stok.",
+        },
+      },
     ],
     faqs: [
       {
@@ -1055,9 +1120,123 @@ export const GUIDES: GuideItem[] = [
         answer:
           "Ritel bisa memakai resep bila sudah punya bahan baku. Usaha jasa tidak memakai resep.",
       },
+      {
+        question: "Pilih “Per porsi” atau “Per adonan”?",
+        answer:
+          "“Per porsi” untuk menu yang dibuat satu per satu (mis. kopi). “Per adonan” untuk menu yang dimasak sekaligus banyak lalu dibagi porsi. Keduanya memotong stok per porsi saat menu terjual.",
+      },
     ],
-    relatedSlugs: ["modifier-dan-opsi-tambahan", "produk-dengan-varian", "membaca-laporan-penjualan-dan-margin"],
-    keywords: ["hpp", "modal", "harga pokok", "food cost", "resep", "bahan baku", "takaran", "margin", "laba"],
+    relatedSlugs: ["harga-jual-biaya-usaha-dan-balik-modal", "modifier-dan-opsi-tambahan", "barang-keluar"],
+    keywords: ["hpp", "modal", "harga pokok", "food cost", "resep", "bahan baku", "takaran", "margin", "laba", "per adonan", "batch", "susut", "satuan terkunci", "ganti satuan"],
+  },
+  {
+    slug: "harga-jual-biaya-usaha-dan-balik-modal",
+    category: "produk",
+    title: "Kalkulator harga jual, biaya usaha & balik modal",
+    description: "Hitung harga jual dari target untung, catat biaya bulanan, dan lihat berapa porsi per hari supaya balik modal.",
+    audience: ["Pemilik"],
+    readMinutes: 6,
+    lastUpdated: UPDATED_OCT21,
+    overview:
+      "Menu “HPP & Harga jual” ada di “Inventori”. Isinya tiga tab: “Menu”, “Biaya usaha”, dan “Balik modal”. Semua hitungan di sini hanya simulasi; harga produk baru berubah bila kamu menekan “Pakai harga ini”.",
+    prerequisites: [
+      "Modal (HPP) menu sudah diisi lewat Modal manual atau Resep (lihat “Harga modal (HPP), resep & bahan baku”).",
+    ],
+    steps: [
+      {
+        id: "kesehatan-menu",
+        title: "Tab Menu: cek kesehatan menu",
+        description:
+          "Buka “Inventori” › “HPP & Harga jual”. Tiap menu diberi tanda dari food cost (HPP bahan ÷ harga jual): “Sehat” 35% ke bawah, “Tipis” 35–45%, “Bahaya” di atas 45%, “Rugi” bila modal sama dengan atau lebih besar dari harga jual, dan “Belum ada modal”.",
+        points: [
+          "Saring dengan “Semua”, “Perlu dicek”, atau “Tanpa modal”, atau cari lewat “Cari menu”.",
+          "Kartu “Modal naik di … menu” muncul bila HPP sekarang naik dibanding modal penjualan 30 hari terakhir dan margin jadi lebih tipis. Ketuk “Lihat” untuk melihat menunya. Peringatan yang sama tampil di Beranda pemilik.",
+        ],
+      },
+      {
+        id: "hitung-harga",
+        title: "Hitung harga jual",
+        steps: [
+          "Ketuk menu di daftar. Di tablet, “Hitung harga jual” terbuka di sebelah kanan.",
+          "Periksa “Modal per porsi”. Tambahkan bila perlu “Cadangan bahan kecil” (minyak, gas, bumbu yang tidak masuk resep), “Kemasan per porsi”, dan “Biaya usaha per porsi”.",
+          "Di “Mau untung berapa?”, pilih “Cara menentukan untung”: “Margin % (dari harga jual)”, “Markup % (dari modal)”, “Untung Rp per porsi”, atau “Food cost %”, lalu isi angkanya.",
+          "Pilih “Bulatkan ke atas”, mis. “Kelipatan Rp 500”.",
+          "Lihat “Harga jual saran”. Bila cocok, ketuk “Pakai harga ini” lalu “Pakai harga”.",
+        ],
+        points: [
+          "“Kalau diskon” — melihat untung bila menu didiskon sekian persen.",
+          "“Jual di ojol” — harga tayang agar untung per porsi sama dengan di toko. Isi komisi sesuai kontrakmu.",
+          "“Hitung bebas” — untuk menu yang belum dibuat. Hasilnya tidak disimpan.",
+          "Dari form produk, ketuk “Hitung harga jual” untuk membuka kalkulator menu itu.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/hpp-kalkulator-tablet.png",
+          alt: "Tab Menu HPP & Harga jual di tablet: daftar menu dengan tanda kesehatan dan kalkulator harga jual Es Kopi Susu Gula Aren",
+          caption: "Pilih menu di kiri, hitung harga jualnya di kanan.",
+        },
+        callout: {
+          type: "info",
+          text: "Biaya usaha per porsi tidak dikali target untung. Angka itu hanya mengurangi “Untung bersih perkiraan”.",
+        },
+      },
+      {
+        id: "biaya-usaha",
+        title: "Tab Biaya usaha: biaya bulanan",
+        steps: [
+          "Buka tab “Biaya usaha”, lalu ketuk “Tambah biaya”.",
+          "Pilih contoh seperti “Sewa tempat”, “Listrik & air”, “Internet & pulsa”, atau “Gas”, atau tulis “Nama biaya” sendiri. Isi “Biaya per bulan” (biaya tahunan dibagi 12, mingguan dikali 4).",
+          "Ketuk “Isi dari data gaji” untuk memasukkan perkiraan gaji karyawan dari Tim › Gaji.",
+          "Di “Porsi menu terjual per bulan”, pakai “Dari penjualan” (30 hari terakhir) atau “Isi perkiraan” bila toko baru buka.",
+          "Ketuk “Simpan”.",
+        ],
+        description: "Catat biaya bulanan seperti sewa, gaji, dan listrik agar tiap porsi ikut menanggung biaya itu.",
+        points: [
+          "Hasilnya “Biaya usaha per porsi” = total biaya bulanan ÷ porsi menu per bulan. Angka ini menjadi saran “Pakai Rp … (dari Biaya usaha)” di kalkulator, dan tidak mengubah modal maupun laba kotor di laporan.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/hpp-biaya-usaha-tablet.png",
+          alt: "Tab Biaya usaha dengan daftar biaya bulanan, porsi menu terjual per bulan, dan biaya usaha per porsi",
+          caption: "Total Rp 18.000.000 per bulan ÷ 1.200 porsi = Rp 15.000 per porsi.",
+        },
+        callout: {
+          type: "tip",
+          text: "Biaya usaha dicatat per outlet. Bila ada perubahan yang belum disimpan, muncul tulisan “Belum disimpan” dengan tombol “Simpan” dan “Batal”.",
+        },
+      },
+      {
+        id: "balik-modal",
+        title: "Tab Balik modal",
+        description:
+          "“Supaya balik modal” menunjukkan berapa porsi menu bermodal yang perlu terjual per hari agar biaya usaha tertutup, beserta perkiraan omzet per hari.",
+        points: [
+          "Isi “Untung bersih per bulan” di “Mau untung berapa?” untuk melihat target porsi per hari.",
+          "Bagian “30 hari terakhir” membandingkan laba kotor dengan biaya usaha, mis. “Sudah balik modal” atau “Belum balik modal · kurang 4 porsi menu bermodal/hari”.",
+          "Menu yang modalnya belum diisi tidak ikut dihitung.",
+          "Ketuk “Lihat laba rugi” untuk membuka laporan laba rugi.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/hpp-balik-modal-tablet.png",
+          alt: "Tab Balik modal: perlu 39 porsi per hari, target untung Rp 5.000.000 per bulan, dan status 30 hari terakhir",
+          caption: "Target untung Rp 5 juta per bulan butuh 50 porsi menu per hari.",
+        },
+      },
+    ],
+    faqs: [
+      {
+        question: "Apakah kalkulator langsung mengubah harga produk?",
+        answer: "Tidak. Harga baru dipakai hanya bila kamu menekan “Pakai harga ini” dan mengonfirmasi “Pakai harga”.",
+      },
+      {
+        question: "Saran “Pakai Rp … (dari Biaya usaha)” tidak muncul.",
+        answer:
+          "Isi dan simpan biaya usaha dulu. Saran juga disembunyikan bila penjualan menu masih sedikit; pilih “Isi perkiraan” porsi per bulan di tab Biaya usaha.",
+      },
+    ],
+    relatedSlugs: ["hpp-resep-dan-bahan-baku", "laporan-laba-rugi", "membaca-laporan-penjualan-dan-margin"],
+    keywords: ["harga jual", "kalkulator harga", "margin", "markup", "food cost", "ojol", "gofood", "grabfood", "biaya usaha", "biaya operasional", "overhead", "balik modal", "bep", "break even"],
   },
   {
     slug: "modifier-dan-opsi-tambahan",
@@ -1112,12 +1291,12 @@ export const GUIDES: GuideItem[] = [
     slug: "diskon-dan-promo",
     category: "produk",
     title: "Membuat diskon",
-    description: "Diskon persen atau nominal, untuk seluruh nota, kategori, atau produk; otomatis atau dipilih kasir.",
+    description: "Diskon persen atau nominal untuk nota, kategori, atau produk, plus diskon per baris langsung di kasir.",
     audience: ["Pemilik", "Kasir"],
-    readMinutes: 3,
-    lastUpdated: UPDATED,
+    readMinutes: 5,
+    lastUpdated: UPDATED_OCT21,
     overview:
-      "Ada dua cara memberi potongan: diskon yang dibuat pemilik (promo), dan diskon manual yang diisi kasir saat pembayaran.",
+      "Ada tiga cara memberi potongan: diskon yang dibuat pemilik (promo), diskon per baris untuk satu item di pesanan, dan diskon manual per nota yang diisi kasir saat pembayaran.",
     steps: [
       {
         id: "buat-diskon",
@@ -1144,9 +1323,46 @@ export const GUIDES: GuideItem[] = [
           text: "Diskon terkunci setelah ada pembayaran masuk. Atur diskon sebelum menerima uang.",
         },
       },
+      {
+        id: "diskon-baris",
+        title: "Diskon per baris (kasir)",
+        description: "Untuk memotong harga satu item saja, mis. kue yang agak rusak atau minuman gratis untuk pelanggan setia.",
+        steps: [
+          "Di Kasir, ketuk “Diskon” di bawah nama item di pesanan.",
+          "Di lembar “Diskon baris”, pilih “Persen” (5%, 10%, 15%, 20%, “Gratis”, atau “Lainnya”) atau “Nominal”. Di “Nominal”, bila jumlah item lebih dari 1, ada pilihan cepat “Gratis 1”.",
+          "Bila perlu, isi “Alasan diskon (opsional)” — alasan ikut tersimpan di rincian transaksi dan struk.",
+          "Periksa “Harga baris jadi”, lalu ketuk “Terapkan”.",
+        ],
+        points: [
+          "Diskon tidak boleh melebihi harga baris.",
+          "Untuk menghapus, buka lagi lembarnya lalu ketuk “Hapus diskon”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/diskon-baris-tablet.png",
+          alt: "Lembar Diskon baris untuk Es Kopi Susu Gula Aren dengan diskon 10%",
+          caption: "Diskon 10% untuk 2 Es Kopi Susu Gula Aren: Rp 50.000 jadi Rp 45.000.",
+        },
+      },
+      {
+        id: "diskon-baris-di-pesanan",
+        title: "Diskon baris di pesanan dan struk",
+        points: [
+          "Harga asli dicoret dan harga baru tampil di bawahnya. Di bawah nama item tertulis diskonnya, mis. “Diskon 10% · -Rp 5.000”.",
+          "Diskon baris dipotong lebih dulu, sebelum diskon nota, promo, dan pajak.",
+          "Diskon persen ikut menyesuaikan bila jumlah item diubah.",
+          "Diskon baris ikut tercetak di struk dan pesan WhatsApp.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/diskon-baris-kasir-tablet.png",
+          alt: "Panel pesanan Kasir di tablet dengan harga item dicoret dan keterangan diskon per baris",
+          caption: "Diskon per baris tampil di bawah nama item.",
+        },
+      },
     ],
-    relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "menambah-produk"],
-    keywords: ["diskon", "promo", "potongan", "voucher", "happy hour"],
+    relatedSlugs: ["mencatat-transaksi-di-kasir", "menerima-pembayaran-qris-dan-tunai", "menambah-produk"],
+    keywords: ["diskon", "promo", "potongan", "voucher", "happy hour", "diskon item", "diskon per item", "diskon baris", "gratis"],
   },
 
   // ───────────────────────────── JUALAN ─────────────────────────────
@@ -1157,7 +1373,7 @@ export const GUIDES: GuideItem[] = [
     description: "Tambah produk, pilih varian, catatan item, item cepat, pelanggan, lalu bayar.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "Layar “Kasir” (judul “Transaksi Baru”) adalah tempat mencatat penjualan. Pastikan kasir sudah dibuka; selama belum dibuka, layar hanya menampilkan tombol “Buka Kasir”.",
     prerequisites: ["Kasir sudah dibuka (lihat “Shift kas & tutup kasir harian”).", "Produk sudah dibuat."],
@@ -1234,7 +1450,7 @@ export const GUIDES: GuideItem[] = [
       },
       {
         question: "Bisakah memberi diskon per item?",
-        answer: "Belum. Diskon diberikan per nota di layar Pembayaran, atau lewat diskon kategori/produk yang dibuat pemilik.",
+        answer: "Bisa. Ketuk “Diskon” di bawah nama item di pesanan. Baca “Membuat diskon” bagian Diskon per baris.",
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "mencatat-pesanan-dan-denah-meja", "shift-kas-dan-tutup-kasir-harian"],
@@ -1244,10 +1460,10 @@ export const GUIDES: GuideItem[] = [
     slug: "mencatat-pesanan-dan-denah-meja",
     category: "jualan",
     title: "Pesanan berjalan & meja",
-    description: "Simpan pesanan untuk dibayar nanti, ubah, pisah pesanan, batalkan, dan kelola meja.",
+    description: "Simpan pesanan untuk dibayar nanti, terima DP, ubah, pisah pesanan, batalkan, dan kelola meja.",
     audience: ["Kasir", "Pemilik"],
-    readMinutes: 6,
-    lastUpdated: UPDATED_NEW,
+    readMinutes: 7,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "Pesanan berjalan adalah pesanan yang sudah dicatat tetapi belum dibayar, misalnya tamu makan dulu bayar belakangan. Pesanan bisa ditautkan ke meja dan dikirim ke dapur. Meja, pesanan berjalan, dan layar dapur termasuk paket Pro; pesanan yang sudah tersimpan tetap bisa dibayar walau Pro berakhir.",
     steps: [
@@ -1278,6 +1494,39 @@ export const GUIDES: GuideItem[] = [
         callout: {
           type: "info",
           text: "Mengurangi item atau membatalkan pesanan bisa meminta PIN pemilik bila “PIN pemilik untuk batal & refund” aktif di Pengaturan › “Transaksi”.",
+        },
+      },
+      {
+        id: "terima-dp",
+        title: "Terima DP untuk pesanan berjalan",
+        description: "Tamu bisa membayar sebagian dulu (DP) untuk pesanan yang belum dibayar, mis. pesanan nasi kotak.",
+        steps: [
+          "Buka “Pesanan”, ketuk pesanannya, lalu “Terima DP”.",
+          "Pilih “Dibayar lewat”, lalu isi “Nominal DP”. Nominal harus di bawah sisa tagihan; untuk melunasi, pakai “Bayar”.",
+          "Centang “Cetak bukti DP” bila perlu (muncul bila printer tersambung; gulir ke bawah bila tidak terlihat), lalu ketuk “Terima DP Rp …”.",
+        ],
+        points: ["Kasir harus sudah dibuka untuk menerima DP."],
+        image: {
+          ...TABLET,
+          src: "/panduan/dp-pesanan-tablet.png",
+          alt: "Lembar Terima DP pesanan Meja 05 dengan total Rp 147.840, nominal Rp 50.000 tunai, dan Cetak bukti DP dicentang",
+          caption: "DP pertama Rp 50.000 tunai untuk pesanan Meja 05 (total Rp 147.840).",
+        },
+      },
+      {
+        id: "pesanan-ber-dp",
+        title: "Pesanan yang sudah ada DP",
+        points: [
+          "Pesanan tetap berjalan. Rinciannya menampilkan “Sudah dibayar (DP)” dan “Sisa tagihan”; tombol “Bayar” hanya menagih sisanya.",
+          "DP bisa diterima lebih dari sekali.",
+          "Total pesanan tidak boleh lebih kecil dari DP yang sudah dibayar. Jangan kurangi item atau tambah diskon sampai total di bawah DP.",
+          "Membatalkan pesanan yang sudah ada uangnya meminta PIN pemilik bila dilakukan kasir.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/dp-pesanan-rincian-tablet.png",
+          alt: "Rincian pesanan Meja 05 di tablet dengan Sudah dibayar (DP) dan Sisa tagihan",
+          caption: "Setelah DP Rp 50.000, “Bayar” hanya menagih sisa Rp 97.840.",
         },
       },
       {
@@ -1337,8 +1586,247 @@ export const GUIDES: GuideItem[] = [
         answer: "Tombol itu hanya muncul bila fitur pesanan berjalan aktif di outlet. Hubungi pemilik untuk memeriksa pengaturannya.",
       },
     ],
-    relatedSlugs: ["layar-dapur", "menerima-pembayaran-qris-dan-tunai", "mencatat-transaksi-di-kasir"],
-    keywords: ["open bill", "pesanan", "meja", "denah", "area", "split bill", "pisah tagihan", "hold order", "simpan pesanan"],
+    relatedSlugs: ["layar-dapur", "reservasi-meja-dan-dp", "menerima-pembayaran-qris-dan-tunai"],
+    keywords: ["open bill", "pesanan", "meja", "denah", "area", "split bill", "pisah tagihan", "hold order", "simpan pesanan", "dp pesanan", "uang muka"],
+  },
+  {
+    slug: "reservasi-meja-dan-dp",
+    category: "jualan",
+    title: "Reservasi meja & uang muka (DP)",
+    description: "Catat reservasi, terima DP, beri bukti DP, potong DP saat tamu datang, dan proses DP bila batal atau tidak datang.",
+    audience: ["Kasir", "Pemilik"],
+    readMinutes: 7,
+    lastUpdated: UPDATED_OCT21,
+    overview:
+      "Reservasi dicatat di layar “Meja”, tab “Reservasi”. Reservasi bisa disertai uang muka (DP). DP ditahan sampai tamu datang, lalu otomatis dipotong dari tagihan pesanan mejanya. Reservasi termasuk paket Pro dan memakai fitur meja.",
+    prerequisites: [
+      "Meja sudah dibuat (lihat “Pesanan berjalan & meja”).",
+      "Untuk menerima DP, kasir harus sudah dibuka. Bila belum, aplikasi meminta “Buka Kasir” dulu.",
+      "Aplikasi versi terbaru. Bila bagian “Uang muka (DP)” tidak ada di form reservasi, fitur DP belum aktif untuk outletmu.",
+    ],
+    steps: [
+      {
+        id: "buat",
+        title: "Buat reservasi",
+        steps: [
+          "Buka “Meja” › tab “Reservasi”, lalu ketuk “Reservasi baru”.",
+          "Isi “Nama tamu”, “No. HP (opsional)”, “Tanggal & jam”, dan “Jumlah orang”.",
+          "Pilih “Meja” bila sudah tahu. Boleh dikosongkan dan dipilih saat tamu datang.",
+          "Ketuk “Simpan reservasi”.",
+        ],
+        points: [
+          "Durasi bawaan 90 menit. Ubah durasi dan isi catatan (mis. kursi bayi, ulang tahun) di bagian “Lainnya”.",
+          "Bila meja sudah direservasi tamu lain di jam yang beririsan, reservasi diberi tanda “Bentrok”. Reservasi tetap bisa disimpan lewat “Tetap simpan”; pindahkan salah satunya ke meja lain.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/reservasi-form-tablet.png",
+          alt: "Form Reservasi baru di tablet dengan Nama tamu Sari, No. HP, Tanggal & jam, Jumlah orang, dan Meja",
+          caption: "Isi data tamu, lalu simpan reservasi.",
+        },
+      },
+      {
+        id: "terima-dp",
+        title: "Terima DP saat reservasi",
+        steps: [
+          "Di form reservasi, bagian “Uang muka (DP)”, isi “Nominal DP” atau ketuk pilihan cepat (mis. Rp 50.000).",
+          "Pilih “Dibayar lewat” sesuai metode bayar yang aktif di outlet (mis. Tunai, QRIS, Transfer, Kartu). Untuk tunai, isi “Uang diterima” agar kembaliannya terhitung.",
+          "Ketuk “Simpan reservasi”. DP langsung tercatat.",
+        ],
+        points: [
+          "Tamu tidak membayar DP? Kosongkan “Nominal DP”.",
+          "DP juga bisa diterima atau ditambah belakangan dari rincian reservasi lewat “Terima DP” atau “Tambah DP”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/reservasi-dp-form-tablet.png",
+          alt: "Form Reservasi baru di tablet dengan bagian Uang muka (DP) Rp 50.000 tunai",
+          caption: "DP Rp 50.000 tunai dicatat saat reservasi disimpan.",
+        },
+      },
+      {
+        id: "bukti-dp",
+        title: "Bukti DP",
+        description:
+          "Setelah DP dicatat, muncul lembar “Bukti DP”. Pilih “Cetak bukti DP” (struk berjudul BUKTI DP dengan jadwal reservasi) atau “Kirim lewat WhatsApp” (hanya bila no. HP tamu diisi). Bukti bisa diberikan lagi dari rincian reservasi lewat “Cetak bukti” atau “Kirim bukti”.",
+      },
+      {
+        id: "tamu-datang",
+        title: "Tamu datang: DP dipotong dari tagihan",
+        steps: [
+          "Ketuk reservasinya, lalu “Tamu datang”. Bila belum ada meja, pilih meja tempat tamu duduk.",
+          "Pesanan meja terbuka. Tambahkan menu seperti biasa.",
+          "Saat menagih, tagihan menampilkan “Sudah dibayar (DP)” dan “Sisa tagihan”. Kasir hanya menagih sisanya.",
+        ],
+        points: ["Salah ketuk “Tamu datang”? Pakai “Aksi lain” › “Batalkan kedatangan”."],
+        image: {
+          ...TABLET,
+          src: "/panduan/reservasi-dp-detail-tablet.png",
+          alt: "Rincian reservasi Sari di tablet dengan kartu Uang muka (DP) berstatus DP tertahan dan tombol Tamu datang",
+          caption: "DP tertahan sampai tamu datang. Bilah merah di atas daftar = antrean DP perlu diproses.",
+        },
+      },
+      {
+        id: "dp-lebih",
+        title: "DP lebih besar dari tagihan",
+        description:
+          "Bila tagihan lebih kecil dari DP, layar Pembayaran menampilkan “DP lebih Rp … dari tagihan”. Pilih salah satu, lalu ketuk “Selesaikan pembayaran”:",
+        points: [
+          "“Kembalikan sisa DP” — sisanya dikembalikan ke tamu lewat metode DP. Bisa meminta PIN pemilik bila “PIN pemilik untuk batal & refund” aktif.",
+          "“Sisa DP tidak dikembalikan” — sisanya dicatat sebagai pendapatan (baris “Sisa DP”).",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/reservasi-dp-lebih-tablet.png",
+          alt: "Layar Pembayaran: tagihan Rp 30.000, sudah dibayar DP Rp 50.000, pilihan Kembalikan sisa DP atau Sisa DP tidak dikembalikan",
+          caption: "DP Rp 50.000, tagihan Rp 30.000: pilih nasib sisa Rp 20.000.",
+        },
+      },
+      {
+        id: "batal-tidak-datang",
+        title: "Reservasi batal atau tamu tidak datang",
+        steps: [
+          "Di rincian reservasi, ketuk “Aksi lain” › “Batalkan reservasi” atau “Tandai tidak datang”.",
+          "Untuk reservasi ber-DP, pilih apa yang terjadi dengan DP-nya.",
+        ],
+        points: [
+          "“Kembalikan DP” — uang dikembalikan lewat metode DP. Bila dilakukan kasir, perlu PIN pemilik.",
+          "“DP hangus” — DP dicatat sebagai pendapatan hari ini dan tidak bisa dikembalikan lagi.",
+          "“Proses nanti” — status reservasi tetap berubah, DP masuk antrean “DP perlu diproses”.",
+          "Pilihan yang sudah ditandai: “Kembalikan DP” untuk batal, “DP hangus” untuk tidak datang.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/reservasi-dp-batal-tablet.png",
+          alt: "Lembar Batalkan reservasi ber-DP dengan pilihan Kembalikan DP, DP hangus, dan Proses nanti",
+          caption: "Tiga pilihan untuk DP saat reservasi dibatalkan.",
+        },
+        callout: {
+          type: "warning",
+          title: "Tamu mungkin sedang datang",
+          text: "Mengembalikan DP sekitar jam reservasi (30 menit sebelum sampai 30 menit sesudah) memunculkan peringatan ini, karena tamu bisa saja sedang dalam perjalanan. Pastikan tamu memang batal, lalu ketuk “Tetap kembalikan”.",
+        },
+      },
+      {
+        id: "antrean-dp",
+        title: "Antrean DP perlu diproses",
+        description:
+          "DP dari reservasi batal atau tidak datang yang belum dikembalikan atau dihanguskan muncul sebagai bilah merah “… DP perlu diproses · Rp …” di tab Reservasi, dan di kartu “Perlu perhatian” Beranda pemilik. Ketuk bilahnya, buka reservasinya, lalu pilih “Kembalikan DP” atau “DP hangus”.",
+        points: [
+          "Ringkasan shift dan laporan tutup kasir memisahkan DP diterima dan DP dikembalikan, jadi uang di laci tetap cocok.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Apakah DP masuk omzet?",
+        answer:
+          "DP yang dipotong ke tagihan menjadi bagian pembayaran pesanan itu. DP hangus dan “Sisa DP” yang tidak dikembalikan dicatat sebagai pendapatan.",
+      },
+      {
+        question: "Tamu ingin memesan menu sebelum datang.",
+        answer: "Bisa, lewat pesanan awal. Baca “Pesanan awal saat reservasi”.",
+      },
+    ],
+    relatedSlugs: ["pesanan-awal-reservasi", "mencatat-pesanan-dan-denah-meja", "menerima-pembayaran-qris-dan-tunai"],
+    keywords: ["reservasi", "booking meja", "pesan meja", "dp", "uang muka", "down payment", "deposit", "tidak datang", "no show", "hangus", "bukti dp"],
+  },
+  {
+    slug: "pesanan-awal-reservasi",
+    category: "jualan",
+    title: "Pesanan awal saat reservasi",
+    description: "Catat menu yang dipesan tamu sebelum datang, lihat perkiraan total, dan kirim ke dapur saat tamu tiba.",
+    audience: ["Kasir", "Pemilik"],
+    readMinutes: 5,
+    lastUpdated: UPDATED_OCT21,
+    overview:
+      "Pesanan awal adalah menu yang sudah dipilih tamu saat reservasi, misalnya untuk acara ulang tahun. Harga dikunci saat disimpan. Stok belum dipotong dan dapur belum menerima tiket sampai tamu datang. Pesanan awal hanya ada bila fitur DP reservasi juga aktif.",
+    prerequisites: [
+      "Reservasi sudah dibuat (lihat “Reservasi meja & uang muka (DP)”).",
+      "Aplikasi versi terbaru. Bila tombol “Simpan & pilih menu” tidak muncul, fitur ini belum aktif untuk outletmu.",
+    ],
+    steps: [
+      {
+        id: "pilih-menu",
+        title: "Pilih menu",
+        steps: [
+          "Saat membuat reservasi baru, ketuk “Simpan & pilih menu”. Untuk reservasi yang sudah ada, buka rinciannya, lalu di kartu “Pesanan awal” ketuk “Pilih menu”.",
+          "Di layar “Pesanan awal”, ketuk menu untuk menambahkannya. Atur jumlah dengan − / +, dan ketuk “Tambah catatan” bila perlu.",
+          "Ketuk “Simpan ke reservasi”.",
+        ],
+        points: [
+          "Pesanan awal tanpa DP: setelah disimpan pertama kali, muncul “Bukti pesanan awal” untuk “Cetak bukti pesanan” (struk berjudul PESANAN AWAL) atau dikirim lewat WhatsApp.",
+          "Untuk mengubah, ketuk “Ubah pesanan awal” di kartu. Pesanan awal bisa diubah selama tamu belum datang dan reservasi belum ditutup.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pesanan-awal-tablet.png",
+          alt: "Layar Pesanan awal di tablet: daftar menu di kiri, 3 porsi dan perkiraan total Rp 68.000 di kanan",
+          caption: "Pilih menu, lalu “Simpan ke reservasi”.",
+        },
+      },
+      {
+        id: "perkiraan",
+        title: "Perkiraan total & saran DP",
+        points: [
+          "“Perkiraan total” sudah termasuk pajak dan biaya layanan saat ini. Promo dan angka akhir dihitung saat menagih.",
+          "Kartu “Pesanan awal” di rincian reservasi menampilkan jumlah porsi, perkiraan total, dan “Sisa perkiraan setelah DP”.",
+          "Saat menerima DP, ada “Saran dari pesanan awal”, mis. “50% · Rp 23.000” atau “Penuh · Rp 46.000”.",
+          "Bukti DP untuk reservasi dengan pesanan awal memuat daftar menu, “Perkiraan total”, dan “Sisa (perkiraan)”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pesanan-awal-dp-tablet.png",
+          alt: "Lembar Terima DP dengan saran dari pesanan awal 50% dan penuh, di atas rincian reservasi Wati",
+          caption: "Saran DP dihitung dari perkiraan pesanan awal.",
+        },
+      },
+      {
+        id: "tamu-datang",
+        title: "Tamu datang: kirim ke dapur",
+        steps: [
+          "Ketuk “Tamu datang” dan pilih meja bila perlu.",
+          "Muncul “Kirim pesanan awal ke dapur?”. Pilih “Kirim ke dapur” agar tiket dapur dibuat sekarang, atau “Nanti”.",
+          "Pesanan awal menjadi pesanan meja biasa: tambah menu bila perlu, lalu tagih seperti biasa. DP otomatis dipotong.",
+        ],
+        points: [
+          "Memilih “Nanti”: tiket ikut terkirim saat pesanan disimpan atau dibayar, atau lewat tombol “Kirim pesanan awal ke dapur” di rincian pesanan.",
+          "Bila stok menu kurang, ada pilihan “Ubah pesanan” untuk mengganti menunya.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pesanan-awal-dapur-tablet.png",
+          alt: "Lembar Kirim pesanan awal ke dapur? dengan pilihan Kirim ke dapur dan Nanti",
+          caption: "Saat tamu datang, pilih kapan pesanan awal dikirim ke dapur.",
+        },
+      },
+      {
+        id: "hapus",
+        title: "Hapus pesanan awal",
+        points: [
+          "Di layar “Pesanan awal”, kurangi semua menu sampai kosong, ketuk “Simpan ke reservasi”, lalu konfirmasi “Hapus pesanan awal”. DP yang sudah diterima tetap tertahan.",
+          "Reservasi ber-DP yang batal atau tidak datang: pesanan awalnya ikut dihapus saat DP dikembalikan atau dihanguskan.",
+          "Reservasi tanpa DP yang batal atau tidak datang: pesanan awalnya masuk antrean “… reservasi perlu diproses”. Buka reservasinya lalu ketuk “Hapus pesanan awal”.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Apakah stok berkurang saat pesanan awal disimpan?",
+        answer: "Tidak. Stok baru dicek saat tamu datang, dan berkurang saat pesanan ditagih seperti pesanan biasa.",
+      },
+      {
+        question: "Harga menu naik sebelum tamu datang. Harga mana yang dipakai?",
+        answer: "Harga saat pesanan awal disimpan. Pajak, biaya layanan, dan promo dihitung ulang saat menagih.",
+      },
+      {
+        question: "Tombol “Simpan & pilih menu” dan kartu “Pesanan awal” tidak ada.",
+        answer:
+          "Perbarui aplikasi ke versi terbaru di semua perangkat. Bila tetap tidak muncul, fitur pesanan awal belum aktif untuk outletmu.",
+      },
+    ],
+    relatedSlugs: ["reservasi-meja-dan-dp", "layar-dapur", "mencatat-pesanan-dan-denah-meja"],
+    keywords: ["pesanan awal", "pre order", "preorder", "pesan duluan", "pesan sebelum datang", "reservasi", "menu acara", "dp"],
   },
   {
     slug: "layar-dapur",
@@ -1793,11 +2281,11 @@ export const GUIDES: GuideItem[] = [
   {
     slug: "membatalkan-transaksi-void-refund",
     category: "jualan",
-    title: "Membatalkan transaksi (void & refund)",
-    description: "Batalkan transaksi dari Riwayat dengan alasan, persetujuan PIN pemilik, dan pengembalian uang.",
+    title: "Membatalkan transaksi (void, refund penuh & refund sebagian)",
+    description: "Batalkan transaksi dari Riwayat, atau kembalikan sebagian barang saja, dengan alasan dan persetujuan PIN pemilik.",
     audience: ["Kasir", "Pemilik"],
-    readMinutes: 3,
-    lastUpdated: UPDATED,
+    readMinutes: 5,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "Transaksi yang sudah dibayar tidak dihapus, tetapi dibatalkan dengan catatan. Uang yang sudah diterima dicatat kembali ke pelanggan, dan stok dikembalikan.",
     steps: [
@@ -1811,10 +2299,49 @@ export const GUIDES: GuideItem[] = [
         id: "pilih-jenis",
         title: "Pilih jenis dan alasan",
         steps: [
-          "Pilih “Refund penuh” atau “Void”.",
+          "Pilih “Refund penuh”, “Refund sebagian”, atau “Void”.",
           "Pilih alasan: “Salah input”, “Pelanggan batal”, “Pelanggan komplain”, atau “Transaksi ganda”, dan tambahkan keterangan bila perlu.",
           "Pada “Kembalikan lewat”, pilih “Sesuai pembayaran” atau cara lain.",
         ],
+      },
+      {
+        id: "refund-sebagian",
+        title: "Refund sebagian per barang",
+        description: "Dipakai bila hanya sebagian barang yang dikembalikan, mis. 1 dari 2 es kopi tumpah.",
+        steps: [
+          "Di lembar Refund, pilih “Refund sebagian”.",
+          "Di “Barang yang dikembalikan”, tekan + pada barang yang dikembalikan. “Pilih semua” memilih seluruh barang yang tersisa.",
+          "Pilih alasan dan “Kembalikan lewat” (bawaan “Sesuai pembayaran”).",
+          "Periksa “Uang dikembalikan”, lalu ketuk “Refund Rp …”.",
+        ],
+        points: [
+          "Uangnya dihitung dari harga barang itu termasuk bagian diskon, pajak, dan biaya layanannya.",
+          "Stok barang yang dikembalikan (termasuk bahan resepnya) masuk lagi, dan poin member dikurangi sebanding.",
+          "Refund sebagian bisa diulang. Bila semua barang sudah dikembalikan, transaksi menjadi refund penuh.",
+          "Refund sebagian hanya untuk transaksi yang sudah lunas.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/refund-sebagian-tablet.png",
+          alt: "Lembar Refund sebagian di tablet: 1 Es Kopi Susu Gula Aren dipilih, uang dikembalikan sesuai pembayaran",
+          caption: "Pilih jumlah barang yang dikembalikan; uangnya dihitung otomatis.",
+        },
+      },
+      {
+        id: "setelah-refund-sebagian",
+        title: "Setelah refund sebagian",
+        description:
+          "Detail transaksi menampilkan lencana “Refund sebagian”, keterangan “… dikembalikan” di barangnya, baris “Refund sebagian” dan “Total setelah refund”, serta “Riwayat refund sebagian” (waktu, kasir, barang, alasan, dan penyetuju). Ketuk “Cetak struk refund” untuk mencetak struk refund.",
+        points: [
+          "Omzet di Laporan dan Laba rugi berkurang pada tanggal transaksi aslinya.",
+          "Uang yang dikembalikan tercatat di shift saat refund dilakukan, sebagai baris “Refund sebagian” di laporan tutup kasir.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/refund-sebagian-detail-tablet.png",
+          alt: "Detail transaksi dengan lencana Refund sebagian, 1 dikembalikan, dan Total setelah refund",
+          caption: "Detail transaksi setelah 1 barang direfund.",
+        },
       },
       {
         id: "persetujuan",
@@ -1835,7 +2362,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "perubahan-ditolak", "notifikasi"],
-    keywords: ["void", "refund", "batal", "retur", "pengembalian", "salah input"],
+    keywords: ["void", "refund", "batal", "retur", "pengembalian", "salah input", "refund sebagian", "retur sebagian", "kembalikan satu barang"],
   },
 
   // ───────────────────────────── SHIFT ─────────────────────────────
@@ -1936,10 +2463,10 @@ export const GUIDES: GuideItem[] = [
     slug: "stok-barang-dan-stok-masuk",
     category: "stok",
     title: "Stok barang: stok masuk, penyesuaian, stok menipis",
-    description: "Pantau stok, catat barang datang, koreksi stok hilang/rusak, dan atur stok minimum.",
+    description: "Pantau stok, catat barang datang, koreksi stok hilang/rusak, atur stok minimum, dan pantau bahan baku menipis.",
     audience: ["Pemilik"],
-    readMinutes: 4,
-    lastUpdated: UPDATED_NEW,
+    readMinutes: 6,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "Stok hanya dihitung untuk produk yang “Lacak stok”-nya menyala. Stok berkurang saat pesanan ditagih, bukan saat pesanan disimpan. Semua menu stok ada di “Inventori” (tidak tersedia untuk usaha jasa dan penyewaan).",
     steps: [
@@ -1947,7 +2474,7 @@ export const GUIDES: GuideItem[] = [
         id: "hub",
         title: "Inventori",
         description:
-          "Menu “Inventori” berisi “Stok barang”, “Bahan baku”, “Stok opname”, “Pembelian”, “Supplier”, dan “Transfer stok”, ditambah kartu “Saran belanja ke pemasok” dan “Gerakan stok terakhir”.",
+          "Menu “Inventori” berisi “Stok barang”, “Bahan baku”, “Barang keluar”, “HPP & Harga jual”, “Stok opname”, “Pembelian”, “Supplier”, dan “Transfer stok”, ditambah kartu “Saran belanja ke pemasok” dan “Gerakan stok terakhir”.",
         image: {
           ...TABLET,
           src: "/panduan/inventori-tablet.png",
@@ -1981,9 +2508,124 @@ export const GUIDES: GuideItem[] = [
           "Ketuk “Restok” di kartu itu untuk membuka daftar stok menipis.",
         ],
       },
+      {
+        id: "bahan-menipis",
+        title: "Bahan baku menipis",
+        description:
+          "Bahan baku masuk daftar “Perlu dibeli” bila stoknya sama dengan atau di bawah “Stok minimum”, minus, atau diperkirakan habis kurang dari 7 hari menurut pemakaian 30 hari terakhir. Aturan yang sama dipakai di Beranda, tab “Perlu dibeli”, “Saran belanja ke pemasok”, dan notifikasi.",
+        points: [
+          "Di Beranda pemilik, kartu “Perlu perhatian” menampilkan “… bahan baku menipis” beserta namanya (merah bila ada yang habis). Ketuk “Lihat” untuk membuka daftarnya.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/bahan-menipis-beranda-tablet.png",
+          alt: "Kartu Perlu perhatian di Beranda tablet dengan baris 3 bahan baku menipis",
+          caption: "Beranda pemilik: “3 bahan baku menipis” di kartu Perlu perhatian.",
+        },
+      },
+      {
+        id: "bahan-perlu-dibeli",
+        title: "Tab Perlu dibeli",
+        description:
+          "Buka “Inventori” › “Bahan baku” › tab “Perlu dibeli”. Tiap bahan ditandai “Habis”, “… menipis”, atau keterangan “Diperkirakan habis … hari lagi”. Dari sini kamu bisa langsung “Buat draf PO per supplier”.",
+        image: {
+          ...TABLET,
+          src: "/panduan/bahan-perlu-dibeli-tablet.png",
+          alt: "Tab Perlu dibeli di halaman Bahan baku tablet: gula aren habis, susu menipis, biji kopi diperkirakan habis 3 hari lagi",
+          caption: "Bahan yang perlu dibeli, termasuk yang diperkirakan habis dalam 7 hari.",
+        },
+      },
+      {
+        id: "bahan-notifikasi",
+        title: "Notifikasi bahan baku",
+        description:
+          "Pemilik menerima notifikasi “Bahan baku menipis” atau “Bahan baku habis” di menu Notifikasi (kelompok “Stok”). Notifikasi muncul sekali saat bahan turun, tidak diulang setiap hari. Setelah stok diisi cukup lalu turun lagi, notifikasi baru muncul.",
+        image: {
+          ...TABLET,
+          src: "/panduan/bahan-menipis-notifikasi-tablet.png",
+          alt: "Halaman Notifikasi tablet dengan notifikasi Bahan baku habis dan Bahan baku menipis",
+          caption: "Notifikasi bahan baku menipis dan habis.",
+        },
+      },
     ],
-    relatedSlugs: ["pembelian-po-dan-supplier", "stok-opname", "hpp-resep-dan-bahan-baku"],
-    keywords: ["stok", "inventori", "stock", "barang masuk", "restok", "stok minimum", "stok habis", "penyesuaian"],
+    relatedSlugs: ["barang-keluar", "pembelian-po-dan-supplier", "stok-opname"],
+    keywords: ["stok", "inventori", "stock", "barang masuk", "restok", "stok minimum", "stok habis", "penyesuaian", "bahan menipis", "bahan habis", "perlu dibeli"],
+  },
+  {
+    slug: "barang-keluar",
+    category: "stok",
+    title: "Barang keluar: pemakaian bahan & produk",
+    description: "Lihat bahan dan produk yang keluar per tanggal beserta nilainya, ekspor CSV, dan cek riwayat stok per tanggal.",
+    audience: ["Pemilik"],
+    readMinutes: 4,
+    lastUpdated: UPDATED_OCT21,
+    overview:
+      "“Barang keluar” merangkum bahan baku dan produk yang berkurang dari stok: terpakai & terjual, susut & penyesuaian, dan transfer keluar. Cocok untuk mengecek pemakaian harian atau mencocokkan dengan belanja.",
+    steps: [
+      {
+        id: "buka",
+        title: "Buka dan pilih periode",
+        steps: [
+          "Buka “Inventori” › “Barang keluar”.",
+          "Pilih periode: “Hari ini”, “Kemarin”, “7 hari terakhir”, “30 hari terakhir”, atau “Pilih tanggal…” (maks 92 hari).",
+          "Saring “Semua”, “Bahan baku”, atau “Produk”, atau cari lewat “Cari barang”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/inventori-tablet.png",
+          alt: "Halaman Inventori di tablet dengan kartu Barang keluar dan HPP & Harga jual",
+          caption: "Kartu “Barang keluar” ada di halaman Inventori.",
+        },
+      },
+      {
+        id: "baca-angka",
+        title: "Membaca angkanya",
+        points: [
+          "“Nilai barang keluar” = jumlah × modal saat barang dipakai. Untuk data lama yang belum menyimpan modal, dipakai modal saat ini.",
+          "Rinciannya: “Terpakai & terjual” (sudah dikurangi barang yang kembali karena refund), “Susut & penyesuaian”, dan “Transfer keluar”.",
+          "Barang tanpa harga tetap dihitung jumlahnya, dengan peringatan “… barang belum punya harga”.",
+          "“Per hari” berisi grafik dan daftar per tanggal. Ketuk satu hari untuk melihat barang keluar hari itu saja.",
+          "Ketuk satu barang untuk melihat rinciannya: sebab keluar, keluar per hari, barang masuk, dan gerakan stok di periode itu.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/barang-keluar-tablet.png",
+          alt: "Layar Barang keluar 7 hari terakhir: daftar barang, nilai barang keluar, dan grafik per hari",
+          caption: "Barang keluar 7 hari terakhir: daftar di kiri, ringkasan nilai dan grafik per hari di kanan.",
+        },
+      },
+      {
+        id: "semua-outlet",
+        title: "Gabungan semua outlet",
+        description:
+          "Bila usaha punya lebih dari satu outlet, ketuk pilihan outlet lalu pilih “Semua outlet” untuk melihat gabungannya. Pada pilihan ini, transfer antar-outlet tidak dihitung sebagai barang keluar.",
+      },
+      {
+        id: "ekspor",
+        title: "Ekspor CSV",
+        description:
+          "Ketuk “Ekspor CSV” untuk membagikan berkas berisi ringkasan, rincian per barang, dan per hari. Berkas bisa dibuka di Excel atau Google Sheets.",
+      },
+      {
+        id: "riwayat-stok",
+        title: "Riwayat stok per tanggal",
+        steps: [
+          "Buka “Inventori” › “Stok barang” atau “Bahan baku”, lalu pilih barangnya.",
+          "Ketuk “Riwayat stok”.",
+          "Ketuk “Semua tanggal (200 terbaru)”, lalu pilih periode untuk melihat gerakan stok di tanggal itu saja.",
+          "Ketuk ✕ (“Hapus saringan tanggal”) untuk kembali ke semua tanggal.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Kenapa nilai barang keluar berbeda dengan total belanja?",
+        answer:
+          "Nilai barang keluar memakai modal saat barang dipakai (harga rata-rata bahan atau modal produk), bukan harga beli terakhir. Barang yang belum punya harga juga tidak ikut dinilai.",
+      },
+    ],
+    relatedSlugs: ["stok-barang-dan-stok-masuk", "hpp-resep-dan-bahan-baku", "stok-opname"],
+    keywords: ["barang keluar", "pemakaian bahan", "bahan terpakai", "usage", "riwayat stok", "kartu stok", "stock card", "mutasi stok", "csv"],
   },
   {
     slug: "pembelian-po-dan-supplier",
@@ -2171,7 +2813,7 @@ export const GUIDES: GuideItem[] = [
     description: "Omzet, laba kotor, produk terjual, jam ramai, per kasir, riwayat, dan ekspor CSV.",
     audience: ["Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "Menu “Laporan” (khusus pemilik) merangkum penjualan per periode. Untuk melihat transaksi satu per satu, gunakan “Riwayat”.",
     prerequisites: ["Harga modal (HPP) produk sudah diisi agar laba kotor akurat."],
@@ -2180,13 +2822,13 @@ export const GUIDES: GuideItem[] = [
         id: "periode",
         title: "Pilih periode dan outlet",
         description:
-          "Pilih “Hari ini”, “7 hari terakhir”, “30 hari terakhir”, atau “Pilih tanggal…” (maks 92 hari). Bila punya beberapa outlet, pilih “Semua outlet” atau satu outlet.",
+          "Pilih “Hari ini”, “Kemarin”, “7 hari terakhir”, “30 hari terakhir”, “Bulan ini”, “Bulan lalu”, atau “Pilih tanggal…” (maks 92 hari). Bila punya beberapa outlet, pilih “Semua outlet” atau satu outlet.",
       },
       {
         id: "ringkasan",
         title: "Ringkasan",
         description:
-          "Tab “Ringkasan” menampilkan “Omzet”, “Transaksi”, “Rata-rata/transaksi”, “Laba kotor”, diskon, pajak, biaya layanan, “Piutang kasbon”, perbandingan dengan periode lalu, grafik omzet, “Per metode bayar”, dan “Wawasan periode ini”.",
+          "Tab “Ringkasan” menampilkan “Omzet”, “Transaksi”, “Rata-rata/transaksi”, “Laba kotor”, diskon, pajak, biaya layanan, “Piutang kasbon”, kartu “Laba rugi”, perbandingan dengan periode lalu, grafik omzet, “Per metode bayar”, dan “Wawasan periode ini”. Untuk laba setelah biaya usaha, baca “Laporan laba rugi”.",
         image: {
           ...TABLET,
           src: "/panduan/laporan-tablet.png",
@@ -2229,8 +2871,97 @@ export const GUIDES: GuideItem[] = [
         answer: "Di Laporan bagian “Laporan tutup kasir”, atau “Lainnya” › “Tutup Kasir”.",
       },
     ],
-    relatedSlugs: ["hpp-resep-dan-bahan-baku", "shift-kas-dan-tutup-kasir-harian", "membatalkan-transaksi-void-refund"],
+    relatedSlugs: ["laporan-laba-rugi", "hpp-resep-dan-bahan-baku", "shift-kas-dan-tutup-kasir-harian"],
     keywords: ["laporan", "report", "omzet", "laba", "profit", "margin", "terlaris", "jam ramai", "csv", "excel", "riwayat"],
+  },
+  {
+    slug: "laporan-laba-rugi",
+    category: "laporan",
+    title: "Laporan laba rugi",
+    description: "Baca pendapatan, laba kotor, pendapatan lain, biaya usaha, dan laba bersih per periode.",
+    audience: ["Pemilik"],
+    readMinutes: 5,
+    lastUpdated: UPDATED_OCT21,
+    overview:
+      "“Laba rugi” menunjukkan untung bersih usaha setelah modal menu (HPP) dan biaya usaha bulanan. Angkanya dihitung dari data di perangkat, jadi tetap bisa dibuka saat offline.",
+    prerequisites: [
+      "Modal (HPP) menu sudah diisi. Penjualan menu tanpa modal tidak dihitung ke laba.",
+      "Biaya usaha sudah diisi di “HPP & Harga jual” › “Biaya usaha”. Tanpa itu, laba bersih belum dikurangi sewa, gaji, dan biaya bulanan lain.",
+    ],
+    steps: [
+      {
+        id: "buka",
+        title: "Buka laba rugi",
+        steps: [
+          "Buka “Laporan”, tab “Ringkasan”, lalu ketuk kartu “Laba rugi”. Bisa juga dari “HPP & Harga jual” › “Balik modal” › “Lihat laba rugi”.",
+          "Pilih outlet dan periode. Selain pilihan biasa, ada “Bulan ini” dan “Bulan lalu”.",
+        ],
+        description: "Periode dan outlet sama dengan yang dipilih di Laporan, jadi angkanya mudah dicocokkan.",
+        image: {
+          ...TABLET,
+          src: "/panduan/laporan-tablet.png",
+          alt: "Laporan Ringkasan di tablet dengan kartu Laba rugi di bawah angka utama",
+          caption: "Kartu “Laba rugi” di tab Ringkasan Laporan.",
+        },
+      },
+      {
+        id: "cara-baca",
+        title: "Cara membaca",
+        points: [
+          "“Pendapatan” = omzet dikurangi pajak (PB1). Pajak dititipkan untuk disetor, jadi bukan pendapatan.",
+          "“Laba kotor” = penjualan menu bermodal dikurangi “Modal terjual (HPP)”. Angkanya sama dengan Laba kotor di Laporan.",
+          "“Pendapatan lain” = uang tanpa modal: DP hangus & sisa DP, biaya layanan, dan pembulatan. Ikut menambah laba bersih.",
+          "“Biaya usaha” = biaya bulanan yang diisi, dibagi rata per hari kalender. Contoh: 7 hari di bulan Oktober (31 hari) memakai 7/31 dari biaya bulanan. Sebulan penuh = tepat biaya bulanan.",
+          "“Laba bersih” = laba kotor + pendapatan lain − biaya usaha. Bila minus, tertulis “Rugi bersih” berwarna merah.",
+          "Di bawah angka laba bersih ada perbandingan dengan periode sebelumnya, mis. “Naik Rp … vs periode lalu”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/laba-rugi-tablet.png",
+          alt: "Layar Laba rugi 7 hari terakhir: pendapatan, laba kotor, biaya usaha diprorata, dan laba bersih",
+          caption: "Contoh kedai kopi seminggu: laba kotor Rp 4.719.000, biaya usaha Rp 2.912.904, laba bersih Rp 2.090.826. Sebagian kecil penjualan (Rp 286.000) belum punya modal.",
+        },
+        callout: {
+          type: "info",
+          text: "Transaksi batal dan refund tidak dihitung. Refund sebagian mengurangi penjualan di tanggal transaksinya.",
+        },
+      },
+      {
+        id: "syarat",
+        title: "Agar angkanya lengkap",
+        points: [
+          "Muncul “… baris penjualan (Rp …) belum punya modal”? Penjualan itu tidak dihitung ke laba. Ketuk “Buka HPP menu” dan isi modalnya.",
+          "Biaya usaha “Belum diisi”? Ketuk “Isi biaya usaha”, lalu tambahkan sewa, gaji, listrik, dan biaya bulanan lain.",
+          "Bila belum ada satu pun menu bermodal, laba kotor dan laba bersih tampil “—”.",
+          "Pada “Semua outlet”, biaya usaha semua outlet dijumlahkan. Outlet yang belum mengisi diberi catatan.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/laba-rugi-biaya-kosong-tablet.png",
+          alt: "Laba rugi dengan biaya usaha belum diisi dan tombol Isi biaya usaha",
+          caption: "Biaya usaha belum diisi: laba bersih belum dikurangi biaya bulanan.",
+        },
+        callout: {
+          type: "warning",
+          text: "Biaya usaha memakai isian bulanan saat ini, juga untuk periode yang sudah lewat. Bila biaya berubah, angka periode lama ikut berubah.",
+        },
+      },
+      {
+        id: "ekspor",
+        title: "Ekspor CSV",
+        description:
+          "Ketuk “Ekspor CSV” untuk membagikan rincian laba rugi, biaya usaha per kelompok (per bulan dan diprorata), jumlah hari periode, dan catatannya.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Kenapa laba bersih di sini beda dengan “Laba bersih perkiraan” di Balik modal?",
+        answer:
+          "Balik modal memakai 30 hari penuh sampai kemarin, tanpa pendapatan lain. Laba rugi memakai periode yang kamu pilih dan ikut menghitung pendapatan lain.",
+      },
+    ],
+    relatedSlugs: ["membaca-laporan-penjualan-dan-margin", "harga-jual-biaya-usaha-dan-balik-modal", "hpp-resep-dan-bahan-baku"],
+    keywords: ["laba rugi", "profit loss", "p&l", "laba bersih", "rugi", "untung bersih", "biaya operasional", "biaya usaha"],
   },
 
   // ───────────────────────────── TIM ─────────────────────────────
@@ -2488,7 +3219,7 @@ export const GUIDES: GuideItem[] = [
     description: "Isi menu Notifikasi, cara mengaktifkan peringatan pemilik di HP, dan pilihan kategorinya.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 4,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT21,
     overview:
       "Ada dua jenis notifikasi: daftar di menu “Notifikasi” (ikon lonceng) untuk semua pengguna, dan peringatan pemilik yang muncul di HP walau aplikasi tertutup.",
     steps: [
@@ -2496,7 +3227,7 @@ export const GUIDES: GuideItem[] = [
         id: "menu-notifikasi",
         title: "Menu Notifikasi",
         description:
-          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok menipis, kasbon jatuh tempo, pesanan siap disajikan, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
+          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap disajikan, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
         points: [
           "Untuk membersihkan tanda baru, ketuk “Tandai semua dibaca”. Muncul konfirmasi “Tandai semua dibaca?”; ketuk “Tandai dibaca”.",
         ],
