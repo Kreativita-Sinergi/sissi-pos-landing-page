@@ -166,6 +166,9 @@ const HOUR_WEIGHTS: [number, number][] = [
   [7, 3], [8, 7], [9, 6], [10, 4], [11, 5], [12, 8], [13, 7], [14, 4], [15, 5], [16, 7], [17, 8], [18, 7], [19, 6], [20, 4], [21, 2],
 ];
 
+// Alasan diskon baris contoh (dipilih dari qty — tidak memakai rng agar data contoh lain tidak bergeser).
+const LINE_DISCOUNT_REASONS = ["Pelanggan setia", "Kemasan penyok", ""];
+
 function makeLine(r: ReturnType<typeof rng>): RawLine {
   const p = r.weighted(PRODUCTS.map((x) => [x, x.weight] as [Product, number]));
   const v = p.variants ? r.pick(p.variants) : null;
@@ -182,6 +185,7 @@ function makeLine(r: ReturnType<typeof rng>): RawLine {
     unit_price: unit,
     modifiers: mods.map((m) => ({ name: m.name, price: m.price })),
     discount,
+    discount_reason: discount ? LINE_DISCOUNT_REASONS[qty % LINE_DISCOUNT_REASONS.length] : "",
     subtotal: gross - discount,
     note: r.pick(NOTES),
     cost_price: p.cost === null ? null : p.cost + Math.round((v?.add ?? 0) * 0.35),
@@ -272,6 +276,9 @@ function generate(now: number): Db {
         }
         const paidTotal = payments.reduce((a, p) => a + p.amount, 0);
         const seq = daySales.length + 1;
+        // Persetujuan diskon kasir (pin_for_discount): sebagian diskon baris kasir tanpa PIN pemilik (app lama).
+        const lineDisc = lines.some((l) => l.discount > 0);
+        const unapproved = lineDisc && actor !== OWNER_CASHIER && seq % 2 === 0;
         const receipt = `${o.code}-${day.slice(2).replace(/-/g, "")}-${String(seq).padStart(3, "0")}`;
         daySales.push({
           id: uuid(`sale:${day}:${o.id}:${i}`),
@@ -299,6 +306,8 @@ function generate(now: number): Db {
           notes: r.next() < 0.05 ? "Pelanggan langganan, minta struk dikirim WA" : null,
           void_reason: status === "void" ? r.pick(VOID_REASONS) : status === "refunded" ? "Minuman tumpah, uang dikembalikan" : null,
           approved_by_name: status === "void" || status === "refunded" ? USER.name : null,
+          discount_unapproved: unapproved,
+          discount_approved_by_name: lineDisc && !unapproved && actor !== OWNER_CASHIER ? USER.name : null,
           settled_at: status === "paid" ? iso : null,
           due_at: status === "unpaid" || status === "partial" ? new Date(t + 14 * DAY).toISOString() : null,
           queue_no: r.next() < 0.6 ? seq : null,
@@ -599,7 +608,7 @@ function listItem(s: RawSale): SaleListItem {
     cashier_id: s.cashier_id, cashier_name: s.cashier_name, customer_name: s.customer_name, table_name: s.table_name,
     order_type: s.order_type, status: s.status, payment_method: s.payment_method, total: s.total, paid_total: s.paid_total,
     items_count: s.items_count, reservation_id: s.reservation_id ?? null, deposit: s.deposit ?? null,
-    refunded_total: s.refunded_total ?? 0,
+    refunded_total: s.refunded_total ?? 0, discount_unapproved: s.discount_unapproved ?? false,
   };
 }
 
@@ -982,6 +991,10 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
           if (inDay(rf.refunded_at)) out.push({ ...base, ...ref, kind: "partial_refund", at: rf.refunded_at, approver: USER.name, amount: rf.amount, note: rf.reason });
         }
         if (x.discount_total > 0) out.push({ ...base, ...ref, kind: "manual_discount", at: x.paid_at, amount: x.discount_total, note: "Diskon nota 10%" });
+        if (x.discount_unapproved) {
+          const amount = x.items.reduce((a, l) => a + l.discount, 0);
+          out.push({ ...base, ...ref, kind: "discount_unapproved", at: x.paid_at, amount, note: "" });
+        }
       }
       for (const sh of db().shifts.filter(byOutlet(q.outlet_id))) {
         const ref = { outlet_id: sh.outlet_id, outlet_name: sh.outlet_name, ref_id: sh.id };

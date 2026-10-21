@@ -47,6 +47,7 @@ const KIND_ICON: Record<ActivityKind, React.ComponentType<{ size?: number; "aria
   refund: Undo2,
   partial_refund: Undo2,
   manual_discount: Percent,
+  discount_unapproved: ShieldAlert,
   shift_closed: Wallet,
   cash_in: ArrowDownLeft,
   cash_out: ArrowUpRight,
@@ -63,6 +64,8 @@ function toneOf(a: ActivityItem): Tone {
       return "warning";
     case "manual_discount":
       return "warning";
+    case "discount_unapproved":
+      return "danger";
     case "shift_closed":
       if (a.difference === null || a.difference === 0) return "success";
       return a.difference < 0 ? "danger" : "warning";
@@ -114,6 +117,16 @@ function describe(a: ActivityItem): { main: React.ReactNode; extra: string[] } {
           <>
             Diskon manual <strong className="font-semibold tabular-nums">{amount ?? "—"}</strong>
             {note ? ` (${note})` : ""} di {receipt}
+          </>
+        ),
+        extra: a.actor ? [`oleh ${a.actor}`] : [],
+      };
+    case "discount_unapproved":
+      return {
+        main: (
+          <>
+            Diskon <strong className="font-semibold tabular-nums">{amount ?? "—"}</strong>
+            {note ? ` (${note})` : ""} di {receipt} diberikan tanpa persetujuan pemilik
           </>
         ),
         extra: a.actor ? [`oleh ${a.actor}`] : [],
@@ -171,7 +184,8 @@ function describe(a: ActivityItem): { main: React.ReactNode; extra: string[] } {
 function hrefOf(a: ActivityItem): string | null {
   if (a.kind === "change") return changeHref(a);
   if (!a.ref_id) return null;
-  if (a.kind === "void" || a.kind === "refund" || a.kind === "partial_refund" || a.kind === "manual_discount") return `/dasbor/transaksi/${a.ref_id}`;
+  if (a.kind === "void" || a.kind === "refund" || a.kind === "partial_refund" || a.kind === "manual_discount" || a.kind === "discount_unapproved")
+    return `/dasbor/transaksi/${a.ref_id}`;
   if (a.kind === "shift_closed" || a.kind === "cash_in" || a.kind === "cash_out") return `/dasbor/shift/${a.ref_id}`;
   return null;
 }
@@ -434,14 +448,14 @@ async function loadSummary(base: ActivityQuery, signal: AbortSignal): Promise<Su
   // Jumlah per jenis dari meta.total (per_page=1); tutup kasir & perubahan data diambil penuh untuk menghitung
   // selisih kurang dan perubahan metode pembayaran.
   const others = ACTIVITY_KINDS.filter((k) => k !== "shift_closed" && k !== "change");
-  // `partial_refund` (2026-10-21) belum dikenal server lama → 0, jangan gagalkan ringkasan.
+  // `partial_refund`/`discount_unapproved` (2026-10-21) belum dikenal server lama → 0, jangan gagalkan ringkasan.
   const totals = Promise.all(
     others.map((k) =>
       api
         .activity({ ...base, kind: [k], page: 1, per_page: 1 }, signal)
         .then((r) => [k, r.meta.total] as const)
         .catch((err: unknown) => {
-          if (k === "partial_refund" && !signal.aborted) return [k, 0] as const;
+          if ((k === "partial_refund" || k === "discount_unapproved") && !signal.aborted) return [k, 0] as const;
           throw err;
         })
     )
@@ -482,7 +496,19 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
         tone={s.short.count > 0 ? "danger" : "success"}
         hint={`${s.short.count.toLocaleString("id-ID")} dari ${s.short.closes.toLocaleString("id-ID")} tutup kasir`}
       />
-      <StatCard label="Diskon manual" icon={<Percent size={14} aria-hidden />} value={c.manual_discount} hint="transaksi dengan diskon non-otomatis" />
+      <StatCard
+        label="Diskon manual"
+        icon={<Percent size={14} aria-hidden />}
+        value={c.manual_discount}
+        tone={c.discount_unapproved > 0 ? "danger" : "neutral"}
+        hint={
+          c.discount_unapproved > 0 ? (
+            <span className="font-semibold text-danger">{c.discount_unapproved.toLocaleString("id-ID")} tanpa persetujuan pemilik</span>
+          ) : (
+            "transaksi dengan diskon non-otomatis"
+          )
+        }
+      />
       <StatCard
         label="Kas masuk / keluar"
         icon={<ArrowUpRight size={14} aria-hidden />}

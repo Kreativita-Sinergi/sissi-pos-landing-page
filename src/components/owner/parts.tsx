@@ -9,6 +9,7 @@ import { depositBadge, labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATU
 import { formatShortDate, formatStamp, formatTime, zonedDay } from "@/lib/owner/tz";
 import { isPreorderDeposit } from "@/lib/owner/cancelSale";
 import { hasPartialRefund, refundedTotalOf, shownTotalOf } from "@/lib/owner/saleRefunds";
+import { isDiscountUnapproved } from "@/lib/owner/saleDiscount";
 
 /**
  * Status transaksi. Transaksi DP reservasi ([deposit], api.md `SaleListItem.deposit`) memakai label DP-nya
@@ -23,6 +24,7 @@ export function SaleStatusBadge({
   preorder = false,
   noMoney = false,
   partialRefund = false,
+  discountUnapproved = false,
 }: {
   status: string;
   long?: boolean;
@@ -31,6 +33,8 @@ export function SaleStatusBadge({
   /** Tidak ada uang DP dipegang (`paid_total` ≤ 0): pesanan awal tanpa DP tidak dilabeli "DP". */
   noMoney?: boolean;
   partialRefund?: boolean;
+  /** Diskon kasir tanpa persetujuan pemilik (penanda server `discount_unapproved`). */
+  discountUnapproved?: boolean;
 }) {
   const dp = depositBadge(deposit, { preorder, noMoney, long });
   const badge = dp ? (
@@ -42,12 +46,14 @@ export function SaleStatusBadge({
   if (dp?.extra) extra.push(dp.extra);
   if (!dp && deposit === "order") extra.push(long ? "Reservasi ber-DP" : "DP");
   if (partialRefund) extra.push("Refund sebagian");
+  const unapproved = long ? "Diskon tanpa persetujuan" : "Diskon tanpa izin";
+  if (discountUnapproved) extra.push(unapproved);
   if (!extra.length) return badge;
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {badge}
       {extra.map((t) => (
-        <Badge key={t} tone={t === "Refund sebagian" ? "warning" : "neutral"}>
+        <Badge key={t} tone={t === unapproved ? "danger" : t === "Refund sebagian" ? "warning" : "neutral"}>
           {t}
         </Badge>
       ))}
@@ -61,7 +67,7 @@ export function SaleRowBadge({
   long = false,
   partialRefund = true,
 }: {
-  s: Pick<SaleListItem, "status" | "deposit" | "items_count" | "total" | "paid_total" | "refunded_total">;
+  s: Pick<SaleListItem, "status" | "deposit" | "items_count" | "total" | "paid_total" | "refunded_total" | "discount_unapproved">;
   long?: boolean;
   /** `false` = tanpa lencana "Refund sebagian" (baris yang sudah menulisnya sebagai teks). */
   partialRefund?: boolean;
@@ -74,6 +80,7 @@ export function SaleRowBadge({
       preorder={isPreorderDeposit(s)}
       noMoney={s.paid_total <= 0}
       partialRefund={partialRefund && hasPartialRefund(s)}
+      discountUnapproved={isDiscountUnapproved(s)}
     />
   );
 }
@@ -247,6 +254,10 @@ export function RecentSalesList({
                       : labelOf(METHODS, s.payment_method)
                     : <SaleRowBadge s={s} partialRefund={false} />}
                 </span>
+                {/* Lunas biasa ditulis sebagai teks (bukan lencana) — penanda diskon tanpa izin menyusul sebagai teks juga. */}
+                {s.status === "paid" && !s.deposit && isDiscountUnapproved(s) && (
+                  <span className="block text-[12px] font-medium text-danger">Diskon tanpa izin</span>
+                )}
               </span>
               <ChevronRight size={16} aria-hidden className="shrink-0 text-text-muted group-hover:text-text-heading" />
             </Link>

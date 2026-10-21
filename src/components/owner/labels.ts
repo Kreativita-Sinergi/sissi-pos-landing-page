@@ -119,13 +119,25 @@ export function planLabel(p: { plan: string; status: string; days_left: number |
 export const hourLabel = (h: number) => `${String(h).padStart(2, "0")}.00`;
 
 /** Jenis log aktivitas (`GET /owner/activity`), urutan tampil chip. */
-export const ACTIVITY_KINDS = ["void", "refund", "partial_refund", "manual_discount", "shift_closed", "cash_in", "cash_out", "new_device", "change"] as const;
+export const ACTIVITY_KINDS = [
+  "void",
+  "refund",
+  "partial_refund",
+  "manual_discount",
+  "discount_unapproved",
+  "shift_closed",
+  "cash_in",
+  "cash_out",
+  "new_device",
+  "change",
+] as const;
 
 export const ACTIVITY_KIND: Record<string, string> = {
   void: "Pembatalan",
   refund: "Pengembalian dana",
   partial_refund: "Refund sebagian",
   manual_discount: "Diskon manual",
+  discount_unapproved: "Diskon tanpa persetujuan",
   shift_closed: "Tutup kasir",
   cash_in: "Kas masuk",
   cash_out: "Kas keluar",

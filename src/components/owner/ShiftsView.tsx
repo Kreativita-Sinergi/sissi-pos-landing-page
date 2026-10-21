@@ -286,11 +286,12 @@ function ShiftBody({ s, onChanged }: { s: ShiftDetail; onChanged: () => void }) 
                 {s.cancelled.count.toLocaleString("id-ID")} · {formatRupiah(s.cancelled.amount)}
               </dd>
             </div>
-            {/* DP reservasi (cermin baris shift app): sudah termasuk di uang shift & per metode. */}
+            {/* DP diterima (reservasi + DP pesanan berjalan ber-purpose deposit; cermin baris shift app "DP diterima"):
+                sudah termasuk di uang shift & per metode. */}
             {!!s.deposits?.received && (
               <div className="flex justify-between gap-4 py-2">
                 <dt className="text-text-body">
-                  DP reservasi diterima
+                  DP diterima
                   {s.deposits.cash_received > 0 && <span className="block text-[12.5px] text-text-muted">tunai {formatRupiah(s.deposits.cash_received)}</span>}
                 </dt>
                 <dd className="font-semibold tabular-nums">{formatRupiah(s.deposits.received)}</dd>

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Ban, CalendarClock, HandCoins, ReceiptText, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, CalendarClock, HandCoins, ReceiptText, ShieldAlert, Undo2 } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 import { btn, cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, Notice, PageHeader, Skeleton, useLoad } from "@/components/admin/ui";
 import { formatDateTime, zoneLabel } from "@/lib/owner/tz";
@@ -16,6 +16,7 @@ import { SettleCreditDialog } from "./credit/SettleCreditDialog";
 import { CancelSaleDialog } from "./CancelSaleDialog";
 import { canRefund, canVoid, isDepositRefund, isPreorderDeposit, isPreorderWithoutDeposit, type CancelKind } from "@/lib/owner/cancelSale";
 import { hasPartialRefund, netTotalOf, outstandingOf, receiptTotals, refundedQtyByIndex, refundedTotalOf, refundEntries } from "@/lib/owner/saleRefunds";
+import { discountApprover, isDiscountUnapproved, lineDiscountReason } from "@/lib/owner/saleDiscount";
 import { isHeldDeposit, SaleRowBadge } from "./parts";
 
 // Detail transaksi (GET /owner/sales/{id}) dalam bentuk struk. Kasbon (`unpaid|partial`) bisa dilunasi/dicicil dari
@@ -132,6 +133,8 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
   meta.push(["Metode", labelOf(METHODS, s.payment_method)]);
   if (s.due_at) meta.push(["Jatuh tempo", formatDateTime(s.due_at)]);
   if (s.settled_at && s.settled_at !== s.paid_at) meta.push(["Lunas pada", formatDateTime(s.settled_at)]);
+  const approver = discountApprover(s);
+  if (approver) meta.push(["Diskon disetujui", approver]);
 
   return (
     <div className="mx-auto flex max-w-[560px] flex-col gap-4">
@@ -152,6 +155,20 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
           <p>Alasan: {s.void_reason || "—"}</p>
           {s.approved_by_name && <p>Disetujui oleh {s.approved_by_name}</p>}
           <p className="mt-1 text-[13px]">Tidak dihitung dalam omzet.</p>
+        </Notice>
+      )}
+      {isDiscountUnapproved(s) && (
+        <Notice tone="danger" icon={<ShieldAlert size={17} aria-hidden />} title="Diskon tanpa persetujuan pemilik">
+          <p>
+            {s.cashier_name} memberi diskon manual saat setelan &ldquo;Diskon oleh kasir butuh PIN pemilik&rdquo; aktif, tanpa PIN pemilik
+            (misalnya dari aplikasi kasir versi lama). Transaksi tetap tercatat apa adanya.
+          </p>
+          {approver && (
+            <p className="mt-1 text-[13px]">
+              PIN {approver} yang dimasukkan kemudian hanya menyetujui diskon yang diubah saat itu, bukan diskon sebelumnya.
+            </p>
+          )}
+          <p className="mt-1 text-[13px]">Periksa dengan kasir, dan perbarui aplikasi di semua perangkat kasir.</p>
         </Notice>
       )}
       {partial && (
@@ -256,7 +273,12 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
                   ))}
                 </ul>
               )}
-              {it.discount > 0 && <p className="text-[13px] tabular-nums text-danger">Diskon item -{formatRupiah(it.discount)}</p>}
+              {it.discount > 0 && (
+                <p className="text-[13px] text-danger">
+                  <span className="tabular-nums">Diskon item -{formatRupiah(it.discount)}</span>
+                  {lineDiscountReason(it) && <span className="text-text-muted"> · Alasan: {lineDiscountReason(it)}</span>}
+                </p>
+              )}
               {it.note && <p className="mt-0.5 text-[13px] italic text-text-muted">Catatan: {it.note}</p>}
               {(returnedQty.get(i) ?? 0) > 0 && (
                 <p className="text-[13px] font-medium tabular-nums text-danger">

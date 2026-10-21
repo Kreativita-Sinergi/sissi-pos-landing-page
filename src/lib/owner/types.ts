@@ -94,6 +94,11 @@ export type SaleListItem = {
   deposit?: DepositState | null;
   /** Σ refund sebagian per item (2026-10-21; server lama: tidak ada). `total` tetap nilai asli. */
   refunded_total?: number;
+  /**
+   * Diskon kasir tanpa persetujuan pemilik saat setelan PIN diskon aktif (api.md "Persetujuan diskon kasir
+   * (pin_for_discount)", 2026-10-21 rev. 2; server lama: tidak ada).
+   */
+  discount_unapproved?: boolean;
 };
 
 /**
@@ -244,6 +249,8 @@ export type SaleItem = {
   unit_price: number;
   modifiers: { name: string; price: number }[];
   discount: number;
+  /** Alasan diskon baris (2026-10-21 rev. 2; `""`/tidak ada = tanpa alasan). */
+  discount_reason?: string | null;
   subtotal: number;
   note: string | null;
   cost_price: number | null;
@@ -274,6 +281,8 @@ export type SaleDetail = SaleListItem & {
   notes: string | null;
   void_reason: string | null;
   approved_by_name: string | null;
+  /** Pemilik yang menyetujui diskon kasir (PIN; 2026-10-21 rev. 2; server lama: tidak ada). */
+  discount_approved_by_name?: string | null;
   settled_at: string | null;
   due_at: string | null;
   queue_no: number | null;
@@ -335,7 +344,17 @@ export type SalesPage = {
 export type ShiftsPage = { items: ShiftListItem[]; meta: PageMeta };
 
 /** Jenis entri log aktivitas (`GET /owner/activity`). */
-export type ActivityKind = "void" | "refund" | "partial_refund" | "manual_discount" | "shift_closed" | "cash_in" | "cash_out" | "new_device" | "change";
+export type ActivityKind =
+  | "void"
+  | "refund"
+  | "partial_refund"
+  | "manual_discount"
+  | "discount_unapproved"
+  | "shift_closed"
+  | "cash_in"
+  | "cash_out"
+  | "new_device"
+  | "change";
 
 /** Satu kolom yang berubah pada entri `change` (nilai JSON apa adanya; kolom rahasia → before/after `null`). */
 export type ActivityFieldChange = { field: string; before: unknown; after: unknown };
