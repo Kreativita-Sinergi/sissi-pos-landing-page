@@ -77,7 +77,7 @@ export function ItemSheet({
       media={
         product?.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- gambar dari API (domain bebas), tanpa optimasi.
-          <img src={product.image_url} alt="" className="aspect-[4/3] w-full bg-so-canvas object-cover" />
+          <img src={product.image_url} alt="" className="aspect-[4/3] w-full bg-so-canvas object-contain" />
         ) : undefined
       }
       leading={
@@ -205,7 +205,7 @@ function ItemForm({
         <img
           src={variant.image_url}
           alt=""
-          className="aspect-[16/9] w-full rounded-[16px] bg-so-canvas object-cover"
+          className="aspect-[16/9] w-full rounded-[16px] bg-so-canvas object-contain"
         />
       )}
 

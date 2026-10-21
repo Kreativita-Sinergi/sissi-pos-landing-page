@@ -418,7 +418,7 @@ function ProductRow({ row, checked, onCheck, onOpen }: { row: Row; checked: bool
         <button type="button" onClick={onOpen} className={`flex w-full min-w-0 items-center gap-3 rounded text-left ${focusRing}`}>
           {p.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- foto dari API (domain bebas), tanpa optimasi.
-            <img src={p.image_url} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-[8px] border border-border-subtle object-cover" />
+            <img src={p.image_url} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-[8px] border border-border-subtle bg-bg-muted object-contain" />
           ) : (
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-bg-muted text-text-muted">
               <ImageOff size={15} aria-hidden />

@@ -76,7 +76,7 @@ export function Thumb({
         alt=""
         loading="lazy"
         onError={() => setBroken(url)}
-        className={`bg-so-canvas object-cover ${dim ? "opacity-45 grayscale" : ""} ${className}`}
+        className={`bg-so-canvas object-contain ${dim ? "opacity-45 grayscale" : ""} ${className}`}
       />
     );
   }

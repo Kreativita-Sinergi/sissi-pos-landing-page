@@ -63,7 +63,7 @@ export function PhotoField({
       >
         {has ? (
           // eslint-disable-next-line @next/next/no-img-element -- foto dari API (domain bebas), tanpa optimasi.
-          <img src={url} alt="" className="h-full w-full object-cover" />
+          <img src={url} alt="" className="h-full w-full bg-bg-muted object-contain" />
         ) : (
           <span className={`flex h-full w-full items-center justify-center font-bold text-text-muted ${compact ? "text-[15px]" : "text-[24px]"}`}>{initials(name)}</span>
         )}
