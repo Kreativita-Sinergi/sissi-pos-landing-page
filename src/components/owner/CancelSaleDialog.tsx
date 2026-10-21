@@ -5,7 +5,18 @@ import { AlertTriangle, Ban, Info, Wallet } from "lucide-react";
 import { Modal } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/toast";
 import { btn, errorMessage, Field, focusRing, formatRupiah, inputClass, Notice, Spinner } from "@/components/admin/ui";
-import { CANCEL_REASONS, type CancelKind, cancelProblem, cancelSale, canRefund, canVoid, REFUND_METHODS, refundPlan, type RefundLine } from "@/lib/owner/cancelSale";
+import {
+  CANCEL_REASONS,
+  type CancelKind,
+  cancelProblem,
+  cancelSale,
+  canRefund,
+  canVoid,
+  isDepositRefund,
+  REFUND_METHODS,
+  refundPlan,
+  type RefundLine,
+} from "@/lib/owner/cancelSale";
 import type { PaymentMethod, SaleDetail } from "@/lib/owner/types";
 import { Segmented } from "./editing";
 import { labelOf, METHODS } from "./labels";
@@ -29,7 +40,7 @@ export function CancelSaleDialog({
   onDone: (reload: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const title = kind === "refunded" ? "Refund transaksi" : "Batalkan transaksi";
+  const title = sale && isDepositRefund(sale) ? "Kembalikan DP" : kind === "refunded" ? "Refund transaksi" : "Batalkan transaksi";
   return (
     <Modal open={sale !== null} title={sale ? `${title} · ${sale.receipt_no}` : title} onClose={onClose} dismissible={!busy} icon={<Ban size={20} aria-hidden className="text-danger" />}>
       {sale && <CancelBody key={`${sale.id}:${kind}`} sale={sale} initialKind={kind} busy={busy} setBusy={setBusy} onClose={onClose} onDone={onDone} />}
@@ -71,7 +82,14 @@ function CancelBody({
   const bothKinds = canVoid(sale.status) && canRefund(sale.status);
   const cashBack = refunds.some((r) => r.method === "cash");
   const isRefund = kind === "refunded";
-  const actionLabel = isRefund ? `Refund ${formatRupiah(total)}` : total > 0 ? `Batalkan & kembalikan ${formatRupiah(total)}` : "Batalkan transaksi";
+  const deposit = isDepositRefund(sale);
+  const actionLabel = deposit
+    ? `Kembalikan DP ${formatRupiah(total)}`
+    : isRefund
+      ? `Refund ${formatRupiah(total)}`
+      : total > 0
+        ? `Batalkan & kembalikan ${formatRupiah(total)}`
+        : "Batalkan transaksi";
 
   const submit = async () => {
     if (problem) return;
@@ -80,7 +98,7 @@ function CancelBody({
     try {
       const r = await cancelSale(sale, { kind, reason, refunds }, session.user.id);
       if (r.ok) {
-        toast.success(isRefund ? `Refund ${sale.receipt_no} dicatat` : `Transaksi ${sale.receipt_no} dibatalkan`);
+        toast.success(deposit ? `DP ${sale.receipt_no} dikembalikan` : isRefund ? `Refund ${sale.receipt_no} dicatat` : `Transaksi ${sale.receipt_no} dibatalkan`);
         onDone(true);
         onClose();
       } else {
@@ -112,7 +130,7 @@ function CancelBody({
   const stockNote = (
     <p className="flex items-start gap-1.5 text-[12.5px] text-text-muted">
       <Info size={14} aria-hidden className="mt-0.5 shrink-0" />
-      Dari dasbor web, stok barang dan poin pelanggan tidak dikembalikan otomatis (berbeda dengan pembatalan di aplikasi). Sesuaikan stok di halaman Stok bila perlu.
+      Stok barang yang terjual dan poin pelanggan dari transaksi ini dikembalikan otomatis, sama seperti pembatalan di aplikasi.
     </p>
   );
 
@@ -121,8 +139,10 @@ function CancelBody({
       <div className="flex flex-col gap-4">
         <Notice tone="danger" icon={<AlertTriangle size={17} aria-hidden />} title={isRefund ? "Refund tidak bisa dibatalkan" : "Pembatalan tidak bisa diurungkan"}>
           <p className="text-[13.5px]">
-            Transaksi {sale.receipt_no} ({formatRupiah(sale.total)}) akan {isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam omzet. Tercatat di
-            Aktivitas atas nama {session.user.name}.
+            {deposit
+              ? `DP reservasi ${sale.receipt_no} (${formatRupiah(sale.paid_total)}) akan dikembalikan dan transaksinya ditutup. `
+              : `Transaksi ${sale.receipt_no} (${formatRupiah(sale.total)}) akan ${isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam omzet. `}
+            Tercatat di Aktivitas atas nama {session.user.name}.
           </p>
         </Notice>
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-[12px] border border-border-subtle px-3.5 py-3 text-[14px]">

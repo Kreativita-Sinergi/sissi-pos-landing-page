@@ -5,14 +5,28 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Badge, focusRing, formatRupiah, tdClass, thClass } from "@/components/admin/ui";
 import type { SaleListItem } from "@/lib/owner/types";
-import { labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATUS_SHORT, SALE_STATUS_TONE } from "./labels";
+import { DEPOSIT_STATE, labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATUS_SHORT, SALE_STATUS_TONE } from "./labels";
 import { formatShortDate, formatStamp, formatTime, zonedDay } from "@/lib/owner/tz";
 
-export function SaleStatusBadge({ status, long = false }: { status: string; long?: boolean }) {
+/**
+ * Status transaksi. Transaksi DP reservasi ([deposit], api.md `SaleListItem.deposit`) memakai label DP-nya
+ * (tertahan/perlu diproses/hangus/dikembalikan); pesanan reservasi biasa = status + penanda "DP".
+ */
+export function SaleStatusBadge({ status, long = false, deposit }: { status: string; long?: boolean; deposit?: string | null }) {
+  const dp = deposit ? DEPOSIT_STATE[deposit] : undefined;
+  if (dp) return <Badge tone={dp.tone}>{long ? dp.long : dp.short}</Badge>;
+  const badge = <Badge tone={SALE_STATUS_TONE[status] ?? "neutral"}>{labelOf(long ? SALE_STATUS : SALE_STATUS_SHORT, status)}</Badge>;
+  if (deposit !== "order") return badge;
   return (
-    <Badge tone={SALE_STATUS_TONE[status] ?? "neutral"}>{labelOf(long ? SALE_STATUS : SALE_STATUS_SHORT, status)}</Badge>
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {badge}
+      <Badge tone="neutral">{long ? "Reservasi ber-DP" : "DP"}</Badge>
+    </span>
   );
 }
+
+/** DP masih dipegang (belum jadi pesanan): `total` 0, uangnya = `paid_total`. */
+export const isHeldDeposit = (s: Pick<SaleListItem, "deposit">) => s.deposit === "held" || s.deposit === "to_process";
 
 export { formatStamp };
 
@@ -91,9 +105,10 @@ export function SalesTable({
                   {(s.status === "unpaid" || s.status === "partial") && (
                     <span className="block text-[12px] font-normal text-warning">sisa {formatRupiah(s.total - s.paid_total)}</span>
                   )}
+                  {isHeldDeposit(s) && <span className="block text-[12px] font-normal text-text-muted">DP {formatRupiah(s.paid_total)}</span>}
                 </td>
                 <td className={`${tdClass} border-b border-border-subtle`}>
-                  <SaleStatusBadge status={s.status} />
+                  <SaleStatusBadge status={s.status} deposit={s.deposit} />
                 </td>
                 <td className={`${tdClass} border-b border-border-subtle text-text-muted`}>
                   <ChevronRight size={16} aria-hidden className="group-hover:text-text-heading" />
@@ -152,7 +167,7 @@ export function RecentSalesList({
                   {formatRupiah(s.total)}
                 </span>
                 <span className="block text-[12px] text-text-muted">
-                  {s.status === "paid" ? labelOf(METHODS, s.payment_method) : <SaleStatusBadge status={s.status} />}
+                  {s.status === "paid" && !s.deposit ? labelOf(METHODS, s.payment_method) : <SaleStatusBadge status={s.status} deposit={s.deposit} />}
                 </span>
               </span>
               <ChevronRight size={16} aria-hidden className="shrink-0 text-text-muted group-hover:text-text-heading" />

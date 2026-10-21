@@ -42,8 +42,10 @@ import {
   planRemoveValue,
   planRenameDimension,
   planRenameValue,
+  freshBatch,
   PRODUCT_KEY,
   recipeCost,
+  recipeItemsPatch,
   reorder,
   sameRecipe,
   saveDraft,
@@ -53,6 +55,7 @@ import {
   updateVariant,
   type CostMode,
   type EditorState,
+  type RecipeBatch,
   type RecipeItem,
   type VariantPlan,
   type VariantSource,
@@ -222,6 +225,12 @@ function ProductForm({ productId, data, commit, businessType, kitchen, inventory
   const original = data.products.find((p) => p.id === id);
   const existing = !!original;
   const recipesKnown = inventory !== null;
+  // Catatan isian "per adonan" dari aplikasi (batch segar) per target ("" = produk); hanya untuk ditampilkan.
+  const batches: Record<string, RecipeBatch> = {};
+  for (const r of inventory?.recipes ?? []) {
+    const b = r.product_id === id ? freshBatch(r) : null;
+    if (b) batches[r.variant_id ?? PRODUCT_KEY] = b;
+  }
   const [initial] = useState(() => initForm(original, data.variants.filter((v) => v.product_id === id), recipesOf(inventory, id), defaultCategory, recipesKnown));
   const [form, setForm] = useState<Form>(initial);
   const [baseline, setBaseline] = useState(() => JSON.stringify(initial));
@@ -572,7 +581,7 @@ function ProductForm({ productId, data, commit, businessType, kitchen, inventory
         if (!want.length) {
           if (rec) changes.push(deleteChange(ent("recipes"), rec));
         } else if (!rec) changes.push(createChange(ent("recipes"), { product_id: id, variant_id: vid, items: want }));
-        else if (!sameRecipe(rec.items, want)) changes.push(editChange(ent("recipes"), rec, { items: want }));
+        else if (!sameRecipe(rec.items, want)) changes.push(editChange(ent("recipes"), rec, recipeItemsPatch(rec, want)));
       }
     }
     if (!changes.length && !moveTo) {
@@ -1037,6 +1046,7 @@ function ProductForm({ productId, data, commit, businessType, kitchen, inventory
                   <RecipeEditor
                     targets={[{ key: PRODUCT_KEY, label: "Resep & HPP", price: form.price, manualCost: null }]}
                     recipes={form.recipes}
+                    batches={batches}
                     onChange={(r) => set("recipes", r)}
                     materials={materials}
                     createMaterial={createMaterial}
@@ -1204,6 +1214,7 @@ function ProductForm({ productId, data, commit, businessType, kitchen, inventory
           variant={variantEditing}
           mode={modeOf(form, variantEditing.id, variantEditing.cost_price)}
           recipe={form.recipes[variantEditing.id] ?? []}
+          batch={batches[variantEditing.id] ?? null}
           unit={form.unit}
           trackStock={form.trackStock}
           isNew={editingIsNew}

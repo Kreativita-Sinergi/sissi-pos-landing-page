@@ -3,24 +3,26 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Ban, HandCoins, ReceiptText, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, CalendarClock, HandCoins, ReceiptText, Undo2 } from "lucide-react";
 import { ApiError } from "@/lib/sissiApi";
 import { btn, cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, Notice, PageHeader, Skeleton, useLoad } from "@/components/admin/ui";
 import { formatDateTime, zoneLabel } from "@/lib/owner/tz";
 import { ownerApi } from "@/lib/owner/api";
 import { isCreditOpen, OUTSIDE_DRAWER_NOTE } from "@/lib/owner/credit";
 import type { SaleDetail } from "@/lib/owner/types";
-import { labelOf, METHODS, orderTypeLabel } from "./labels";
+import { labelOf, METHODS, orderTypeLabel, PAYMENT_PURPOSE } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SettleCreditDialog } from "./credit/SettleCreditDialog";
 import { CancelSaleDialog } from "./CancelSaleDialog";
-import { canRefund, canVoid, type CancelKind } from "@/lib/owner/cancelSale";
-import { SaleStatusBadge } from "./parts";
+import { canRefund, canVoid, isDepositRefund, type CancelKind } from "@/lib/owner/cancelSale";
+import { isHeldDeposit, SaleStatusBadge } from "./parts";
 
 // Detail transaksi (GET /owner/sales/{id}) dalam bentuk struk. Kasbon (`unpaid|partial`) bisa dilunasi/dicicil dari
 // sini (POST /owner/changes `sale_payments`, di luar laci kasir) — tersedia juga untuk paket Gratis (pelunasan kasbon
 // tetap boleh, api.md "Batas transaksi Gratis"). Transaksi juga bisa dibatalkan (void) / direfund dari sini (api.md
-// "Nomor 14": `sales` upsert status void/refunded + pengembalian negatif di luar laci kasir).
+// "Nomor 14": `sales` upsert status void/refunded + pengembalian negatif di luar laci kasir). Transaksi DP reservasi
+// (`deposit`, api.md "DP reservasi" › Dasbor pemilik) diberi label & penjelasan; DP yang masih dipegang bisa
+// dikembalikan ("Kembalikan DP" = pembatalan ber-`deposit_refund`), DP hangus tetap lewat aplikasi.
 
 export function BackLink({ href, label }: { href: string; label: string }) {
   const router = useRouter();
@@ -69,7 +71,7 @@ export function SaleDetailView() {
         title={s ? `Struk ${s.receipt_no}` : "Detail transaksi"}
         back={back}
         description={s ? `${formatDateTime(s.paid_at)} ${zoneLabel()} · ${s.outlet_name}` : undefined}
-        actions={s && <SaleStatusBadge status={s.status} long />}
+        actions={s && <SaleStatusBadge status={s.status} deposit={s.deposit} long />}
       />
       {state.status === "error" && <ErrorBlock error={state.error} onRetry={reload} />}
       {!s && state.status === "loading" && (
@@ -104,6 +106,8 @@ function Line({ label, value, strong, tone }: { label: React.ReactNode; value: s
 function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => void; onCancel?: (kind: CancelKind) => void }) {
   const cancelled = s.status === "void" || s.status === "refunded";
   const outstanding = s.total - s.paid_total;
+  const heldDeposit = isHeldDeposit(s);
+  const depositRefund = isDepositRefund(s);
   const lineDiscounts = s.items.reduce((a, i) => a + i.discount, 0);
   const meta: [string, React.ReactNode][] = [
     ["Kasir", s.cashier_name],
@@ -121,11 +125,40 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
   return (
     <div className="mx-auto flex max-w-[560px] flex-col gap-4">
       {cancelled && (
-        <Notice tone="danger" icon={<Ban size={17} aria-hidden />} title={s.status === "void" ? "Transaksi dibatalkan" : "Uang dikembalikan"}>
+        <Notice
+          tone="danger"
+          icon={<Ban size={17} aria-hidden />}
+          title={s.deposit === "refunded" ? "DP dikembalikan" : s.status === "void" ? "Transaksi dibatalkan" : "Uang dikembalikan"}
+        >
           <p>Alasan: {s.void_reason || "—"}</p>
           {s.approved_by_name && <p>Disetujui oleh {s.approved_by_name}</p>}
           <p className="mt-1 text-[13px]">Tidak dihitung dalam omzet.</p>
         </Notice>
+      )}
+      {heldDeposit && (
+        <Notice
+          tone={s.deposit === "to_process" ? "warning" : "info"}
+          icon={<CalendarClock size={17} aria-hidden />}
+          title={s.deposit === "to_process" ? "DP perlu diproses" : "DP reservasi · tamu belum datang"}
+        >
+          <p>
+            Uang muka <strong className="font-semibold tabular-nums">{formatRupiah(s.paid_total)}</strong> dipegang untuk reservasi meja dan belum
+            dihitung omzet maupun pesanan berjalan. Omzet dicatat pada hari tamu datang dan ditagih.
+          </p>
+          {s.deposit === "to_process" && (
+            <p className="mt-1 text-[13px]">
+              Reservasinya dibatalkan atau tamu tidak datang. Kembalikan DP dari sini, atau jadikan DP hangus lewat aplikasi kasir (Meja › Reservasi).
+            </p>
+          )}
+        </Notice>
+      )}
+      {s.deposit === "forfeited" && (
+        <Notice tone="info" icon={<CalendarClock size={17} aria-hidden />} title="DP hangus">
+          Tamu batal atau tidak datang dan DP tidak dikembalikan. DP hangus dihitung sebagai omzet pada hari diproses.
+        </Notice>
+      )}
+      {s.deposit === "order" && !cancelled && (
+        <p className="text-[13px] text-text-muted">Pesanan dari reservasi ber-DP — DP terpotong sebagai pembayaran.</p>
       )}
       {isCreditOpen(s.status) && (
         <Notice tone="warning" title="Kasbon belum lunas">
@@ -208,7 +241,13 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
                   <Line
                     label={
                       <>
-                        <span className="font-medium text-text-heading">{p.amount < 0 ? `Pengembalian · ${labelOf(METHODS, p.method)}` : labelOf(METHODS, p.method)}</span>
+                        <span className="font-medium text-text-heading">
+                          {p.purpose
+                            ? `${labelOf(PAYMENT_PURPOSE, p.purpose)} · ${labelOf(METHODS, p.method)}`
+                            : p.amount < 0
+                              ? `Pengembalian · ${labelOf(METHODS, p.method)}`
+                              : labelOf(METHODS, p.method)}
+                        </span>
                         <span className="block text-[12.5px] text-text-muted">
                           {formatDateTime(p.paid_at)}
                           {p.cashier_name ? ` · ${p.cashier_name}` : ""}
@@ -247,7 +286,7 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
             </button>
           )}
           <button type="button" className={`${btn.secondary} text-danger`} onClick={() => onCancel?.("void")} disabled={!onCancel}>
-            <Ban size={16} aria-hidden /> Batalkan transaksi
+            {depositRefund ? <Undo2 size={16} aria-hidden /> : <Ban size={16} aria-hidden />} {depositRefund ? "Kembalikan DP" : "Batalkan transaksi"}
           </button>
         </div>
       )}

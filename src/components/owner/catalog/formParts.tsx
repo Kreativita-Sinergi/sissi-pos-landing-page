@@ -11,13 +11,18 @@ import {
   convertQty,
   costOfQty,
   defaultRecipeUnit,
+  deriveRecipeItems,
   ent,
+  formatBp,
+  formatYield,
   MATERIAL_UNITS,
   MAX_RECIPE_ITEMS,
   recipeCost,
+  sameRecipe,
   stockMoveChange,
   type CostMode,
   type RawMaterial,
+  type RecipeBatch,
   type RecipeItem,
 } from "@/lib/owner/productForm";
 import type { ChangeResult, StockRow } from "@/lib/owner/types";
@@ -406,17 +411,22 @@ export type CreateMaterial = (data: { name: string; unit: string; min_stock: num
 
 /**
  * Editor resep (`RecipeEditor`): bahan per porsi + HPP (Σ bahan × harga rata-rata) & margin. Bahan baru bisa dibuat
- * tanpa meninggalkan form (`showRawMaterialForm(compact)`).
+ * tanpa meninggalkan form (`showRawMaterialForm(compact)`). Resep yang diisi "per adonan" di aplikasi ([batches],
+ * `recipes.batch` segar) ditampilkan dengan hasil porsi & takaran bersih + susut; web tetap menyunting takaran per
+ * porsi (sudah termasuk susut) — begitu diubah, resep disimpan per porsi.
  */
 export function RecipeEditor({
   targets,
   recipes,
+  batches,
   onChange,
   materials,
   createMaterial,
 }: {
   targets: RecipeTarget[];
   recipes: Record<string, RecipeItem[]>;
+  /** Batch segar per target (kunci = key target); kosong = semua per porsi. */
+  batches?: Record<string, RecipeBatch>;
   onChange: (next: Record<string, RecipeItem[]>) => void;
   materials: RawMaterial[];
   createMaterial: CreateMaterial;
@@ -433,6 +443,10 @@ export function RecipeEditor({
   const set = (next: RecipeItem[]) => onChange({ ...recipes, [key]: next });
   const used = new Set(items.map((i) => i.raw_material_id));
   const choices = materials.filter((m) => m.is_active && !used.has(m.id)).sort((a, b) => a.name.localeCompare(b.name, "id"));
+  const savedBatch = batches?.[key] ?? null;
+  // Batch masih berlaku selama takaran per porsi belum diubah di sini.
+  const batch = savedBatch && sameRecipe(deriveRecipeItems(savedBatch), items) ? savedBatch : null;
+  const batchItemOf = (i: number) => (batch && batch.items[i]?.raw_material_id === items[i]?.raw_material_id ? batch.items[i] : null);
 
   const startItem = (m: RawMaterial) => setEditing({ index: null, item: { raw_material_id: m.id, qty: 0, unit: defaultRecipeUnit(m.unit) }, material: m });
 
@@ -475,6 +489,17 @@ export function RecipeEditor({
       ) : (
         <>
           {items.length === 0 && <p className="py-1 text-[12.5px] text-text-muted">Belum ada bahan di resep ini.</p>}
+          {batch && (
+            <p className="rounded-[10px] bg-bg-muted px-3 py-2 text-[12.5px] text-text-body">
+              Diisi per adonan di aplikasi: sekali masak menghasilkan <strong className="font-semibold">{formatYield(batch.yield_qty)} porsi</strong>. Takaran di bawah =
+              yang dipotong dari stok per porsi (sudah termasuk susut). Mengubah resep di sini menyimpannya sebagai takaran per porsi.
+            </p>
+          )}
+          {!batch && savedBatch && (
+            <p className="rounded-[10px] bg-bg-muted px-3 py-2 text-[12.5px] text-text-body">
+              Resep diubah di sini — disimpan sebagai takaran per porsi; isian per adonan dari aplikasi tidak dipakai lagi.
+            </p>
+          )}
           {items.length > 0 && (
             <ul className="divide-y divide-border-subtle rounded-[12px] border border-border-subtle">
               {items.map((it, i) => {
@@ -494,8 +519,22 @@ export function RecipeEditor({
                       <span className="block truncate text-[14px] font-semibold">{m?.name ?? "—"}</span>
                       <span className="block text-[12.5px] text-text-muted">
                         {formatQty(it.qty)} {it.unit}
+                        {batch ? " per porsi" : ""}
                         {m && usage === null ? " · Satuan tidak cocok" : ""}
                       </span>
+                      {(() => {
+                        const b = batchItemOf(i);
+                        if (b) {
+                          return (
+                            <span className="block text-[12px] text-text-muted">
+                              Adonan: {formatQty(b.qty)} {b.unit} bersih{b.waste_bp > 0 ? ` · susut ${formatBp(b.waste_bp)}%` : ""}
+                            </span>
+                          );
+                        }
+                        return !batch && (m?.waste_bp ?? 0) > 0 ? (
+                          <span className="block text-[12px] text-text-muted">Berat kotor (susut bahan {formatBp(m!.waste_bp!)}% saat dibersihkan)</span>
+                        ) : null;
+                      })()}
                     </button>
                     {cost !== null && <span className="text-[13px] font-semibold tabular-nums">{formatRupiah(cost)}</span>}
                     <button type="button" className={iconBtn} aria-label={`Hapus ${m?.name ?? "bahan"}`} title="Hapus" onClick={() => set(items.filter((_, k) => k !== i))}>
@@ -538,7 +577,10 @@ export function RecipeEditor({
                 <Wheat size={16} className="shrink-0 text-text-muted" aria-hidden />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{m.name}</span>
-                  <span className="block text-[12.5px] text-text-muted">{m.avg_cost > 0 ? `Rata-rata ${formatRupiah(m.avg_cost)}/${m.unit}` : m.unit}</span>
+                  <span className="block text-[12.5px] text-text-muted">
+                    {m.avg_cost > 0 ? `Rata-rata ${formatRupiah(m.avg_cost)}/${m.unit}` : m.unit}
+                    {(m.waste_bp ?? 0) > 0 ? ` · susut ${formatBp(m.waste_bp!)}%` : ""}
+                  </span>
                 </span>
               </button>
             </li>

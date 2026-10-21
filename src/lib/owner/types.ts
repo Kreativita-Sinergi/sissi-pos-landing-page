@@ -89,7 +89,20 @@ export type SaleListItem = {
   total: number;
   paid_total: number;
   items_count: number;
+  /** DP reservasi (2026-10-21; server lama: tidak ada). */
+  reservation_id?: string | null;
+  deposit?: DepositState | null;
 };
+
+/**
+ * Keadaan DP reservasi turunan server (api.md "GET /owner/sales/{id}" › `deposit`, cermin `depositStateOf` app):
+ * held = DP tertahan (reservasi belum datang) · to_process = DP perlu diproses (reservasi batal/tidak datang) ·
+ * order = pesanan reservasi (DP terpotong) · forfeited = DP hangus (omzet) · refunded = DP dikembalikan.
+ */
+export type DepositState = "held" | "to_process" | "order" | "forfeited" | "refunded";
+
+/** Penanda pembayaran DP (`sale_payments.purpose`). */
+export type PaymentPurpose = "deposit" | "deposit_refund";
 
 export type ShiftListItem = {
   id: string;
@@ -228,6 +241,7 @@ export type SalePayment = {
   change: number | null;
   paid_at: string;
   cashier_name: string | null;
+  purpose?: PaymentPurpose | null;
 };
 
 export type SaleDetail = SaleListItem & {
@@ -265,6 +279,8 @@ export type ShiftDetail = ShiftListItem & {
     created_at: string;
   }[];
   cancelled: { count: number; amount: number };
+  /** DP reservasi di shift (2026-10-21; nilai positif, sudah termasuk di uang shift). */
+  deposits?: { received: number; refunded: number; cash_received: number; cash_refunded: number };
 };
 
 export type SalesSort = "newest" | "oldest" | "total_desc";

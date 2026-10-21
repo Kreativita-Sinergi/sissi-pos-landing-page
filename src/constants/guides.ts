@@ -835,8 +835,8 @@ export const GUIDES: GuideItem[] = [
           "Template Excel lengkap punya lembar tambahan. Isi yang perlu saja; lembar dikenali dari judul kolomnya, dan lembar yang tidak dikenali diabaikan.",
         points: [
           "“Varian” — nama_produk, varian, harga, modal, sku, barcode.",
-          "“Bahan” — nama_bahan, satuan (g, kg, ml, l, pcs…), harga_beli, isi_kemasan, stok_min, sku.",
-          "“Resep” — nama_produk, varian (boleh kosong), nama_bahan, jumlah, satuan.",
+          "“Bahan” — nama_bahan, satuan (g, kg, ml, l, pcs…), harga_beli, isi_kemasan, stok_min, sku, susut_persen (opsional: bagian yang terbuang saat dibersihkan, mis. 10).",
+          "“Resep” — nama_produk, varian (boleh kosong), nama_bahan, jumlah, satuan, hasil_porsi (opsional: isi bila jumlah = berat bersih satu adonan yang menghasilkan N porsi).",
           "“Pilihan Ekstra” — grup, pilih_satu (ya/tidak), pilihan, harga.",
         ],
       },

@@ -29,6 +29,7 @@ import {
   type Recipe,
   type RowKind,
 } from "@/lib/owner/productImport";
+import { formatYield } from "@/lib/owner/productForm";
 import { downloadImportXlsxTemplate, readImportXlsx } from "@/lib/owner/productImportXlsx";
 import type { Change, ChangeResult, DataEntity } from "@/lib/owner/types";
 import { useOwner } from "../OwnerShell";
@@ -56,8 +57,11 @@ export function downloadXlsxTemplate(service: boolean) {
 
 const SHEET_COLUMNS: [string, string][] = [
   ["Varian", "nama_produk, varian, harga, modal, sku, barcode"],
-  ["Bahan", "nama_bahan, satuan (g, kg, ml, l, pcs…), harga_beli, isi_kemasan, stok_min, sku"],
-  ["Resep", "nama_produk, varian (boleh kosong), nama_bahan, jumlah, satuan"],
+  ["Bahan", "nama_bahan, satuan (g, kg, ml, l, pcs…), harga_beli, isi_kemasan, stok_min, sku, susut_persen (opsional, mis. 10 = 10% terbuang saat dibersihkan)"],
+  [
+    "Resep",
+    "nama_produk, varian (boleh kosong), nama_bahan, jumlah, satuan, hasil_porsi (opsional: isi bila jumlah = berat bersih satu adonan yang menghasilkan N porsi)",
+  ],
   ["Pilihan Ekstra", "grup, pilih_satu (ya/tidak), pilihan, harga"],
 ];
 
@@ -459,7 +463,11 @@ function ImportRowItem({ a, row, checked, onToggle }: { a: ImportAnalysis; row: 
             row.variants.length ? `${row.variants.length} varian: ${row.variants.map((v) => v.name).join(", ")}` : null,
             row.trackStock || (row.trackStock === null && (row.initialStock !== null || row.minStock !== null)) ? "Lacak stok" : null,
             row.initialStock !== null ? `Stok awal ${formatQty(row.initialStock)}` : null,
-            row.recipe.length ? `Resep: ${new Set(row.recipe.map((l) => l.material.toLowerCase())).size} bahan` : null,
+            row.recipe.length
+              ? `Resep: ${new Set(row.recipe.map((l) => l.material.toLowerCase())).size} bahan${
+                  row.recipe.find((l) => l.yieldQty != null) ? ` · per adonan ${formatYield(row.recipe.find((l) => l.yieldQty != null)!.yieldQty!)} porsi` : ""
+                }`
+              : null,
             row.groupNames.length ? `Pilihan ekstra: ${row.groupNames.join(", ")}` : null,
           ]
             .filter(Boolean)

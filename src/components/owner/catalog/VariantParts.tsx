@@ -16,6 +16,7 @@ import {
   type CostSource,
   type EditorState,
   type RawMaterial,
+  type RecipeBatch,
   type RecipeItem,
   type VDraft,
 } from "@/lib/owner/productForm";
@@ -451,6 +452,7 @@ export function VariantSheet({
   variant,
   mode,
   recipe,
+  batch,
   unit,
   trackStock,
   isNew,
@@ -467,6 +469,8 @@ export function VariantSheet({
   variant: VDraft;
   mode: CostMode;
   recipe: RecipeItem[];
+  /** Catatan isian per adonan dari aplikasi (batch segar resep varian); null = per porsi. */
+  batch?: RecipeBatch | null;
   unit: string;
   trackStock: boolean;
   isNew: boolean;
@@ -584,6 +588,7 @@ export function VariantSheet({
             <RecipeEditor
               targets={[{ key: variant.id, label: variant.name, price, manualCost: null }]}
               recipes={{ [variant.id]: items }}
+              batches={batch ? { [variant.id]: batch } : undefined}
               onChange={(r) => setItems(r[variant.id] ?? [])}
               materials={materials}
               createMaterial={createMaterial}

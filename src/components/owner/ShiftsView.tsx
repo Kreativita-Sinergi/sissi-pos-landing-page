@@ -286,6 +286,25 @@ function ShiftBody({ s, onChanged }: { s: ShiftDetail; onChanged: () => void }) 
                 {s.cancelled.count.toLocaleString("id-ID")} · {formatRupiah(s.cancelled.amount)}
               </dd>
             </div>
+            {/* DP reservasi (cermin baris shift app): sudah termasuk di uang shift & per metode. */}
+            {!!s.deposits?.received && (
+              <div className="flex justify-between gap-4 py-2">
+                <dt className="text-text-body">
+                  DP reservasi diterima
+                  {s.deposits.cash_received > 0 && <span className="block text-[12.5px] text-text-muted">tunai {formatRupiah(s.deposits.cash_received)}</span>}
+                </dt>
+                <dd className="font-semibold tabular-nums">{formatRupiah(s.deposits.received)}</dd>
+              </div>
+            )}
+            {!!s.deposits?.refunded && (
+              <div className="flex justify-between gap-4 py-2">
+                <dt className="text-text-body">
+                  DP dikembalikan
+                  {s.deposits.cash_refunded > 0 && <span className="block text-[12.5px] text-text-muted">tunai {formatRupiah(s.deposits.cash_refunded)}</span>}
+                </dt>
+                <dd className="font-semibold tabular-nums text-danger">-{formatRupiah(s.deposits.refunded)}</dd>
+              </div>
+            )}
           </dl>
           <h3 className="mt-4 mb-1 text-[13px] font-semibold uppercase tracking-wide text-text-muted">Per metode bayar</h3>
           {s.per_method.length === 0 ? (

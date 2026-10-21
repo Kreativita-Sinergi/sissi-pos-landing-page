@@ -31,6 +31,20 @@ export const SALE_STATUS_TONE: Record<string, "success" | "warning" | "danger" |
   refunded: "danger",
 };
 
+/** Label DP reservasi (`SaleListItem.deposit`, istilah app: "DP", "DP hangus", "DP dikembalikan"). */
+export const DEPOSIT_STATE: Record<string, { short: string; long: string; tone: "success" | "warning" | "danger" | "neutral" | "brand" }> = {
+  held: { short: "DP tertahan", long: "DP reservasi · tamu belum datang", tone: "brand" },
+  to_process: { short: "DP perlu diproses", long: "DP perlu diproses · reservasi batal/tidak datang", tone: "warning" },
+  forfeited: { short: "DP hangus", long: "DP hangus", tone: "success" },
+  refunded: { short: "DP dikembalikan", long: "DP dikembalikan", tone: "danger" },
+};
+
+/** Label penanda pembayaran (`sale_payments.purpose`). */
+export const PAYMENT_PURPOSE: Record<string, string> = {
+  deposit: "DP reservasi",
+  deposit_refund: "DP dikembalikan",
+};
+
 export const METHODS: Record<string, string> = {
   cash: "Tunai",
   qris: "QRIS",

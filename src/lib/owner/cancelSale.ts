@@ -7,6 +7,9 @@
 //    (entitas sync memulai dari record tersimpan; pembayaran lama tidak perlu dikirim ulang — dan DTO detail tidak
 //    memuat `shift_id`/`cashier_id`-nya sehingga tidak bisa dikirim "apa adanya");
 //  - dari web pengembalian TANPA `shift_id` (uang keluar di luar laci kasir), `cashier_id` = pemilik, `paid_at` = sekarang.
+//  - transaksi DP reservasi yang masih `open` (= "Kembalikan DP", D10 app `SaleRepository.cancel`): pengembalian
+//    ber-`purpose: "deposit_refund"` + re-date (`paid_at` = sekarang, `shift_id` null) — api.md "DP reservasi";
+//    transaksi reservasi yang sudah ditagih = pembatalan biasa (tanggal omzet tetap).
 // Bedanya dengan app: stok barang & poin pelanggan TIDAK dikembalikan otomatis (gerakan stok `refund` dan mutasi poin
 // hanya dari app) — ditampilkan sebagai catatan di dialog.
 import { ApiError } from "@/lib/sissiApi";
@@ -28,6 +31,9 @@ export const REFUND_METHODS: { value: PaymentMethod; label: string }[] = [
 export const canVoid = (status: string) => ["open", "unpaid", "partial", "paid"].includes(status);
 export const canRefund = (status: string) => status === "paid" || status === "partial";
 
+/** Pembatalan = "Kembalikan DP" (transaksi DP reservasi yang masih `open`; cermin app). */
+export const isDepositRefund = (sale: Pick<SaleDetail, "status" | "reservation_id">) => !!sale.reservation_id && sale.status === "open";
+
 /** Uang yang harus dikembalikan per metode asal (bersih, termasuk pengembalian sebelumnya); hanya yang > 0. */
 export function refundPlan(payments: Pick<SaleDetail["payments"][number], "method" | "amount">[]): { method: string; amount: number }[] {
   const net = new Map<string, number>();
@@ -47,8 +53,14 @@ export function cancelProblem(input: CancelInput): string | null {
 }
 
 /** Perubahan `sales` siap kirim. */
-export function cancelChange(sale: Pick<SaleDetail, "id" | "outlet_id" | "updated_at">, input: CancelInput, ownerId: string, now = new Date()): Change {
+export function cancelChange(
+  sale: Pick<SaleDetail, "id" | "outlet_id" | "updated_at" | "status" | "reservation_id">,
+  input: CancelInput,
+  ownerId: string,
+  now = new Date()
+): Change {
   const at = now.toISOString();
+  const deposit = isDepositRefund(sale);
   return {
     entity: "sales",
     op: "upsert",
@@ -60,6 +72,8 @@ export function cancelChange(sale: Pick<SaleDetail, "id" | "outlet_id" | "update
       status: input.kind,
       void_reason: input.reason.trim(),
       approved_by: ownerId,
+      // Re-date: pembatalan DP dihitung pada hari diproses, di luar laci kasir.
+      ...(deposit ? { paid_at: at, shift_id: null } : {}),
       payments: input.refunds
         .filter((r) => r.amount > 0)
         .map((r) => ({
@@ -73,6 +87,7 @@ export function cancelChange(sale: Pick<SaleDetail, "id" | "outlet_id" | "update
           shift_id: null,
           cashier_id: ownerId,
           paid_at: at,
+          ...(deposit ? { purpose: "deposit_refund" } : {}),
         })),
     },
   };
@@ -95,7 +110,7 @@ function resultMessage(r: ChangeResult | undefined): string {
 }
 
 /** Kirim pembatalan. Galat jaringan dilempar; 422 permintaan (guard server) → `{ ok: false }`. */
-export async function cancelSale(sale: Pick<SaleDetail, "id" | "outlet_id" | "updated_at">, input: CancelInput, ownerId: string): Promise<CancelOutcome> {
+export async function cancelSale(sale: Pick<SaleDetail, "id" | "outlet_id" | "updated_at" | "status" | "reservation_id">, input: CancelInput, ownerId: string): Promise<CancelOutcome> {
   let r: ChangeResult | undefined;
   try {
     [r] = await pushChanges([cancelChange(sale, input, ownerId)]);

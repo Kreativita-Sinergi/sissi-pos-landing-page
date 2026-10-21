@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Badge, formatRupiah, inputClass } from "@/components/admin/ui";
 import { formatQty, parseQty } from "@/lib/owner/catalog";
+import { formatBp } from "@/lib/owner/productForm";
 import {
   costPerUnit,
   groupValid,
@@ -134,6 +135,7 @@ function MaterialItem({ m, existing, pack, onPack }: { m: ImportMaterial; existi
               · Stok min. {formatQty(m.minStock)} {m.unit}
             </span>
           )}
+          {(m.wasteBp ?? 0) > 0 && <span className="text-text-muted">· Susut {formatBp(m.wasteBp!)}% saat dibersihkan</span>}
         </div>
       )}
       {m.issues.length > 0 && <p className="mt-0.5 text-[12.5px] text-warning">{m.issues.map((i) => MATERIAL_ISSUE_TEXT[i](m)).join(" · ")}</p>}

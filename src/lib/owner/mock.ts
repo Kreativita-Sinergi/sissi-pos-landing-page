@@ -333,6 +333,20 @@ function generate(now: number): Db {
             taxes: [{ name: "PB1", rate_bp: 1000, amount: tax }], payments: [], t, day, hour: wibHour(t), shift_id: shiftId,
           });
         }
+        // DP reservasi tertahan (tamu belum datang): open, 0 item, bukan pesanan berjalan (api.md "DP reservasi").
+        if (o.weight === 1) {
+          const t = now - 50 * 60_000;
+          const id = uuid(`dp:${day}:${o.id}`);
+          daySales.push({
+            id, receipt_no: `${o.code}-DP-1`, paid_at: new Date(t).toISOString(), outlet_id: o.id, outlet_name: o.name,
+            cashier_id: cashier.id, cashier_name: cashier.name, customer_name: "Bu Rina", table_name: null, order_type: "dine_in",
+            status: "open", payment_method: "qris", total: 0, paid_total: 100000, items_count: 0, reservation_id: uuid(`rsv:${day}`),
+            deposit: "held", subtotal: 0, discount_total: 0, service_fee: 0, tax_total: 0, rounding: 0, amount_paid: 100000,
+            change_amount: 0, notes: null, void_reason: null, approved_by_name: null, settled_at: null, due_at: null, queue_no: null,
+            customer: null, items: [], discounts: [], taxes: [], t, day, hour: wibHour(t), shift_id: shiftId,
+            payments: [{ id: uuid(`dp-pay:${day}`), method: "qris", amount: 100000, received: null, change: null, paid_at: new Date(t).toISOString(), cashier_name: cashier.name, purpose: "deposit" }],
+          });
+        }
       }
       sales.push(...daySales);
 
@@ -383,6 +397,7 @@ function applyOverlays(d: Db): Db {
     s.approved_by_name = USER.name;
     s.payments = [...s.payments, ...c.refunds];
     s.paid_total = s.payments.reduce((a, p) => a + p.amount, 0);
+    if (s.reservation_id && s.items_count === 0) s.deposit = "refunded";
   }
   for (const sh of d.shifts) {
     const extra = extraMovements.get(sh.id);
@@ -488,7 +503,7 @@ function listItem(s: RawSale): SaleListItem {
     id: s.id, receipt_no: s.receipt_no, paid_at: s.paid_at, outlet_id: s.outlet_id, outlet_name: s.outlet_name,
     cashier_id: s.cashier_id, cashier_name: s.cashier_name, customer_name: s.customer_name, table_name: s.table_name,
     order_type: s.order_type, status: s.status, payment_method: s.payment_method, total: s.total, paid_total: s.paid_total,
-    items_count: s.items_count,
+    items_count: s.items_count, reservation_id: s.reservation_id ?? null, deposit: s.deposit ?? null,
   };
 }
 
@@ -651,7 +666,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         devices.push({ id: uuid("dev:owner"), name: "HP Rina", mode: "owner", outlet_id: null, outlet_name: null, last_seen_at: new Date(now - 2 * HOUR).toISOString(), app_version: "1.8.2" });
       }
       devices.sort((a, b) => Date.parse(b.last_seen_at ?? "0") - Date.parse(a.last_seen_at ?? "0"));
-      const open = all.filter((x) => x.status === "open");
+      const open = all.filter((x) => x.status === "open" && !(x.reservation_id && x.table_name === null));
       return {
         date: today,
         generated_at: new Date(now).toISOString(),
@@ -963,7 +978,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
             saleCancels.set(id, {
               status: d.status === "refunded" ? "refunded" : "void",
               reason: d.void_reason ?? "",
-              refunds: (d.payments ?? []).map((p) => ({ id: p.id, method: p.method, amount: p.amount, received: null, change: null, paid_at: p.paid_at, cashier_name: USER.name })),
+              refunds: (d.payments ?? []).map((p) => ({ id: p.id, method: p.method, amount: p.amount, received: null, change: null, paid_at: p.paid_at, cashier_name: USER.name, purpose: (p as { purpose?: "deposit_refund" }).purpose ?? null })),
             });
             cache = null;
             return { entity: c.entity, id, status: "applied" as const, record: null };

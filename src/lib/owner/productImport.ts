@@ -6,7 +6,8 @@
 // satu tanpa SKU), kembaran di berkas, produk bervarian tidak bisa ditimpa. Perbedaan yang tidak bisa dihindari web:
 // kiriman tidak satu transaksi (dipecah per 200 perubahan; resep & stok awal dikirim setelah produknya tersimpan).
 import { newId } from "./api";
-import { codeKey, createChange, editChange, formatQty, LIMITS, parseQty, recordData, sortVariants, type Product, type Variant } from "./catalog";
+import { codeKey, createChange, editChange, formatQty, LIMITS, parsePercentBp, parseQty, recordData, sortVariants, type Product, type Variant } from "./catalog";
+import { deriveRecipeItems, type RecipeBatch } from "./productForm";
 import type { Change, SyncRecord, WritableEntity } from "./types";
 
 // ——— Kolom ———
@@ -281,6 +282,8 @@ export type IssueCode =
   | "recipeMaterialMissing"
   | "recipeUnitMismatch"
   | "recipeVariantMissing"
+  | "recipeMixedYield"
+  | "recipeBatchTooSmall"
   | "groupMissing";
 
 export type Issue = { field: FieldKey | null; code: IssueCode; limit?: number; detail?: string };
@@ -323,6 +326,10 @@ export function issueText(i: Issue): string {
         return `Resep: satuan bahan "${i.detail}" tidak cocok, dilewati`;
       case "recipeVariantMissing":
         return `Resep: varian "${i.detail}" tidak ada, dilewati`;
+      case "recipeMixedYield":
+        return `Resep${i.detail ? ` varian ${i.detail}` : ""}: hasil_porsi tidak seragam — dipakai hasil baris pertama, baris kosong ikut dianggap takaran adonan`;
+      case "recipeBatchTooSmall":
+        return `Resep${i.detail ? ` varian ${i.detail}` : ""}: takaran per porsi jadi 0 — pakai satuan lebih kecil (mis. g); resep ini dilewati`;
       case "groupMissing":
         return `grup "${i.detail}" tidak ditemukan, dilewati`;
     }
@@ -379,6 +386,8 @@ export type ImportRecipeLine = {
   givenUnit: string | null;
   /** Satuan terselesaikan saat analisis; null = baris dilewati. */
   unit: string | null;
+  /** Kolom `hasil_porsi` (mili-porsi): takaran baris = berat BERSIH satu adonan; null = per porsi (HPP tahap 4). */
+  yieldQty?: number | null;
 };
 
 export const rowValid = (r: ImportRow) => r.errors.length === 0;
@@ -570,7 +579,7 @@ export const MATERIAL_UNITS = ["g", "kg", "ml", "l", "pcs", "pack", "botol", "sa
 /** Batas lembar tambahan (sama dengan aplikasi `ImportExtraLimits`). */
 export const IMPORT_EXTRA_LIMITS = { nameLength: 100, groupNameLength: 60, options: 30 } as const;
 
-export type MaterialIssue = "unitAssumed" | "costInvalid" | "packInvalid";
+export type MaterialIssue = "unitAssumed" | "costInvalid" | "packInvalid" | "wasteInvalid" | "wasteIgnored";
 
 /** Bahan baku dari berkas. */
 export type ImportMaterial = {
@@ -586,6 +595,10 @@ export type ImportMaterial = {
   pack: number | null;
   minStock: number;
   sku: string | null;
+  /** Kolom `susut_persen` (basis poin 0–9000; 0 bila kosong/tidak sah). Hanya untuk bahan baru. */
+  wasteBp?: number;
+  /** `susut_persen` terisi & sah. */
+  wasteGiven?: boolean;
   issues: MaterialIssue[];
 };
 
@@ -674,6 +687,8 @@ export const MATERIAL_ISSUE_TEXT: Record<MaterialIssue, (m: ImportMaterial) => s
   unitAssumed: (m) => `Satuan "${m.rawUnit ?? ""}" tidak dikenal, dianggap pcs`,
   costInvalid: () => "Harga beli bukan angka, dianggap 0",
   packInvalid: () => "Isi kemasan bukan angka, diabaikan",
+  wasteInvalid: () => "Susut bukan persen 0–90 (mis. 35 untuk 35%), dianggap 0",
+  wasteIgnored: () => "Susut berkas diabaikan — bahan sudah ada dan tidak diubah impor (ubah di Stok)",
 };
 
 /** Satuan bahan dari teks berkas → satuan Sissi; null bila tidak dikenal (`normalizeMaterialUnit`). */
@@ -740,11 +755,11 @@ export type ImportMatch = { product: Product; by: MatchBy; updatable: boolean; f
 export type DuplicateGroup = { lines: number[]; reasons: Set<MatchBy>; allowsMultiple: boolean };
 
 /** Bahan baku server (`raw_materials`). */
-export type RawMaterial = SyncRecord & { name: string; sku: string | null; unit: string; min_stock: number; avg_cost: number; is_active: boolean };
+export type RawMaterial = SyncRecord & { name: string; sku: string | null; unit: string; min_stock: number; avg_cost: number; is_active: boolean; waste_bp?: number };
 
 /** Resep server (`recipes`). */
 export type RecipeItem = { raw_material_id: string; qty: number; unit: string };
-export type Recipe = SyncRecord & { product_id: string; variant_id: string | null; items: RecipeItem[] };
+export type Recipe = SyncRecord & { product_id: string; variant_id: string | null; items: RecipeItem[]; batch?: unknown };
 
 export type ImportAnalysis = {
   file: ImportFile;
@@ -824,6 +839,11 @@ export function analyzeImport(file: ImportFile, data: CatalogSnapshot): ImportAn
   const groupIds = new Map(data.groups.map((g) => [key(g.name), g.id]));
   const existingMaterials = new Map((data.materials ?? []).map((m) => [key(m.name), m]));
   const extras = file.extras;
+  // Susut berkas untuk bahan yang sudah ada tidak diterapkan (bahan tidak diubah impor) — sama dengan app.
+  for (const m of extras.materials) {
+    const cur = existingMaterials.get(key(m.name));
+    if (cur && m.wasteGiven && (m.wasteBp ?? 0) !== (cur.waste_bp ?? 0) && !m.issues.includes("wasteIgnored")) m.issues.push("wasteIgnored");
+  }
   const codeTaken = (c: string) => bySku.has(key(c)) || byBarcode.has(key(c)) || variantCodes.has(key(c));
   for (const row of file.rows) {
     const warn = (field: FieldKey | null, code: IssueCode, detail: string) => {
@@ -856,6 +876,13 @@ export function analyzeImport(file: ImportFile, data: CatalogSnapshot): ImportAn
         continue;
       }
       l.unit = u;
+    }
+    // Resep per adonan (`hasil_porsi`, cermin `ImportRecipeTarget` app): peringatan hasil tidak seragam & takaran
+    // per porsi yang jadi 0 (resep target itu dilewati saat impor).
+    for (const t of recipeTargets(row.recipe)) {
+      if (t.mixedYield) warn(null, "recipeMixedYield", t.variant ?? "");
+      const b = targetBatch(t, (m) => m, (m) => wasteOfMaterial(existingMaterials.get(key(m)), extraMaterial(extras, m)));
+      if (b && deriveRecipeItems(b).some((i) => i.qty <= 0)) warn(null, "recipeBatchTooSmall", t.variant ?? "");
     }
     for (const g of row.groupNames) if (!extraGroup(extras, g) && !groupIds.has(key(g))) warn("modifiers", "groupMissing", g);
   }
@@ -959,6 +986,60 @@ export function newCategories(a: ImportAnalysis, selected: Set<number>): string[
   return out;
 }
 
+/** Resep satu target impor setelah baris digabung (`ImportRecipeTarget` app). */
+export type RecipeTarget = {
+  /** Nama varian di berkas; null = resep produk. */
+  variant: string | null;
+  /** Hasil adonan (mili-porsi) baris pertama yang mengisinya; null = per porsi. */
+  yieldQty: number | null;
+  mixedYield: boolean;
+  /** Bahan (nama berkas) → takaran (mili, satuan baris pertama bahan itu). */
+  items: { material: string; qty: number; unit: string }[];
+};
+
+/** Baris resep bersatuan sah dikelompokkan per target; bahan sama dijumlahkan (`importRecipeTargets` app). */
+export function recipeTargets(lines: ImportRecipeLine[]): RecipeTarget[] {
+  const out = new Map<string | null, RecipeTarget & { without: boolean; other: boolean }>();
+  for (const l of lines) {
+    if (!l.unit) continue;
+    const k = l.variant?.toLowerCase() ?? null;
+    let t = out.get(k);
+    if (!t) out.set(k, (t = { variant: l.variant, yieldQty: null, mixedYield: false, items: [], without: false, other: false }));
+    if (l.yieldQty != null) {
+      if (t.yieldQty !== null && t.yieldQty !== l.yieldQty) t.other = true;
+      t.yieldQty ??= l.yieldQty;
+    } else t.without = true;
+    const mk = l.material.toLowerCase();
+    const i = t.items.findIndex((it) => it.material.toLowerCase() === mk);
+    if (i < 0) t.items.push({ material: l.material, qty: l.qty, unit: l.unit });
+    else t.items[i] = { ...t.items[i], qty: t.items[i].qty + (convertQty(l.qty, l.unit, t.items[i].unit) ?? 0) };
+  }
+  return [...out.values()].map((t) => ({ ...t, mixedYield: t.yieldQty !== null && (t.without || t.other) }));
+}
+
+/** Isian adonan target ber-`hasil_porsi`; id bahan dari [idOf] (tanpa id dilewati), susut dari [wasteOf]. */
+export function targetBatch(t: RecipeTarget, idOf: (material: string) => string | null | undefined, wasteOf: (material: string) => number): RecipeBatch | null {
+  if (t.yieldQty === null) return null;
+  const items = t.items.flatMap((i) => {
+    const id = idOf(i.material);
+    return id ? [{ raw_material_id: id, qty: i.qty, unit: i.unit, waste_bp: wasteOf(i.material) }] : [];
+  });
+  return items.length ? { yield_qty: t.yieldQty, items } : null;
+}
+
+/** Susut bahan: bahan yang sudah ada = miliknya (berkas diabaikan); bahan baru = kolom berkas. */
+const wasteOfMaterial = (existing: RawMaterial | undefined, file: ImportMaterial | undefined) => (existing ? (existing.waste_bp ?? 0) : (file?.wasteBp ?? 0));
+
+/** Teks susut ("35", "35%", "12,5") → basis poin 0–9000; null bila tidak sah atau ambigu (0 < x < 1 tanpa "%"). */
+export function wastePercentBp(text: string): number | null {
+  const raw = text.trim();
+  const pct = raw.endsWith("%");
+  const bp = parsePercentBp(pct ? raw.slice(0, -1) : raw);
+  if (bp === null || bp > 9000) return null;
+  if (!pct && bp > 0 && bp < 100) return null;
+  return bp;
+}
+
 /** Bahan baku berkas yang akan dibuat (yang namanya sudah ada dipakai ulang). */
 export const newMaterials = (a: ImportAnalysis) => a.file.extras.materials.filter((m) => !a.materials.has(materialKey(m)));
 
@@ -1031,17 +1112,21 @@ export function buildImportChanges(a: ImportAnalysis, selected: Set<number>, opt
   let stockWanted = 0;
 
   // Bahan baku: yang sudah ada dipakai ulang; baru → avg_cost = harga beli ÷ isi kemasan.
-  const materials = new Map<string, { id: string; unit: string; isNew: boolean }>();
-  for (const [k, m] of a.materials) materials.set(k, { id: m.id, unit: m.unit, isNew: false });
+  const materials = new Map<string, { id: string; unit: string; isNew: boolean; wasteBp: number }>();
+  for (const [k, m] of a.materials) materials.set(k, { id: m.id, unit: m.unit, isNew: false, wasteBp: m.waste_bp ?? 0 });
   const freshMaterials = newMaterials(a);
   for (const m of freshMaterials) {
     const id = newId();
     const pack = opts.packs?.get(materialKey(m)) ?? suggestedPack(m);
     extraChanges.push(
-      entityChange("raw_materials", { name: m.name, sku: m.sku, unit: m.unit, min_stock: m.minStock, avg_cost: costPerUnit(m, pack), is_active: true }, id)
+      entityChange(
+        "raw_materials",
+        { name: m.name, sku: m.sku, unit: m.unit, min_stock: m.minStock, avg_cost: costPerUnit(m, pack), is_active: true, ...(m.wasteBp ? { waste_bp: m.wasteBp } : {}) },
+        id
+      )
     );
     labels.set(id, `Bahan baku "${m.name}"`);
-    materials.set(materialKey(m), { id, unit: m.unit, isNew: true });
+    materials.set(materialKey(m), { id, unit: m.unit, isNew: true, wasteBp: m.wasteBp ?? 0 });
   }
   // Grup pilihan ekstra baru: opsional (min 0), pilih satu → maks 1, selain itu maks = jumlah pilihan (≤ batas server).
   const groupIds = new Map(a.modifierGroups);
@@ -1065,22 +1150,30 @@ export function buildImportChanges(a: ImportAnalysis, selected: Set<number>, opt
   }
 
   /** Resep per target (null = produk, lalu id varian); bahan sama dijumlahkan dalam satuan baris pertama. */
+  /** Resep per target (null = produk, lalu id varian): `items` per porsi + `batch` bila ber-`hasil_porsi` (items
+   *  diturunkan dari batch). Target per adonan yang takarannya jadi 0 per porsi dilewati (peringatan pratinjau). */
   const recipesOf = (r: ImportRow, variantIds: Map<string, string>) => {
-    const out = new Map<string | null, RecipeItem[]>();
-    for (const l of r.recipe) {
-      const material = materials.get(l.material.toLowerCase());
-      if (!l.unit || !material) continue;
+    const out = new Map<string | null, { items: RecipeItem[]; batch: RecipeBatch | null }>();
+    for (const t of recipeTargets(r.recipe)) {
       let target: string | null = null;
-      if (l.variant !== null) {
-        const v = variantIds.get(l.variant.toLowerCase());
+      if (t.variant !== null) {
+        const v = variantIds.get(t.variant.toLowerCase());
         if (!v) continue;
         target = v;
       }
-      const items = out.get(target) ?? [];
-      out.set(target, items);
-      const i = items.findIndex((it) => it.raw_material_id === material.id);
-      if (i < 0) items.push({ raw_material_id: material.id, qty: l.qty, unit: l.unit });
-      else items[i] = { ...items[i], qty: items[i].qty + (convertQty(l.qty, l.unit, items[i].unit) ?? 0) };
+      const mat = (name: string) => materials.get(name.toLowerCase());
+      const batch = targetBatch(t, (m) => mat(m)?.id, (m) => mat(m)?.wasteBp ?? 0);
+      if (batch) {
+        const items = deriveRecipeItems(batch);
+        if (items.some((i) => i.qty <= 0)) continue;
+        out.set(target, { items, batch });
+        continue;
+      }
+      const items = t.items.flatMap((i) => {
+        const m = mat(i.material);
+        return m ? [{ raw_material_id: m.id, qty: i.qty, unit: i.unit }] : [];
+      });
+      if (items.length) out.set(target, { items, batch: null });
     }
     return out;
   };
@@ -1192,10 +1285,10 @@ export function buildImportChanges(a: ImportAnalysis, selected: Set<number>, opt
         if (track && (v.initialStock ?? 0) > 0) stockMove(v.initialStock!, vid, v.cost ?? r.cost);
       });
       if (track && !r.variants.length && (r.initialStock ?? 0) > 0) stockMove(r.initialStock!, null, r.cost);
-      for (const [target, items] of recipesOf(r, variantIds)) {
+      for (const [target, { items, batch }] of recipesOf(r, variantIds)) {
         const rid = newId();
         recipeFollowUps.push({
-          change: entityChange("recipes", { product_id: id, variant_id: target, items }, rid),
+          change: entityChange("recipes", { product_id: id, variant_id: target, items, ...(batch ? { batch } : {}) }, rid),
           deps: recipeDeps(items, [id, ...(target ? [target] : [])]),
         });
         labels.set(rid, `${label} — resep${target ? ` varian ${variantName.get(target)}` : ""}`);
@@ -1225,13 +1318,19 @@ export function buildImportChanges(a: ImportAnalysis, selected: Set<number>, opt
     };
     // Resep produk yang ditimpa (produk tanpa varian → hanya resep produk); sama persis = tidak dikirim.
     let recipeChanged = false;
-    const items = recipesOf(r, new Map()).get(null);
+    const want = recipesOf(r, new Map()).get(null);
+    const items = want?.items;
+    const batch = want?.batch ?? null;
     if (items?.length) {
       const cur = a.recipes.find((x) => x.product_id === p.id && !x.variant_id);
-      if (!cur || JSON.stringify(cur.items) !== JSON.stringify(items)) {
+      // Takaran sama & berkas per porsi = tidak dikirim (catatan per adonan yang masih cocok tetap utuh).
+      if (!cur || JSON.stringify(cur.items) !== JSON.stringify(items) || (batch !== null && JSON.stringify(cur.batch ?? null) !== JSON.stringify(batch))) {
         const rid = cur?.id ?? newId();
         recipeFollowUps.push({
-          change: cur ? entityChange("recipes", { ...recordData(cur), items }, rid, cur) : entityChange("recipes", { product_id: p.id, variant_id: null, items }, rid),
+          // Berkas per porsi → catatan per adonan (`batch`) resep lama dibuang; ber-hasil_porsi → batch baru (cermin app).
+          change: cur
+            ? entityChange("recipes", { ...recordData(cur), items, ...(batch || cur.batch != null ? { batch } : {}) }, rid, cur)
+            : entityChange("recipes", { product_id: p.id, variant_id: null, items, ...(batch ? { batch } : {}) }, rid),
           deps: recipeDeps(items, []),
         });
         labels.set(rid, `${label} — resep`);

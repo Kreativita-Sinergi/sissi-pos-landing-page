@@ -24,6 +24,7 @@ import {
   parseImportMoney,
   parseImportRows,
   templateFields,
+  wastePercentBp,
   type CsvRow,
   type FieldKey,
   type ImportFile,
@@ -38,7 +39,7 @@ import type { XlsxCell, XlsxSheet, XlsxSheetData } from "./xlsx";
 
 // ——— Peran kolom lembar tambahan (`ImportRole`) ———
 
-type Role = "product" | "variant" | "price" | "cost" | "sku" | "barcode" | "material" | "unit" | "qty" | "packSize" | "minStock" | "group" | "option" | "singleChoice";
+type Role = "product" | "variant" | "price" | "cost" | "sku" | "barcode" | "material" | "unit" | "qty" | "packSize" | "minStock" | "group" | "option" | "singleChoice" | "waste" | "yieldPortions";
 
 const ROLE_ALIASES: [Role, string[]][] = [
   ["product", ["nama_produk", "produk", "nama", "product", "product_name", "nama_barang", "nama_item", "item", "item_name", "nama_menu", "menu"]],
@@ -82,6 +83,8 @@ const ROLE_ALIASES: [Role, string[]][] = [
       "nama_topping", "modifier_option",
     ],
   ],
+  ["waste", ["susut_persen", "susut", "susut_olah", "persen_susut", "waste", "waste_percent", "waste_persen"]],
+  ["yieldPortions", ["hasil_porsi", "porsi_per_adonan", "hasil_adonan", "jumlah_porsi", "yield", "yield_porsi", "porsi_dihasilkan"]],
   ["singleChoice", ["pilih_satu", "hanya_pilih_satu", "pelanggan_hanya_bisa_pilih_satu_ekstra", "single_choice", "single_select", "pilihan_tunggal", "satu_pilihan"]],
 ];
 
@@ -209,6 +212,11 @@ export function parseImportWorkbook(workbook: XlsxSheet[], service: boolean): Im
       const packText = s.cell(row, "packSize");
       const pack = packText === null ? null : parseQty(packText);
       if (packText !== null && (pack === null || pack <= 0)) issues.push("packInvalid");
+      // Susut (HPP tahap 4): persen 0–90. Angka 0 < x < 1 tanpa "%" ambigu (sel Excel berformat persen tersimpan
+      // 0,35 — pembaca .xlsx web tidak membaca format sel) → ditolak, bukan ditebak.
+      const wasteText = s.cell(row, "waste");
+      const wasteBp = wasteText === null ? 0 : wastePercentBp(wasteText);
+      if (wasteBp === null) issues.push("wasteInvalid");
       materials.push({
         line: row.line,
         name,
@@ -218,6 +226,8 @@ export function parseImportWorkbook(workbook: XlsxSheet[], service: boolean): Im
         pack: pack !== null && pack > 0 ? pack : null,
         minStock: parseQty(s.cell(row, "minStock") ?? "") ?? 0,
         sku: code(s.cell(row, "sku")),
+        wasteBp: wasteBp ?? 0,
+        wasteGiven: wasteText !== null && wasteBp !== null,
         issues,
       });
     }
@@ -262,7 +272,22 @@ export function parseImportWorkbook(workbook: XlsxSheet[], service: boolean): Im
         notes.push({ sheet: s.name, line: row.line, code: "invalidQty", detail: material });
         continue;
       }
-      target.recipe.push({ line: row.line, material, qty, variant: s.cell(row, "variant"), givenUnit: normalizeMaterialUnit(s.cell(row, "unit")), unit: null });
+      // Resep per adonan: `hasil_porsi` 1–1.000 (mili 1.000–1.000.000) → takaran baris = berat bersih satu adonan.
+      const yieldText = s.cell(row, "yieldPortions");
+      const yieldQty = yieldText === null ? null : parseQty(yieldText);
+      if (yieldText !== null && (yieldQty === null || yieldQty < 1000 || yieldQty > 1_000_000)) {
+        notes.push({ sheet: s.name, line: row.line, code: "invalidQty", detail: material });
+        continue;
+      }
+      target.recipe.push({
+        line: row.line,
+        material,
+        qty,
+        variant: s.cell(row, "variant"),
+        givenUnit: normalizeMaterialUnit(s.cell(row, "unit")),
+        unit: null,
+        yieldQty,
+      });
     }
   }
 
@@ -412,7 +437,7 @@ export function importWorkbookTemplate(service: boolean): XlsxSheetData[] {
     {
       name: "Bahan",
       rows: [
-        ["nama_bahan", "satuan", "harga_beli", "isi_kemasan", "stok_min", "sku"],
+        ["nama_bahan", "satuan", "harga_beli", "isi_kemasan", "stok_min", "sku", "susut_persen"],
         ...(service
           ? [
               ["Shampo", "ml", 90000, 1000, 500],
@@ -424,13 +449,14 @@ export function importWorkbookTemplate(service: boolean): XlsxSheetData[] {
               ["Gula aren cair", "ml", 45000, 1000, 500],
               ["Cup plastik", "pcs", 50000, 100, 50],
               ["Beras", "kg", 14000, 1, 5],
+              ["Bawang merah", "g", 40000, 1000, 250, null, 10],
             ]),
       ],
     },
     {
       name: "Resep",
       rows: [
-        ["nama_produk", "varian", "nama_bahan", "jumlah", "satuan"],
+        ["nama_produk", "varian", "nama_bahan", "jumlah", "satuan", "hasil_porsi"],
         ...(service
           ? [
               [first, "Dewasa", "Shampo", 15, "ml"],
@@ -447,7 +473,9 @@ export function importWorkbookTemplate(service: boolean): XlsxSheetData[] {
               [first, "Large", "Kopi bubuk", 24, "g"],
               [first, "Large", "Gula aren cair", 30, "ml"],
               [first, "Large", "Cup plastik", 1, "pcs"],
-              ["Nasi Goreng", null, "Beras", 150, "g"],
+              // Resep per adonan: takaran bersih satu adonan + hasil porsi.
+              ["Nasi Goreng", null, "Beras", 1500, "g", 10],
+              ["Nasi Goreng", null, "Bawang merah", 200, "g", 10],
             ]),
       ],
     },
@@ -477,3 +505,4 @@ export async function downloadImportXlsxTemplate(service: boolean) {
   const { downloadXlsx } = await import("./xlsx");
   downloadXlsx("template-impor-produk.xlsx", importWorkbookTemplate(service));
 }
+

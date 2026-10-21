@@ -11,8 +11,74 @@ import type { Change, SyncRecord, WritableEntity } from "./types";
 
 export type RecipeItem = { raw_material_id: string; qty: number; unit: string };
 
-/** Record sync `recipes`: satu resep aktif per (produk, varian); `variant_id` null = resep produk. */
-export type Recipe = SyncRecord & { product_id: string; variant_id: string | null; items: RecipeItem[] };
+/**
+ * Record sync `recipes`: satu resep aktif per (produk, varian); `variant_id` null = resep produk. `items` = takaran
+ * KOTOR per 1 porsi (dasar HPP & potong stok); `batch` = catatan isian "per adonan" dari aplikasi (HPP tahap 4).
+ */
+export type Recipe = SyncRecord & { product_id: string; variant_id: string | null; items: RecipeItem[]; batch?: unknown };
+
+/** Satu bahan isian adonan: takaran BERSIH satu adonan (mili-satuan) + susut saat disimpan (basis poin). */
+export type RecipeBatchItem = { raw_material_id: string; qty: number; unit: string; waste_bp: number };
+
+/** `recipes.batch` (api.md "HPP tahap 4"): adonan menghasilkan `yield_qty` mili-porsi. */
+export type RecipeBatch = { yield_qty: number; items: RecipeBatchItem[] };
+
+const MAX_WASTE_BP = 9000;
+
+/** `recipes.batch` → batch; null bila kosong/tak dikenal (toleran, cermin `RecipeBatch.fromJson` app). */
+export function parseRecipeBatch(raw: unknown): RecipeBatch | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.yield_qty !== "number" || !Array.isArray(r.items)) return null;
+  const items: RecipeBatchItem[] = [];
+  for (const e of r.items) {
+    if (!e || typeof e !== "object") continue;
+    const x = e as Record<string, unknown>;
+    if (typeof x.raw_material_id !== "string" || !x.raw_material_id) continue;
+    const waste = Math.trunc(typeof x.waste_bp === "number" ? x.waste_bp : 0);
+    items.push({
+      raw_material_id: x.raw_material_id,
+      qty: Math.trunc(typeof x.qty === "number" ? x.qty : 0),
+      unit: typeof x.unit === "string" ? x.unit : "g",
+      waste_bp: Math.min(MAX_WASTE_BP, Math.max(0, waste)),
+    });
+  }
+  return items.length ? { yield_qty: Math.trunc(r.yield_qty), items } : null;
+}
+
+/** round_half_up(a ÷ b) untuk BigInt positif. */
+const roundDiv = (a: bigint, b: bigint) => (a * BigInt(2) + b) / (b * BigInt(2));
+
+/** Takaran kotor per porsi = round_half_up(bersih × 10.000 × 1.000 ÷ ((10.000 − susut) × hasil)) — `portionQtyOf` app. */
+export function portionQtyOf(netQty: number, wasteBp: number, yieldQty: number): number {
+  if (netQty <= 0 || yieldQty <= 0 || wasteBp < 0 || wasteBp >= 10000) return 0;
+  return Number(roundDiv(BigInt(netQty) * BigInt(10000) * BigInt(1000), BigInt(10000 - wasteBp) * BigInt(yieldQty)));
+}
+
+/** `items` turunan batch (urutan sama) — `deriveRecipeItems` app. */
+export function deriveRecipeItems(b: RecipeBatch): RecipeItem[] {
+  return b.items.map((i) => ({ raw_material_id: i.raw_material_id, qty: portionQtyOf(i.qty, i.waste_bp, b.yield_qty), unit: i.unit }));
+}
+
+/** Batch yang masih cocok dengan `items`; null bila tidak ada atau basi (diubah klien yang hanya mengirim items). */
+export function freshBatch(r: Pick<Recipe, "items" | "batch"> | null | undefined): RecipeBatch | null {
+  const b = r ? parseRecipeBatch(r.batch) : null;
+  return b && sameRecipe(deriveRecipeItems(b), r!.items) ? b : null;
+}
+
+/** Persen dari basis poin, gaya Indonesia ("20", "12,5"). */
+export const formatBp = (bp: number) => (bp / 100).toLocaleString("id-ID", { maximumFractionDigits: 2 });
+
+/** Mili-porsi → teks ("10", "2,25"). */
+export const formatYield = (milli: number) => (milli / 1000).toLocaleString("id-ID", { maximumFractionDigits: 3 });
+
+/**
+ * Patch edit resep dari web: web hanya menulis `items` per porsi, jadi catatan per adonan (`batch`) dibuang bila ada
+ * (sama dengan app saat menyimpan resep yang batch-nya basi) — app lalu menampilkannya per porsi tanpa banner basi.
+ */
+export function recipeItemsPatch(rec: Pick<Recipe, "batch">, items: RecipeItem[]): Record<string, unknown> {
+  return rec.batch != null ? { items, batch: null } : { items };
+}
 
 /** Record sync `raw_materials` (`avg_cost` = rupiah per satuan bahan). */
 export type RawMaterial = SyncRecord & {
@@ -22,6 +88,8 @@ export type RawMaterial = SyncRecord & {
   min_stock: number;
   avg_cost: number;
   is_active: boolean;
+  /** Susut saat dibersihkan (basis poin, 0–9000; HPP tahap 4). Server lama: tidak ada. */
+  waste_bp?: number;
 };
 
 /** Satuan bahan baku (`MaterialUnits.all`, enum server). */
