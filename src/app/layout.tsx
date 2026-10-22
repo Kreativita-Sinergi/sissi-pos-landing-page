@@ -56,10 +56,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: ["/images/og-sissi-2026.jpg"],
   },
-  icons: {
-    icon: "/logos/sissi-icon.svg",
-    apple: "/logos/sissi-icon.svg",
-  },
+  // Favicon: berkas konvensi Next di src/app (favicon.ico, icon.png, apple-icon.png).
 };
 
 export default function RootLayout({
