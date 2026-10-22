@@ -171,7 +171,7 @@ function CancelBody({
               ? `Pesanan awal ${sale.receipt_no} (${sale.items_count.toLocaleString("id-ID")} porsi) dihapus dan transaksinya ditutup. Belum dimasak dan tidak ada DP yang perlu dikembalikan. `
               : deposit
                 ? `DP reservasi ${sale.receipt_no} (${formatRupiah(sale.paid_total)}) akan dikembalikan dan transaksinya ditutup${preorder ? "; pesanan awalnya ikut dihapus" : ""}. ${stillActive ? "Reservasinya tetap aktif (Direservasi); bila tamu datang, pesanannya dilayani sebagai pesanan biasa. " : ""}`
-                : `Transaksi ${sale.receipt_no} (${formatRupiah(partial ? netTotalOf(sale) : sale.total)}${partial ? " setelah refund sebagian" : ""}) akan ${isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam omzet. `}
+                : `Transaksi ${sale.receipt_no} (${formatRupiah(partial ? netTotalOf(sale) : sale.total)}${partial ? " setelah refund sebagian" : ""}) akan ${isRefund ? "dicatat sebagai refund" : "dibatalkan"} dan tidak dihitung dalam penjualan. `}
             Tercatat di Aktivitas atas nama {session.user.name}.
           </p>
         </Notice>

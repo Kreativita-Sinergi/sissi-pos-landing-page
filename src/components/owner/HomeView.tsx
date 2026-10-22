@@ -108,7 +108,7 @@ function profitHint(t: Totals) {
     return <span>Isi harga modal produk di aplikasi agar laba terhitung.</span>;
   }
   const margin = t.revenue > 0 ? Math.round((t.gross_profit / t.revenue) * 100) : null;
-  return <span>{margin !== null ? `Margin ±${margin}% dari omzet` : "Belum ada penjualan"}</span>;
+  return <span>{margin !== null ? `Margin ±${margin}% dari penjualan` : "Belum ada penjualan"}</span>;
 }
 
 function HomeBody({ s, withOutlet, multiOutlet }: { s: Summary; withOutlet: (h: string) => string; multiOutlet: boolean }) {
@@ -122,7 +122,7 @@ function HomeBody({ s, withOutlet, multiOutlet }: { s: Summary; withOutlet: (h: 
       {/* KPI hari ini */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="Omzet hari ini"
+          label="Penjualan hari ini"
           value={formatRupiah(s.today.revenue)}
           hint={
             <span className="flex flex-col gap-0.5">
@@ -153,7 +153,7 @@ function HomeBody({ s, withOutlet, multiOutlet }: { s: Summary; withOutlet: (h: 
         />
       </div>
 
-      <Section title="Omzet per jam hari ini" description={`Kemarin sampai jam yang sama: ${formatRupiah(s.yesterday_same_time.revenue)} · kemarin sehari: ${formatRupiah(s.yesterday.revenue)}`}>
+      <Section title="Penjualan per jam hari ini" description={`Kemarin sampai jam yang sama: ${formatRupiah(s.yesterday_same_time.revenue)} · kemarin sehari: ${formatRupiah(s.yesterday.revenue)}`}>
         <HourlyChart s={s} />
       </Section>
 
@@ -305,11 +305,11 @@ function HourlyChart({ s }: { s: Summary }) {
   return (
     <TimeChart
       rows={rows}
-      series={[{ id: "rev", label: "Omzet", color: MAIN }]}
+      series={[{ id: "rev", label: "Penjualan", color: MAIN }]}
       kind="bar"
       format={formatRupiah}
       axisFormat={formatRupiahShort}
-      label={`Omzet per jam hari ini, total ${formatRupiah(s.today.revenue)}`}
+      label={`Penjualan per jam hari ini, total ${formatRupiah(s.today.revenue)}`}
       emptyNote="Belum ada transaksi hari ini."
     />
   );

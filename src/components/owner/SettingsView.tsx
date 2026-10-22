@@ -708,10 +708,10 @@ function TransactionSection({ rec, onRecord, credit }: OutletProps & { credit: b
       <Switch id={`${uid}-pin`} label="PIN pemilik untuk membatalkan" description="Void & refund oleh kasir butuh PIN pemilik." checked={draft.pin_for_void} onChange={(v) => set("pin_for_void", v)} />
       <Switch
         id={`${uid}-blind`}
-        label="Tutup kasir tanpa melihat kas seharusnya"
-        description="Kasir menghitung uang laci tanpa melihat angka sistem (tutup buta)."
+        label="Tutup kasir tanpa melihat angka sistem"
+        description="Aktif bawaan. Kasir menghitung uang laci tanpa melihat jumlah seharusnya; pemilik tetap melihat selisihnya."
         checked={draft.blind_close}
-        onChange={(v) => set("blind_close", v)}
+        onChange={(v) => setDraft({ ...draft, blind_close: v, show_expected_cash: !v })}
       />
       <Switch
         id={`${uid}-name`}

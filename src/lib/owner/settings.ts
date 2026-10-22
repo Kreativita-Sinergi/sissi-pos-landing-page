@@ -44,8 +44,11 @@ export type TransactionSettings = {
   queue_number: boolean;
   allow_credit: boolean;
   pin_for_void: boolean;
+  /** Efektif: kasir menutup tanpa melihat angka sistem (lihat [readTransaction]). */
   blind_close: boolean;
   require_customer_name: boolean;
+  /** Pemilik sengaja mengizinkan kasir melihat kas seharusnya (2026-10-22). */
+  show_expected_cash: boolean;
 };
 
 export function readTaxes(settings: unknown): Tax[] {
@@ -170,8 +173,12 @@ export function readTransaction(settings: unknown): TransactionSettings {
     queue_number: bool(s.queue_number, false),
     allow_credit: bool(s.allow_credit, false),
     pin_for_void: bool(s.pin_for_void, true),
-    blind_close: bool(s.blind_close, false),
+    // Tutup buta aktif bawaan untuk kasir (keputusan pemilik 2026-10-22): aktif bila `blind_close` dinyalakan
+    // (app/web lama) atau pemilik belum pernah mengizinkan lewat `show_expected_cash`. Disimpan keduanya agar
+    // app lama (hanya membaca `blind_close`) ikut sejalan.
+    blind_close: bool(s.blind_close, false) || !bool(s.show_expected_cash, false),
     require_customer_name: bool(s.require_customer_name, false),
+    show_expected_cash: !(bool(s.blind_close, false) || !bool(s.show_expected_cash, false)),
   };
 }
 

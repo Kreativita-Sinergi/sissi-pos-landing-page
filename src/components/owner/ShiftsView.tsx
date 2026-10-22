@@ -277,7 +277,7 @@ function ShiftBody({ s, onChanged }: { s: ShiftDetail; onChanged: () => void }) 
               <dd className="font-semibold tabular-nums">{s.sales_count.toLocaleString("id-ID")}</dd>
             </div>
             <div className="flex justify-between gap-4 py-2">
-              <dt className="text-text-body">Omzet</dt>
+              <dt className="text-text-body">Penjualan</dt>
               <dd className="font-semibold tabular-nums">{formatRupiah(s.sales_total)}</dd>
             </div>
             <div className="flex justify-between gap-4 py-2">

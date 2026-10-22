@@ -48,7 +48,7 @@ export function ReportView() {
   const exportItems = [
     {
       label: r?.hourly ? "Ringkasan per jam" : "Ringkasan harian",
-      hint: "Omzet & jumlah transaksi",
+      hint: "Penjualan & jumlah transaksi",
       disabled: !r,
       onSelect: () =>
         r &&
@@ -72,7 +72,7 @@ export function ReportView() {
     },
     {
       label: "Per kasir",
-      hint: "Transaksi, omzet, pembatalan",
+      hint: "Transaksi, penjualan, pembatalan",
       disabled: !r,
       onSelect: () =>
         r &&
@@ -136,7 +136,7 @@ function ReportBody({ r, title }: { r: SalesReport; title: string }) {
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label={`Omzet · ${title.toLowerCase()}`}
+          label={`Penjualan · ${title.toLowerCase()}`}
           value={formatRupiah(r.revenue)}
           hint={
             <span className="flex flex-col gap-0.5">
@@ -154,7 +154,7 @@ function ReportBody({ r, title }: { r: SalesReport; title: string }) {
         />
       </div>
 
-      <Section title={r.hourly ? "Omzet per jam" : "Omzet per hari"} description={empty ? undefined : `Total ${formatRupiah(r.revenue)} dari ${r.transactions.toLocaleString("id-ID")} transaksi`}>
+      <Section title={r.hourly ? "Penjualan per jam" : "Penjualan per hari"} description={empty ? undefined : `Total ${formatRupiah(r.revenue)} dari ${r.transactions.toLocaleString("id-ID")} transaksi`}>
         <BucketChart r={r} />
       </Section>
 
@@ -170,7 +170,7 @@ function ReportBody({ r, title }: { r: SalesReport; title: string }) {
 
       {locked || !r.products ? (
         <LockedCard title="Produk terlaris">
-          Lihat hingga 100 produk paling laku beserta jumlah & omzetnya, dan ekspor ke CSV.
+          Lihat hingga 100 produk paling laku beserta jumlah & penjualannya, dan ekspor ke CSV.
         </LockedCard>
       ) : (
         <Products r={r} />
@@ -206,12 +206,12 @@ function BucketChart({ r }: { r: SalesReport }) {
   return (
     <TimeChart
       rows={rows}
-      series={[{ id: "rev", label: "Omzet", color: MAIN }]}
+      series={[{ id: "rev", label: "Penjualan", color: MAIN }]}
       kind={!r.hourly && rows.length > 45 ? "line" : "bar"}
       format={formatRupiah}
       axisFormat={formatRupiahShort}
       height={200}
-      label={`Grafik omzet ${r.hourly ? "per jam" : "per hari"}, total ${formatRupiah(r.revenue)}`}
+      label={`Grafik penjualan ${r.hourly ? "per jam" : "per hari"}, total ${formatRupiah(r.revenue)}`}
       emptyNote={r.transactions === 0 ? "Belum ada transaksi pada periode ini." : undefined}
     />
   );
@@ -233,7 +233,7 @@ function Breakdown({ r }: { r: SalesReport }) {
   return (
     <Section title="Rincian">
       <dl className="divide-y divide-border-subtle text-[14px]">
-        <Row label="Omzet (total transaksi)" value={formatRupiah(r.revenue)} strong note="Termasuk pajak & biaya layanan" />
+        <Row label="Penjualan (total transaksi)" value={formatRupiah(r.revenue)} strong note="Termasuk pajak & biaya layanan" />
         <Row label="Diskon" value={r.discounts ? `-${formatRupiah(r.discounts)}` : formatRupiah(0)} negative={r.discounts > 0} note="Diskon nota + diskon per item" />
         <Row label="Pajak" value={formatRupiah(r.tax)} />
         <Row label="Biaya layanan" value={formatRupiah(r.service_fee)} />
@@ -253,7 +253,7 @@ function Breakdown({ r }: { r: SalesReport }) {
           }
         />
         <Row label="Item terjual" value={r.items_sold.toLocaleString("id-ID")} />
-        <Row label="Dibatalkan" value={`${r.cancelled.count.toLocaleString("id-ID")} · ${formatRupiah(r.cancelled.amount)}`} note="Tidak termasuk omzet" />
+        <Row label="Dibatalkan" value={`${r.cancelled.count.toLocaleString("id-ID")} · ${formatRupiah(r.cancelled.amount)}`} note="Tidak termasuk penjualan" />
         <Row label="Piutang kasbon (semua tanggal)" value={formatRupiah(r.credit.outstanding)} note={`${r.credit.count.toLocaleString("id-ID")} transaksi belum lunas`} />
       </dl>
     </Section>
@@ -304,7 +304,7 @@ function Cashiers({ r }: { r: SalesReport }) {
               <tr>
                 <th scope="col" className={thClass}>Kasir</th>
                 <th scope="col" className={`${thClass} text-right`}>Transaksi</th>
-                <th scope="col" className={`${thClass} text-right`}>Omzet</th>
+                <th scope="col" className={`${thClass} text-right`}>Penjualan</th>
                 <th scope="col" className={`${thClass} hidden text-right sm:table-cell`}>Rata-rata</th>
                 <th scope="col" className={`${thClass} hidden text-right sm:table-cell`}>Batal</th>
               </tr>
@@ -378,7 +378,7 @@ function Products({ r }: { r: SalesReport }) {
                 <th scope="col" className={`${thClass} w-10`}>#</th>
                 <th scope="col" className={thClass}>Produk</th>
                 <th scope="col" className={`${thClass} text-right`}>Jumlah</th>
-                <th scope="col" className={`${thClass} text-right`}>Omzet</th>
+                <th scope="col" className={`${thClass} text-right`}>Penjualan</th>
               </tr>
             </thead>
             <tbody>
@@ -399,7 +399,7 @@ function Products({ r }: { r: SalesReport }) {
         </div>
       )}
       <p className="flex items-center gap-1.5 border-t border-border-subtle px-4 py-2.5 text-[12.5px] text-text-muted sm:px-5">
-        <Info size={13} aria-hidden /> Omzet produk = subtotal baris setelah diskon item, sebelum diskon nota & pajak.
+        <Info size={13} aria-hidden /> Penjualan produk = subtotal baris setelah diskon item, sebelum diskon nota & pajak.
       </p>
     </Section>
   );

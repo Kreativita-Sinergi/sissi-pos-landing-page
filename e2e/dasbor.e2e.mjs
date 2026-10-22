@@ -414,16 +414,16 @@ async function submitFormOf(selector) {
 test("beranda memuat KPI", async () => {
   await ensureLoggedIn();
   await go("/dasbor");
-  await waitText("Omzet hari ini");
+  await waitText("Penjualan hari ini");
   await waitText("Transaksi");
-  const kpi = await page.evaluate(() => /Omzet hari ini\s+Rp[\d.]+/.test(document.querySelector("main").innerText));
-  assert(kpi, "nilai omzet hari ini (Rp…) tidak tampil");
+  const kpi = await page.evaluate(() => /Penjualan hari ini\s+Rp[\d.]+/.test(document.querySelector("main").innerText));
+  assert(kpi, "nilai penjualan hari ini (Rp…) tidak tampil");
   assert(!(await hasText("Coba lagi", "main")), "ada blok galat di Beranda");
 });
 
 test("laporan memuat & ganti periode (filter tunggal tanpa ruang kosong)", async () => {
   await go("/dasbor/laporan");
-  await waitText("Omzet · 7 hari terakhir");
+  await waitText("Penjualan · 7 hari terakhir");
   await click("Periode: 7 hari terakhir", { within: "main" });
   await page.waitForSelector("[role=listbox][aria-label=Periode] [role=option]", { visible: true });
   // Pilihan tunggal: tidak ada kotak centang kosong di kiri label.
@@ -435,7 +435,7 @@ test("laporan memuat & ganti periode (filter tunggal tanpa ruang kosong)", async
   );
   assert(gaps.every((g) => g >= 0 && g <= 14), `label pilihan periode bergeser (ruang kosong di kiri): ${gaps.join(",")}`);
   await click("30 hari terakhir", { selector: "[role=option]" });
-  await waitText("Omzet · 30 hari terakhir");
+  await waitText("Penjualan · 30 hari terakhir");
   assert(new URL(page.url()).searchParams.get("from"), "periode tersimpan di URL (?from=)");
   assert(!(await hasText("Coba lagi", "main")), "ada blok galat di Laporan");
 });

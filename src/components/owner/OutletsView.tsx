@@ -28,7 +28,7 @@ export function OutletsView() {
     <>
       <PageHeader
         title="Perbandingan outlet"
-        description={`Omzet, transaksi, dan laba tiap outlet · ${periodTitle(from, to, preset).toLowerCase()}.`}
+        description={`Penjualan, transaksi, dan laba tiap outlet · ${periodTitle(from, to, preset).toLowerCase()}.`}
         actions={
           <ExportMenu
             items={[
@@ -99,13 +99,13 @@ export function OutletsView() {
 function OutletsTable({ r }: { r: OutletsReport }) {
   const t = r.total;
   return (
-    <Section title="Outlet" description="Urut omzet tertinggi · piutang kasbon dihitung semua tanggal" bodyClass="p-0">
+    <Section title="Outlet" description="Urut penjualan tertinggi · piutang kasbon dihitung semua tanggal" bodyClass="p-0">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[340px] border-separate border-spacing-0 text-[14px]">
           <thead>
             <tr>
               <th scope="col" className={thClass}>Outlet</th>
-              <th scope="col" className={`${thClass} text-right`}>Omzet</th>
+              <th scope="col" className={`${thClass} text-right`}>Penjualan</th>
               <th scope="col" className={`${thClass} hidden text-right sm:table-cell`}>Transaksi</th>
               <th scope="col" className={`${thClass} hidden text-right md:table-cell`}>Rata-rata</th>
               <th scope="col" className={`${thClass} hidden text-right md:table-cell`}>Laba kotor</th>
@@ -125,7 +125,7 @@ function OutletsTable({ r }: { r: OutletsReport }) {
                     <span className="w-24 sm:w-40">
                       <Meter value={o.share_percent} max={100} tone="brand" />
                     </span>
-                    <span className="text-[12.5px] tabular-nums text-text-muted">{o.share_percent.toLocaleString("id-ID", { maximumFractionDigits: 1 })}% omzet</span>
+                    <span className="text-[12.5px] tabular-nums text-text-muted">{o.share_percent.toLocaleString("id-ID", { maximumFractionDigits: 1 })}% penjualan</span>
                   </span>
                   <span className="mt-0.5 block text-[12px] text-text-muted sm:hidden">
                     {o.transactions.toLocaleString("id-ID")} transaksi · rata-rata {formatRupiah(o.average)}

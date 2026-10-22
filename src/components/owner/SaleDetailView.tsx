@@ -162,7 +162,7 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
         >
           <p>Alasan: {s.void_reason || "—"}</p>
           {s.approved_by_name && <p>Disetujui oleh {s.approved_by_name}</p>}
-          <p className="mt-1 text-[13px]">Tidak dihitung dalam omzet.</p>
+          <p className="mt-1 text-[13px]">Tidak dihitung dalam penjualan.</p>
         </Notice>
       )}
       {isDiscountUnapproved(s) && (
@@ -183,7 +183,7 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
         <Notice tone="warning" icon={<Undo2 size={17} aria-hidden />} title={`Refund sebagian ${formatRupiah(refunded)}`}>
           <p>
             Sebagian barang sudah dikembalikan. Total setelah refund <strong className="font-semibold tabular-nums">{formatRupiah(netTotalOf(s))}</strong>{" "}
-            (dari {formatRupiah(s.total)}) — angka inilah yang dihitung omzet pada tanggal transaksi.
+            (dari {formatRupiah(s.total)}) — angka inilah yang dihitung sebagai penjualan pada tanggal transaksi.
           </p>
         </Notice>
       )}
@@ -204,10 +204,10 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
           {s.paid_total > 0 ? (
             <p>
               Uang muka <strong className="font-semibold tabular-nums">{formatRupiah(s.paid_total)}</strong> dipegang untuk reservasi meja dan belum
-              dihitung omzet maupun pesanan berjalan. Omzet dicatat pada hari tamu datang dan ditagih.
+              dihitung sebagai penjualan maupun pesanan berjalan. Penjualan dicatat pada hari tamu datang dan ditagih.
             </p>
           ) : (
-            <p>Reservasi meja tanpa DP. Belum dihitung omzet maupun pesanan berjalan; omzet dicatat pada hari tamu datang dan ditagih.</p>
+            <p>Reservasi meja tanpa DP. Belum dihitung sebagai penjualan maupun pesanan berjalan; penjualan dicatat pada hari tamu datang dan ditagih.</p>
           )}
           {preorder && (
             <p className="mt-1 text-[13px]">
@@ -226,7 +226,7 @@ function Receipt({ s, onSettle, onCancel }: { s: SaleDetail; onSettle?: () => vo
       )}
       {s.deposit === "forfeited" && (
         <Notice tone="info" icon={<CalendarClock size={17} aria-hidden />} title="DP hangus">
-          Tamu batal atau tidak datang dan DP tidak dikembalikan. DP hangus dihitung sebagai omzet pada hari diproses.
+          Tamu batal atau tidak datang dan DP tidak dikembalikan. DP hangus dihitung sebagai penjualan pada hari diproses.
         </Notice>
       )}
       {s.deposit === "order" && !cancelled && (

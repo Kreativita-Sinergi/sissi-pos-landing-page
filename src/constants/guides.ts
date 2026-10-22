@@ -94,7 +94,7 @@ export const GUIDE_CATEGORIES: GuideCategory[] = [
   { id: "shift", label: "Shift & kas", description: "Buka kasir, catat kas masuk/keluar, dan tutup kasir." },
   { id: "stok", label: "Stok & inventori", description: "Stok barang, pembelian (PO), supplier, saran belanja, opname, dan transfer stok." },
   { id: "pelanggan", label: "Pelanggan & member", description: "Data pelanggan, member, poin, dan tingkat member." },
-  { id: "laporan", label: "Laporan", description: "Omzet, laba kotor, produk terlaris, jam ramai, dan riwayat penjualan." },
+  { id: "laporan", label: "Laporan", description: "Penjualan, laba kotor, produk terlaris, jam ramai, dan riwayat penjualan." },
   { id: "tim", label: "Tim", description: "Karyawan, PIN, absen, dan gaji." },
   { id: "jasa", label: "Jasa / servis", description: "Order servis, antrean, uang muka, dan penyerahan." },
   { id: "sewa", label: "Penyewaan", description: "Unit sewa, tarif, booking, dan sesi dengan timer." },
@@ -1719,7 +1719,7 @@ export const GUIDES: GuideItem[] = [
     ],
     faqs: [
       {
-        question: "Apakah DP masuk omzet?",
+        question: "Apakah DP masuk penjualan?",
         answer:
           "DP yang dipotong ke tagihan menjadi bagian pembayaran pesanan itu. DP hangus dan “Sisa DP” yang tidak dikembalikan dicatat sebagai pendapatan.",
       },
@@ -2253,7 +2253,7 @@ export const GUIDES: GuideItem[] = [
         id: "pantau",
         title: "Memantau kasbon",
         points: [
-          "“Riwayat” › tab “Belum lunas” berisi semua kasbon, dengan tanda “Jatuh tempo hari ini” atau “Terlambat … hari”.",
+          "“Riwayat” › tab “Kasbon” berisi semua kasbon, dengan tanda “Jatuh tempo hari ini” atau “Terlambat … hari”.",
           "Notifikasi “Kasbon jatuh tempo” muncul di menu Notifikasi.",
           "Di detail pelanggan, bagian “Kasbon berjalan” merangkum total utangnya.",
         ],
@@ -2299,7 +2299,7 @@ export const GUIDES: GuideItem[] = [
         id: "pilih-jenis",
         title: "Pilih jenis dan alasan",
         steps: [
-          "Pilih “Refund penuh”, “Refund sebagian”, atau “Void”.",
+          "Pilih “Refund semua”, “Refund sebagian”, atau “Batalkan” (uang belum diterima / salah input).",
           "Pilih alasan: “Salah input”, “Pelanggan batal”, “Pelanggan komplain”, atau “Transaksi ganda”, dan tambahkan keterangan bila perlu.",
           "Pada “Kembalikan lewat”, pilih “Sesuai pembayaran” atau cara lain.",
         ],
@@ -2333,7 +2333,7 @@ export const GUIDES: GuideItem[] = [
         description:
           "Detail transaksi menampilkan lencana “Refund sebagian”, keterangan “… dikembalikan” di barangnya, baris “Refund sebagian” dan “Total setelah refund”, serta “Riwayat refund sebagian” (waktu, kasir, barang, alasan, dan penyetuju). Ketuk “Cetak struk refund” untuk mencetak struk refund.",
         points: [
-          "Omzet di Laporan dan Laba rugi berkurang pada tanggal transaksi aslinya.",
+          "Penjualan di Laporan dan Laba rugi berkurang pada tanggal transaksi aslinya.",
           "Uang yang dikembalikan tercatat di shift saat refund dilakukan, sebagai baris “Refund sebagian” di laporan tutup kasir.",
         ],
         image: {
@@ -2400,7 +2400,7 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Di “Shift saat ini”, ketuk “Kas Masuk/Keluar”.",
           "Pilih “Kas Masuk” atau “Kas Keluar”, isi “Nominal”.",
-          "Pilih “Kategori” (mis. “Beli bahan”, “Operasional”, “Setor ke pemilik”) dan tulis “Catatan”.",
+          "Pilih “Kategori” (wajib — tidak dipilih otomatis; mis. “Beli bahan”, “Operasional”, “Setor ke pemilik”) dan tulis “Catatan”.",
         ],
         callout: {
           type: "warning",
@@ -2413,7 +2413,7 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Ketuk “Tutup Kasir”.",
           "Langkah 1: hitung uang fisik. Pilih “Per pecahan” (isi jumlah lembar per pecahan) atau “Isi total”, lalu “Lanjut”.",
-          "Langkah 2: periksa “Ringkasan shift”. Bila ada selisih, isi “Alasan selisih”.",
+          "Langkah 2: periksa “Ringkasan shift”. Selisih ditulis dengan kata: “Pas”, “Kurang Rp…”, atau “Lebih Rp…”. Bila ada selisih, isi “Alasan selisih”.",
           "Konfirmasi “Tutup kasir sekarang?”. Shift yang sudah ditutup tidak bisa dibuka lagi.",
         ],
         image: {
@@ -2436,7 +2436,7 @@ export const GUIDES: GuideItem[] = [
         id: "pengaturan-pemilik",
         title: "Pengaturan pemilik",
         points: [
-          "Pengaturan › “Transaksi” › “Tutup kasir tanpa melihat angka sistem”: kasir menghitung tanpa melihat jumlah seharusnya; pemilik yang memeriksa selisihnya.",
+          "Pengaturan › “Transaksi” › “Tutup kasir tanpa melihat angka sistem” (aktif bawaan): kasir menghitung tanpa melihat jumlah seharusnya; pemilik yang memeriksa selisihnya. Matikan bila kasir boleh melihat angka sistem.",
           "Pengaturan › “Kasir & jadwal shift”: “Daftar shift” (nama dan jam, tampil di Beranda) dan “Batas lama shift” (peringatan bila shift berjalan terlalu lama).",
           "“Kunci kasir” mengunci layar tanpa menutup shift; dibuka lagi dengan PIN karyawan.",
         ],
@@ -2810,7 +2810,7 @@ export const GUIDES: GuideItem[] = [
     slug: "membaca-laporan-penjualan-dan-margin",
     category: "laporan",
     title: "Laporan penjualan & laba kotor",
-    description: "Omzet, laba kotor, produk terjual, jam ramai, per kasir, riwayat, dan ekspor CSV.",
+    description: "Penjualan, laba kotor, produk terjual, jam ramai, per kasir, riwayat, dan ekspor CSV.",
     audience: ["Pemilik"],
     readMinutes: 5,
     lastUpdated: UPDATED_OCT21,
@@ -2828,7 +2828,7 @@ export const GUIDES: GuideItem[] = [
         id: "ringkasan",
         title: "Ringkasan",
         description:
-          "Tab “Ringkasan” menampilkan “Omzet”, “Transaksi”, “Rata-rata/transaksi”, “Laba kotor”, diskon, pajak, biaya layanan, “Piutang kasbon”, kartu “Laba rugi”, perbandingan dengan periode lalu, grafik omzet, “Per metode bayar”, dan “Wawasan periode ini”. Untuk laba setelah biaya usaha, baca “Laporan laba rugi”.",
+          "Tab “Ringkasan” menampilkan “Penjualan” (termasuk pajak), “Transaksi”, “Laba bersih” (ketuk untuk Laba rugi), “Piutang kasbon”, “Laba kotor”, “Rata-rata/transaksi”, diskon, pajak & biaya layanan, perbandingan dengan periode lalu, grafik penjualan, “Per metode bayar”, dan “Wawasan periode ini” (3 butir teratas; “Lihat semua” untuk sisanya). Untuk rincian laba setelah biaya usaha, baca “Laporan laba rugi”.",
         image: {
           ...TABLET,
           src: "/panduan/laporan-tablet.png",
@@ -2844,7 +2844,7 @@ export const GUIDES: GuideItem[] = [
         id: "tab-lain",
         title: "Produk terjual, jam ramai, per kasir",
         points: [
-          "“Produk terjual” — urutkan “Terlaris” atau “Omzet terbesar”. Pilihan urutan tetap terlihat saat daftar digulir.",
+          "“Produk terjual” — urutkan “Terlaris” atau “Penjualan terbesar”. Pilihan urutan tetap terlihat saat daftar digulir.",
           "“Jam ramai” — “Jam tersibuk” dan “Hari tersibuk”, selalu dari 30 hari terakhir. Berguna untuk jadwal karyawan.",
           "“Per kasir” — penjualan per kasir.",
         ],
@@ -2857,7 +2857,7 @@ export const GUIDES: GuideItem[] = [
         id: "riwayat-ekspor",
         title: "Riwayat penjualan dan ekspor",
         description:
-          "“Riwayat” (Riwayat Penjualan) berisi semua transaksi dengan tab “Semua”, “Lunas”, “Belum lunas”, “Batal”, serta saringan kasir, metode, dan periode. Detail transaksi bisa dicetak ulang, dikirim WA, atau dipesan ulang.",
+          "“Riwayat” (Riwayat Penjualan) berisi semua transaksi dengan tab “Semua”, “Lunas”, “Kasbon”, “Batal”, serta saringan kasir, metode, dan periode. Detail transaksi bisa dicetak ulang, dikirim WA, atau dipesan ulang.",
         points: ["“Ekspor CSV” tersedia di Laporan dan Riwayat. File CSV bisa dibuka di Excel atau Google Sheets."],
       },
     ],
@@ -2908,8 +2908,8 @@ export const GUIDES: GuideItem[] = [
         id: "cara-baca",
         title: "Cara membaca",
         points: [
-          "“Pendapatan” = omzet dikurangi pajak (PB1). Pajak dititipkan untuk disetor, jadi bukan pendapatan.",
-          "“Laba kotor” = penjualan menu bermodal dikurangi “Modal terjual (HPP)”. Angkanya sama dengan Laba kotor di Laporan.",
+          "“Pendapatan” = penjualan dikurangi pajak (PB1). Pajak dititipkan untuk disetor, jadi bukan pendapatan. Kartu “Dari penjualan ke pendapatan” menjelaskan bedanya dengan angka Laporan.",
+          "“Laba kotor” = penjualan menu bermodal dikurangi “Modal barang terjual”. Angkanya sama dengan Laba kotor di Laporan.",
           "“Pendapatan lain” = uang tanpa modal: DP hangus & sisa DP, biaya layanan, dan pembulatan. Ikut menambah laba bersih.",
           "“Biaya usaha” = biaya bulanan yang diisi, dibagi rata per hari kalender. Contoh: 7 hari di bulan Oktober (31 hari) memakai 7/31 dari biaya bulanan. Sebulan penuh = tepat biaya bulanan.",
           "“Laba bersih” = laba kotor + pendapatan lain − biaya usaha. Bila minus, tertulis “Rugi bersih” berwarna merah.",
@@ -2930,7 +2930,7 @@ export const GUIDES: GuideItem[] = [
         id: "syarat",
         title: "Agar angkanya lengkap",
         points: [
-          "Muncul “… baris penjualan (Rp …) belum punya modal”? Penjualan itu tidak dihitung ke laba. Ketuk “Buka HPP menu” dan isi modalnya.",
+          "Muncul “… baris penjualan (Rp …) belum punya modal”? Penjualan itu tidak dihitung ke laba. Ketuk “Isi modal menu” dan isi modalnya.",
           "Biaya usaha “Belum diisi”? Ketuk “Isi biaya usaha”, lalu tambahkan sewa, gaji, listrik, dan biaya bulanan lain.",
           "Bila belum ada satu pun menu bermodal, laba kotor dan laba bersih tampil “—”.",
           "Pada “Semua outlet”, biaya usaha semua outlet dijumlahkan. Outlet yang belum mengisi diberi catatan.",
@@ -3359,7 +3359,7 @@ export const GUIDES: GuideItem[] = [
         id: "buka",
         title: "Buka daftarnya",
         description:
-          "Ketuk chip “… perubahan ditolak”, atau kartu “Perubahan ditolak server” di Beranda/Notifikasi.",
+          "Ketuk chip “… perubahan ditolak”, atau kartu “Perubahan gagal disimpan” di Beranda/Notifikasi.",
       },
       {
         id: "baca",
