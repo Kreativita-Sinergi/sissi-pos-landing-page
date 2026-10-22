@@ -294,7 +294,7 @@ export function useSaver(onRecord: (r: SyncRecord) => void) {
         );
       }
     } catch (err) {
-      if (err instanceof ConfirmCancelled) setError("Perubahan belum disimpan: konfirmasi password dibatalkan.");
+      if (err instanceof ConfirmCancelled) setError("Perubahan belum disimpan: konfirmasi kata sandi dibatalkan.");
       else setError(saveErrorText(err, errorMessage));
     } finally {
       setSaving(false);

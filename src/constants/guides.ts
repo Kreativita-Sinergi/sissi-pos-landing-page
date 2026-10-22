@@ -101,7 +101,7 @@ export const GUIDE_CATEGORIES: GuideCategory[] = [
   { id: "notifikasi", label: "Notifikasi", description: "Notifikasi di aplikasi dan peringatan pemilik di HP." },
   { id: "offline", label: "Bekerja offline", description: "Apa yang terjadi saat internet putus, status sinkron, dan perubahan ditolak." },
   { id: "pembaruan", label: "Perbarui aplikasi", description: "Pembaruan biasa dan pembaruan wajib." },
-  { id: "akun", label: "Akun & keamanan", description: "Password, keluar akun, login perangkat baru, dan hapus akun." },
+  { id: "akun", label: "Akun & keamanan", description: "Kata sandi, keluar akun, login perangkat baru, dan hapus akun." },
   { id: "langganan", label: "Langganan", description: "Paket Gratis dan Pro, batas transaksi, dan cara memperpanjang." },
   { id: "masalah", label: "Masalah umum", description: "Jawaban cepat untuk kendala yang sering terjadi." },
 ];
@@ -197,19 +197,19 @@ export const GUIDES: GuideItem[] = [
     slug: "daftar-dan-masuk",
     category: "mulai",
     title: "Daftar akun & masuk (email atau Google)",
-    description: "Membuat akun usaha baru, verifikasi email, masuk dengan Google, dan lupa password.",
+    description: "Membuat akun usaha baru, verifikasi email, masuk dengan Google, dan lupa kata sandi.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 4,
     lastUpdated: UPDATED_NEW,
     overview:
-      "Akun dibuat oleh pemilik usaha. Kamu bisa mendaftar dengan email dan password, atau dengan akun Google tanpa perlu kode verifikasi.",
+      "Akun dibuat oleh pemilik usaha. Kamu bisa mendaftar dengan email dan kata sandi, atau dengan akun Google tanpa perlu kode verifikasi.",
     steps: [
       {
         id: "daftar-email",
         title: "Daftar dengan email",
         steps: [
           "Di layar pembuka, ketuk “Daftar Usaha Baru”.",
-          "Isi “Nama pemilik”, “Nama usaha”, “Email”, dan “Password” (minimal 8 karakter, berisi huruf dan angka). “No. HP (opsional)” boleh dikosongkan.",
+          "Isi “Nama pemilik”, “Nama usaha”, “Email”, dan “Kata sandi” (minimal 8 karakter, berisi huruf dan angka). “No. HP (opsional)” boleh dikosongkan.",
           "Ketuk “Jenis usaha”, pilih kategori (mis. Kuliner), lalu jenisnya, dan ketuk tombol “Pilih …”.",
           "Centang persetujuan “Syarat & Ketentuan” dan “Kebijakan Privasi”, lalu ketuk “Buat Akun”.",
           "Buka email, salin kode 6 digit, masukkan di layar “Masukkan kode verifikasi”, lalu ketuk “Verifikasi”.",
@@ -228,7 +228,7 @@ export const GUIDES: GuideItem[] = [
           "Bila email itu belum terdaftar, muncul layar “Lengkapi pendaftaran”. Nama pemilik sudah terisi dari Google; isi “Nama usaha” dan “Jenis usaha”, centang persetujuan, lalu ketuk “Buat Akun”.",
         ],
         points: [
-          "Daftar lewat Google tidak memakai password dan tidak perlu kode verifikasi email. Bila ingin juga bisa masuk dengan password, buat password lewat “Lupa password?”.",
+          "Daftar lewat Google tidak memakai kata sandi dan tidak perlu kode verifikasi email. Bila ingin juga bisa masuk dengan kata sandi, buat kata sandi lewat “Lupa kata sandi?”.",
           "Akun pemilik yang dulu daftar dengan email bisa juga masuk lewat Google dengan email yang sama.",
           "“Lanjut dengan Google” hanya untuk pemilik. Karyawan tetap memakai PIN.",
         ],
@@ -243,7 +243,7 @@ export const GUIDES: GuideItem[] = [
         id: "masuk",
         title: "Masuk ke akun",
         description:
-          "Di layar “Masuk ke akun”, isi “Email atau No. HP” dan “Password”, lalu ketuk “Masuk”. Centang “Ingat saya” di perangkat milik sendiri.",
+          "Di layar “Masuk ke akun”, isi “Email atau No. HP” dan “Kata sandi”, lalu ketuk “Masuk”. Centang “Ingat saya” di perangkat milik sendiri.",
         callout: {
           type: "info",
           text: "Kode tidak masuk? Cek folder spam atau promosi di email. Tombol “Kirim ulang” aktif lagi setelah hitung mundur selesai.",
@@ -251,12 +251,12 @@ export const GUIDES: GuideItem[] = [
       },
       {
         id: "lupa-password",
-        title: "Lupa password",
+        title: "Lupa kata sandi",
         steps: [
-          "Di layar masuk, ketuk “Lupa password?”.",
+          "Di layar masuk, ketuk “Lupa kata sandi?”.",
           "Isi “Email atau No. HP”, lalu ketuk “Kirim Kode”. Kode dikirim ke email akun.",
-          "Masukkan kode, lalu isi “Password baru” dan “Ulangi password”.",
-          "Ketuk “Simpan Password”, lalu masuk dengan password baru.",
+          "Masukkan kode, lalu isi “Kata sandi baru” dan “Ulangi kata sandi”.",
+          "Ketuk “Simpan Kata Sandi”, lalu masuk dengan kata sandi baru.",
         ],
       },
     ],
@@ -272,7 +272,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["setup-outlet-dan-perangkat", "akun-dan-keamanan", "karyawan-dan-pin"],
-    keywords: ["registrasi", "sign up", "login", "otp", "kode verifikasi", "google", "reset password"],
+    keywords: ["registrasi", "sign up", "login", "otp", "kode verifikasi", "google", "reset kata sandi", "reset password"],
   },
   {
     slug: "setup-outlet-dan-perangkat",
@@ -455,7 +455,7 @@ export const GUIDES: GuideItem[] = [
         title: "Yang tidak tersedia di HP tanpa layanan Google",
         points: [
           "Notifikasi push (misalnya peringatan untuk pemilik) tidak masuk. Notifikasi di dalam aplikasi tetap ada.",
-          "“Lanjut dengan Google” tidak bisa dipakai. Daftar dan masuk dengan email dan password.",
+          "“Lanjut dengan Google” tidak bisa dipakai. Daftar dan masuk dengan email dan kata sandi.",
           "Tidak ada pembaruan otomatis dari Play Store.",
         ],
         description: "Fitur kasir, stok, laporan, offline, dan sinkronisasi tetap berjalan normal.",
@@ -1209,7 +1209,7 @@ export const GUIDES: GuideItem[] = [
         id: "balik-modal",
         title: "Tab Balik modal",
         description:
-          "“Supaya balik modal” menunjukkan berapa porsi menu bermodal yang perlu terjual per hari agar biaya usaha tertutup, beserta perkiraan omzet per hari.",
+          "“Supaya balik modal” menunjukkan berapa porsi menu bermodal yang perlu terjual per hari agar biaya usaha tertutup, beserta perkiraan penjualan per hari (sesudah diskon, sebelum pajak).",
         points: [
           "Isi “Untung bersih per bulan” di “Mau untung berapa?” untuk melihat target porsi per hari.",
           "Bagian “30 hari terakhir” membandingkan laba kotor dengan biaya usaha, mis. “Sudah balik modal” atau “Belum balik modal · kurang 4 porsi menu bermodal/hari”.",
@@ -1867,8 +1867,8 @@ export const GUIDES: GuideItem[] = [
         description:
           "Saat dapur menandai pesanan siap, Kasir langsung memberi tahu. Antar ke tamu, lalu ketuk “Tandai sudah diantar”. Daftar lengkapnya juga ada di “Pesanan” › “Status dapur”.",
         devices: {
-          hp: "Muncul ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap disajikan”. Ketuk loncengnya untuk membuka lembar “Siap diantar”.",
-          tablet: "Muncul spanduk “Pesanan siap disajikan” di layar Kasir; ketuk “Lihat”.",
+          hp: "Muncul ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap diantar”. Ketuk loncengnya untuk membuka lembar “Siap diantar”.",
+          tablet: "Muncul spanduk “Pesanan siap diantar” di layar Kasir; ketuk “Lihat”.",
         },
         image: {
           ...HP,
@@ -3227,7 +3227,7 @@ export const GUIDES: GuideItem[] = [
         id: "menu-notifikasi",
         title: "Menu Notifikasi",
         description:
-          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap disajikan, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
+          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap diantar, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
         points: [
           "Untuk membersihkan tanda baru, ketuk “Tandai semua dibaca”. Muncul konfirmasi “Tandai semua dibaca?”; ketuk “Tandai dibaca”.",
         ],
@@ -3313,7 +3313,7 @@ export const GUIDES: GuideItem[] = [
           "Mencatat transaksi, menyimpan pesanan, membuka dan menutup kasir.",
           "Data tersimpan di perangkat dan menunggu dikirim.",
           "Hal yang butuh server tetap perlu internet, misalnya masuk akun, unggah foto, dan sinkron pertama.",
-          "Juga butuh internet: menerima Pesanan QR baru dari pelanggan, memperbarui status langganan, dan mengganti password.",
+          "Juga butuh internet: menerima Pesanan QR baru dari pelanggan, memperbarui status langganan, dan mengganti kata sandi.",
         ],
       },
       {
@@ -3452,7 +3452,7 @@ export const GUIDES: GuideItem[] = [
     slug: "akun-dan-keamanan",
     category: "akun",
     title: "Akun & keamanan",
-    description: "Ganti password, PIN supervisor, login di perangkat baru, dan keluar akun.",
+    description: "Ganti kata sandi, PIN supervisor, login di perangkat baru, dan keluar akun.",
     audience: ["Pemilik"],
     readMinutes: 3,
     lastUpdated: UPDATED_NEW,
@@ -3460,24 +3460,24 @@ export const GUIDES: GuideItem[] = [
     steps: [
       {
         id: "password",
-        title: "Ganti password",
-        description: "Khusus pemilik; karyawan masuk memakai PIN. Mengganti password butuh internet.",
+        title: "Ganti kata sandi",
+        description: "Khusus pemilik; karyawan masuk memakai PIN. Mengganti kata sandi butuh internet.",
         steps: [
-          "Buka Pengaturan › “Akun & keamanan”. Di kartu “Keamanan”, pada baris “Password”, ketuk “Ganti”.",
-          "Isi “Password saat ini”, lalu “Password baru” dan “Ulangi password”.",
-          "Nyalakan “Keluarkan perangkat lain” bila HP, tablet, dan dasbor web lain harus masuk lagi dengan password baru. Perangkat ini tetap masuk.",
-          "Ketuk “Simpan Password”. Muncul “Password berhasil disimpan.”",
+          "Buka Pengaturan › “Akun & keamanan”. Di kartu “Keamanan”, pada baris “Kata sandi”, ketuk “Ganti”.",
+          "Isi “Kata sandi saat ini”, lalu “Kata sandi baru” dan “Ulangi kata sandi”.",
+          "Nyalakan “Keluarkan perangkat lain” bila HP, tablet, dan dasbor web lain harus masuk lagi dengan kata sandi baru. Perangkat ini tetap masuk.",
+          "Ketuk “Simpan Kata Sandi”. Muncul “Kata sandi berhasil disimpan.”",
         ],
         points: [
-          "Daftar lewat Google dan belum pernah membuat password? Kosongkan “Password saat ini” untuk mengatur password.",
-          "Lupa password saat ini? Gunakan “Lupa password?” di layar masuk; kode dikirim ke email akun.",
+          "Daftar lewat Google dan belum pernah membuat kata sandi? Kosongkan “Kata sandi saat ini” untuk mengatur kata sandi.",
+          "Lupa kata sandi saat ini? Gunakan “Lupa kata sandi?” di layar masuk; kode dikirim ke email akun.",
           "Bila muncul “Terlalu banyak percobaan”, tunggu sekitar 15 menit, lalu coba lagi.",
         ],
         image: {
           ...HP,
           src: "/panduan/ganti-password-hp.png",
-          alt: "Lembar Ganti password: password saat ini, password baru, ulangi password, dan sakelar Keluarkan perangkat lain",
-          caption: "Isi password lama dan baru, lalu ketuk “Simpan Password”.",
+          alt: "Lembar Ganti kata sandi: kata sandi saat ini, kata sandi baru, ulangi kata sandi, dan sakelar Keluarkan perangkat lain",
+          caption: "Isi kata sandi lama dan baru, lalu ketuk “Simpan Kata Sandi”.",
         },
       },
       {
@@ -3490,7 +3490,7 @@ export const GUIDES: GuideItem[] = [
         id: "perangkat-baru",
         title: "Login di perangkat baru",
         description:
-          "Nyalakan kategori “Login di perangkat baru” di Pengaturan › “Notifikasi” agar HP pemilik diberi tahu setiap akun dimasuki dari perangkat yang belum pernah dipakai. Bila itu bukan kamu, segera ganti password.",
+          "Nyalakan kategori “Login di perangkat baru” di Pengaturan › “Notifikasi” agar HP pemilik diberi tahu setiap akun dimasuki dari perangkat yang belum pernah dipakai. Bila itu bukan kamu, segera ganti kata sandi.",
       },
       {
         id: "keluar",
@@ -3716,7 +3716,7 @@ export const GUIDES: GuideItem[] = [
         title: "Masuk dan PIN",
         points: [
           "Kode verifikasi tidak masuk → cek folder spam/promosi, lalu “Kirim ulang” setelah hitung mundur.",
-          "Lupa password → “Lupa password?” di layar masuk.",
+          "Lupa kata sandi → “Lupa kata sandi?” di layar masuk.",
           "Karyawan lupa PIN → pemilik mengganti PIN di “Tim” › “Karyawan”.",
           "PIN terkunci karena salah berkali-kali → tunggu beberapa menit sesuai pesan di layar.",
         ],

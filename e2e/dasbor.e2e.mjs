@@ -266,7 +266,7 @@ async function waitDialogClosed(title) {
 async function login() {
   await go("/masuk");
   await fill("Email atau nomor HP", EMAIL);
-  await fill("Password", PASSWORD);
+  await fill("Kata sandi", PASSWORD);
   await click("Masuk", { selector: "button[type=submit]" });
   await page.waitForFunction(() => location.pathname === "/dasbor", { timeout: TIMEOUT });
 }
@@ -312,11 +312,11 @@ function makePng(w, h, [r, g, b]) {
 
 // ——— Tes ———
 
-test("login: password salah menampilkan pesan", async () => {
+test("login: kata sandi salah menampilkan pesan", async () => {
   await page.deleteCookie(...(await page.cookies("http://localhost:8000")));
   await go("/masuk");
   await fill("Email atau nomor HP", EMAIL);
-  await fill("Password", "salah-sekali-123");
+  await fill("Kata sandi", "salah-sekali-123");
   await click("Masuk", { selector: "button[type=submit]" });
   await page.waitForSelector("[role=alert]", { visible: true });
   const msg = await page.$eval("[role=alert]", (e) => e.innerText.trim());
@@ -629,7 +629,7 @@ test("outlet: kuota penuh → tombol Tambah outlet nonaktif dengan penjelasan", 
   }
 });
 
-test("pengaturan: ubah nama merchant QRIS lewat konfirmasi password, lalu kembalikan", async () => {
+test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kembalikan", async () => {
   await ensureLoggedIn();
   const me = await api.get("/owner/auth/me");
   const outletId = me.outlets[0].id;
@@ -643,13 +643,13 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi password, lalu kembal
     await fillSel("#pembayaran input[id$='-merchant']", name);
     await click("Simpan", { within: "#pembayaran", selector: "button[type=submit]" });
     // Sesi browser baru belum dikonfirmasi → server 422 CONFIRM_REQUIRED → dialog.
-    await waitDialog("Konfirmasi password");
-    await fill("Password", "salah-sekali-123", { within: "dialog" });
+    await waitDialog("Konfirmasi kata sandi");
+    await fill("Kata sandi", "salah-sekali-123", { within: "dialog" });
     await click("Konfirmasi", { within: "dialog" });
-    await waitText("Password salah", { root: "dialog[open]" });
-    await fill("Password", PASSWORD, { within: "dialog" });
+    await waitText("Kata sandi salah", { root: "dialog[open]" });
+    await fill("Kata sandi", PASSWORD, { within: "dialog" });
     await click("Konfirmasi", { within: "dialog" });
-    await waitDialogClosed("Konfirmasi password");
+    await waitDialogClosed("Konfirmasi kata sandi");
     await waitText("Metode pembayaran disimpan.");
     const saved = await poll(async () => {
       const o = (await api.pull("outlets")).find((x) => x.id === outletId);

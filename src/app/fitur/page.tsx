@@ -310,7 +310,7 @@ const FEATURE_BLOCKS: FeatureBlock[] = [
       },
       {
         title: "Masuk dengan Google",
-        description: "Daftar dan masuk tanpa membuat password baru.",
+        description: "Daftar dan masuk tanpa membuat kata sandi baru.",
       },
       {
         title: "Pemberitahuan pembaruan",

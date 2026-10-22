@@ -106,7 +106,7 @@ export function AccountSection({
       const api = await ownerApi();
       const out = await api.inviteEmployee(current.id);
       setInvite(out);
-      toast.success(out.purpose === "reset_password" ? "Tautan reset password dibuat." : "Undangan dibuat.");
+      toast.success(out.purpose === "reset_password" ? "Tautan reset kata sandi dibuat." : "Undangan dibuat.");
       // `invite_expires_at` & `updated_at` berubah di server → tarik ulang agar simpan berikutnya tidak konflik.
       ctx.reload();
     } catch (err) {
@@ -131,7 +131,7 @@ export function AccountSection({
       await api.cancelInvite(current.id);
       setInvite(null);
       setCancelling(false);
-      toast.success(reset ? "Tautan reset password dibatalkan." : "Undangan dibatalkan.");
+      toast.success(reset ? "Tautan reset kata sandi dibatalkan." : "Undangan dibatalkan.");
       // `invite_expires_at` & `updated_at` berubah di server → tarik ulang.
       ctx.reload();
     } catch (err) {
@@ -170,7 +170,7 @@ export function AccountSection({
           </h3>
           {current && <AccountBadge employee={current} />}
         </div>
-        <p className="mt-0.5 text-[13px] text-text-muted">Karyawan masuk di HP-nya sendiri dengan no. HP dan password yang ia buat dari tautan undangan.</p>
+        <p className="mt-0.5 text-[13px] text-text-muted">Karyawan masuk di HP-nya sendiri dengan no. HP dan kata sandi yang ia buat dari tautan undangan.</p>
       </div>
 
       <div className="flex flex-col gap-4 px-4 py-3">
@@ -211,7 +211,7 @@ export function AccountSection({
         {current && state !== "disabled" && (
           <dl className="grid gap-1 text-[13.5px]">
             <div className="flex flex-wrap gap-x-2">
-              <dt className="text-text-muted">Password</dt>
+              <dt className="text-text-muted">Kata sandi</dt>
               <dd className="text-text-heading">{current.has_password ? "Sudah dibuat" : "Belum dibuat"}</dd>
             </div>
             {invitePending && (
@@ -265,7 +265,7 @@ export function AccountSection({
         {invite && (
           <div className="rounded-[12px] border border-border-subtle bg-bg-muted px-3.5 py-3" role="status">
             <p className="text-[13.5px] font-semibold text-text-heading">
-              {invite.purpose === "reset_password" ? "Tautan reset password" : "Undangan"} siap dikirim
+              {invite.purpose === "reset_password" ? "Tautan reset kata sandi" : "Undangan"} siap dikirim
             </p>
             <p className="mt-0.5 text-[13px] text-text-muted">
               Berlaku sampai {formatDateTime(invite.expires_at)}, sekali pakai. Kode tidak bisa ditampilkan lagi setelah lembar ini ditutup; tautan
@@ -351,13 +351,13 @@ function whatsappText(inv: EmployeeInvite, name: string, business: string): stri
   const until = formatDateTime(inv.expires_at);
   if (inv.purpose === "reset_password") {
     return (
-      `Halo ${name}, ini tautan untuk membuat password baru akun Sissi-mu di ${business}:\n${inv.url}\n\n` +
+      `Halo ${name}, ini tautan untuk membuat kata sandi baru akun Sissi-mu di ${business}:\n${inv.url}\n\n` +
       `Atau buka aplikasi Sissi → Punya kode undangan → ketik kode ${inv.code}.\nBerlaku sampai ${until}, sekali pakai.`
     );
   }
   return (
-    `Halo ${name}, kamu diundang masuk ke ${business} di aplikasi Sissi. Buka tautan ini lalu buat password:\n${inv.url}\n\n` +
+    `Halo ${name}, kamu diundang masuk ke ${business} di aplikasi Sissi. Buka tautan ini lalu buat kata sandi:\n${inv.url}\n\n` +
     `Atau buka aplikasi Sissi → Punya kode undangan → ketik kode ${inv.code}.\nBerlaku sampai ${until}, sekali pakai. ` +
-    `Setelah itu masuk dengan no. HP ini dan password yang kamu buat.`
+    `Setelah itu masuk dengan no. HP ini dan kata sandi yang kamu buat.`
   );
 }

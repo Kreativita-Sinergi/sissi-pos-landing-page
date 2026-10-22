@@ -17,7 +17,7 @@ export function confirmReason(err: unknown): string {
     const d = err.details.find((x) => x.message?.startsWith(CONFIRM_PREFIX));
     if (d) return d.message.slice(CONFIRM_PREFIX.length).trim();
   }
-  return "Konfirmasi password untuk melanjutkan.";
+  return "Konfirmasi kata sandi untuk melanjutkan.";
 }
 
 /** Sesi masih dalam jendela konfirmasi (dari `session.confirmed_until`). */

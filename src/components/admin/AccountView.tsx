@@ -20,9 +20,9 @@ export function AccountView() {
   const [formKey, setFormKey] = useState(0);
   return (
     <>
-      <PageHeader title="Akun saya" description="Ganti password Anda. Admin lain tidak bisa melihat password ini." />
+      <PageHeader title="Akun saya" description="Ganti kata sandi Anda. Admin lain tidak bisa melihat kata sandi ini." />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Section title="Ganti password" className="order-last lg:order-none">
+        <Section title="Ganti kata sandi" className="order-last lg:order-none">
           <div className="max-w-[440px]">
             <PasswordForm
               key={formKey}
@@ -30,7 +30,7 @@ export function AccountView() {
               username={admin.email}
               onDone={() => {
                 setFormKey((k) => k + 1);
-                toast.success("Password diganti. Sesi di perangkat lain sudah dikeluarkan.");
+                toast.success("Kata sandi diganti. Sesi di perangkat lain sudah dikeluarkan.");
               }}
             />
           </div>
@@ -136,9 +136,9 @@ export function ForcePasswordView() {
               <span className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-tint text-brand-ink">
                 <KeyRound size={20} aria-hidden />
               </span>
-              <h1 className="text-[20px] font-bold tracking-tight text-text-heading">Buat password baru</h1>
+              <h1 className="text-[20px] font-bold tracking-tight text-text-heading">Buat kata sandi baru</h1>
               <p className="mt-1 text-[14px] leading-relaxed text-text-body">
-                Halo {admin.name}, Anda masuk dengan password sementara. Buat password pribadi dulu sebelum melanjutkan.
+                Halo {admin.name}, Anda masuk dengan kata sandi sementara. Buat kata sandi pribadi dulu sebelum melanjutkan.
               </p>
               <div className="mt-4">
                 <Notice tone="info">
@@ -151,7 +151,7 @@ export function ForcePasswordView() {
                   username={admin.email}
                   submitLabel="Simpan & lanjutkan"
                   onDone={() => {
-                    toast.success("Password baru disimpan. Selamat datang!");
+                    toast.success("Kata sandi baru disimpan. Selamat datang!");
                     router.replace(next);
                   }}
                 />

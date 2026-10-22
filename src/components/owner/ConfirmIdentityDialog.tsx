@@ -61,15 +61,15 @@ function describe(err: unknown): string {
   if (err instanceof ApiError) {
     switch (err.code) {
       case "INVALID_CREDENTIALS":
-        return "Password salah. Periksa lagi lalu coba ulang.";
+        return "Kata sandi salah. Periksa lagi lalu coba ulang.";
       case "GOOGLE_ACCOUNT_MISMATCH":
-        return "Akun Google ini bukan akun pemilik yang sedang masuk. Pakai akun Google yang sama, atau isi password.";
+        return "Akun Google ini bukan akun pemilik yang sedang masuk. Pakai akun Google yang sama, atau isi kata sandi.";
       case "GOOGLE_TOKEN_INVALID":
-        return "Konfirmasi dengan Google gagal. Coba lagi atau isi password.";
+        return "Konfirmasi dengan Google gagal. Coba lagi atau isi kata sandi.";
       case "GOOGLE_NOT_CONFIGURED":
-        return "Konfirmasi dengan Google belum tersedia. Isi password akun.";
+        return "Konfirmasi dengan Google belum tersedia. Isi kata sandi akun.";
       case "VALIDATION_ERROR":
-        return err.details[0]?.message || "Isi password akun.";
+        return err.details[0]?.message || "Isi kata sandi akun.";
     }
   }
   return errorMessage(err);
@@ -93,8 +93,8 @@ export function ConfirmIdentityDialog({
   return (
     <Modal
       open={open}
-      title="Konfirmasi password"
-      description={reason || "Demi keamanan, masukkan lagi password akunmu untuk melanjutkan."}
+      title="Konfirmasi kata sandi"
+      description={reason || "Demi keamanan, masukkan lagi kata sandi akunmu untuk melanjutkan."}
       onClose={onCancel}
       dismissible={!busy}
       icon={<ShieldCheck size={20} aria-hidden className="text-brand-ink" />}
@@ -148,7 +148,7 @@ function ConfirmBody({
       onSubmit={(e) => {
         e.preventDefault();
         if (!password) {
-          setError("Isi password akun.");
+          setError("Isi kata sandi akun.");
           return;
         }
         void confirm({ password }, "password");
@@ -160,7 +160,7 @@ function ConfirmBody({
           {error}
         </Notice>
       )}
-      <Field id={`${uid}-pw`} label="Password" hint="Password yang sama dengan untuk masuk ke aplikasi & dasbor.">
+      <Field id={`${uid}-pw`} label="Kata sandi" hint="Kata sandi yang sama dengan untuk masuk ke aplikasi & dasbor.">
         <div className="relative">
           <input
             ref={inputRef}
@@ -178,7 +178,7 @@ function ConfirmBody({
             type="button"
             className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-text-muted hover:text-text-heading"
             onClick={() => setShow((v) => !v)}
-            aria-label={show ? "Sembunyikan password" : "Tampilkan password"}
+            aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
           >
             {show ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}
           </button>

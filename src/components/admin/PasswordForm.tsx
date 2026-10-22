@@ -47,7 +47,7 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        aria-label={show ? "Sembunyikan password" : "Tampilkan password"}
+        aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
         aria-pressed={show}
         className={`absolute top-1/2 right-1 inline-flex h-8 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-text-muted hover:text-text-heading ${focusRing}`}
       >
@@ -75,7 +75,7 @@ export function PasswordForm({
   forced,
   username,
   onDone,
-  submitLabel = "Simpan password baru",
+  submitLabel = "Simpan kata sandi baru",
 }: {
   forced: boolean;
   username: string;
@@ -97,10 +97,10 @@ export function PasswordForm({
     e.preventDefault();
     setError(null);
     const local: Record<string, string> = {};
-    if (!current) local.current_password = forced ? "Isi password sementara." : "Isi password saat ini.";
+    if (!current) local.current_password = forced ? "Isi kata sandi sementara." : "Isi kata sandi saat ini.";
     if (!longEnough) local.new_password = `Minimal ${MIN} karakter.`;
-    else if (!differs) local.new_password = "Harus berbeda dari password lama.";
-    if (!matches) local.confirm = "Ulangi password baru yang sama.";
+    else if (!differs) local.new_password = "Harus berbeda dari kata sandi lama.";
+    if (!matches) local.confirm = "Ulangi kata sandi baru yang sama.";
     setErrors(local);
     if (Object.keys(local).length) return;
     setBusy(true);
@@ -125,7 +125,7 @@ export function PasswordForm({
           {error}
         </Notice>
       )}
-      <Field id="pw-current" label={forced ? "Password sementara" : "Password saat ini"} error={errors.current_password}>
+      <Field id="pw-current" label={forced ? "Kata sandi sementara" : "Kata sandi saat ini"} error={errors.current_password}>
         <PasswordInput
           id="pw-current"
           value={current}
@@ -136,7 +136,7 @@ export function PasswordForm({
           autoFocus={forced}
         />
       </Field>
-      <Field id="pw-new" label="Password baru" error={errors.new_password}>
+      <Field id="pw-new" label="Kata sandi baru" error={errors.new_password}>
         <PasswordInput
           id="pw-new"
           value={next}
@@ -148,9 +148,9 @@ export function PasswordForm({
       </Field>
       <ul id="pw-rules" className="-mt-2 flex flex-col gap-1 text-[13px]">
         <Rule ok={longEnough}>Minimal {MIN} karakter</Rule>
-        <Rule ok={differs}>Berbeda dari password lama</Rule>
+        <Rule ok={differs}>Berbeda dari kata sandi lama</Rule>
       </ul>
-      <Field id="pw-confirm" label="Ulangi password baru" error={errors.confirm}>
+      <Field id="pw-confirm" label="Ulangi kata sandi baru" error={errors.confirm}>
         <PasswordInput
           id="pw-confirm"
           value={confirm}

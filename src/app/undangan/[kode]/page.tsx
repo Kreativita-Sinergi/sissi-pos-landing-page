@@ -110,7 +110,7 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
     <>
       <div className="mb-8">
         <span className="mb-2 block font-mono text-[12px] font-medium tracking-wider text-[#f1702c] uppercase">
-          {reset ? "Atur ulang password" : "Undangan karyawan"}
+          {reset ? "Atur ulang kata sandi" : "Undangan karyawan"}
         </span>
         {info ? (
           <h1 className="text-[28px] leading-tight font-semibold tracking-tight text-[#292e31] sm:text-[36px]">
@@ -178,7 +178,7 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
           {[
             <>Pasang lalu buka aplikasi <strong className="font-semibold text-[#292e31]">Sissi</strong>.</>,
             <>Ketuk <strong className="font-semibold text-[#292e31]">Punya kode undangan</strong>.</>,
-            <>Ketik kode di atas, lalu {reset ? "buat password baru" : "buat password untuk akunmu"}.</>,
+            <>Ketik kode di atas, lalu {reset ? "buat kata sandi baru" : "buat kata sandi untuk akunmu"}.</>,
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3.5">
               <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#e4e9e7] bg-[#f3f6f5] font-mono text-xs font-bold text-[#292e31]">
@@ -189,7 +189,7 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
           ))}
         </ol>
         <p className="mt-5 text-[13.5px] leading-relaxed text-[#525866]">
-          Setelah itu kamu masuk dengan no. HP dan password yang kamu buat. Jangan bagikan kode ini ke orang lain.
+          Setelah itu kamu masuk dengan no. HP dan kata sandi yang kamu buat. Jangan bagikan kode ini ke orang lain.
         </p>
       </div>
     </>

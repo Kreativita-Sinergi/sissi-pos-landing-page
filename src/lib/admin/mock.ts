@@ -304,9 +304,9 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       await sleep(500);
       const e = email.trim().toLowerCase();
       if (e.includes("kunci")) throw new ApiError("Terlalu banyak percobaan masuk.", 429, "RATE_LIMITED", [], 900);
-      if (password === "salah" || !password) throw new ApiError("Email atau password salah.", 401, "INVALID_CREDENTIALS");
+      if (password === "salah" || !password) throw new ApiError("Email atau kata sandi salah.", 401, "INVALID_CREDENTIALS");
       const found = db().admins.find((a) => a.email === e);
-      if (found && !found.active) throw new ApiError("Email atau password salah.", 401, "INVALID_CREDENTIALS");
+      if (found && !found.active) throw new ApiError("Email atau kata sandi salah.", 401, "INVALID_CREDENTIALS");
       const rec = found ?? db().admins[0];
       const s: Session = { id: rec.id, email: e || rec.email, mcp: e.includes("baru") || !!found?.must_change_password };
       writeSession(s);
@@ -327,7 +327,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
     async changeMyPassword(body) {
       const s = await guard({ allowMcp: true });
       await sleep(400);
-      if (body.current_password === "salah") throw invalid("current_password", "Password saat ini salah");
+      if (body.current_password === "salah") throw invalid("current_password", "Kata sandi saat ini salah");
       if (body.new_password.length < 12) throw invalid("new_password", "Minimal 12 karakter.");
       if (body.new_password === body.current_password) throw invalid("new_password", "Harus berbeda dari password lama.");
       const rec = meRecord();

@@ -9,10 +9,10 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "release.delete": "Hapus APK",
   "business_features.update": "Ubah fitur bisnis",
   "admin.create": "Buat admin",
-  "admin.passwd": "Ganti password",
+  "admin.passwd": "Ganti kata sandi",
   "admin.disable": "Nonaktifkan admin",
   "admin.enable": "Aktifkan admin",
-  "admin.reset_password": "Reset password admin",
+  "admin.reset_password": "Reset kata sandi admin",
   "crash.status": "Ubah status crash",
   "subscription.payment": "Catat pembayaran",
   "subscription.payment_void": "Batalkan pembayaran",
@@ -85,7 +85,7 @@ export const PAYMENT_METHODS: Record<string, string> = {
 };
 
 export const LOGIN_FAIL_REASONS: Record<string, string> = {
-  password: "password salah",
+  password: "kata sandi salah",
   inactive: "admin nonaktif",
   locked: "terkunci",
 };

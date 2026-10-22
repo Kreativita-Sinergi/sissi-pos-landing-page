@@ -720,7 +720,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       const id = body.identifier.trim().toLowerCase();
       if (!id) throw invalid("identifier", "Wajib diisi");
       if (id.includes("kunci")) throw new ApiError("Terlalu banyak percobaan masuk. Coba lagi nanti.", 429, "RATE_LIMITED", [], 60);
-      if (!body.password || body.password === "salah") throw new ApiError("Email/nomor HP atau password salah", 401, "INVALID_CREDENTIALS");
+      if (!body.password || body.password === "salah") throw new ApiError("Email/nomor HP atau kata sandi salah", 401, "INVALID_CREDENTIALS");
       if (id.includes("kasir")) throw new ApiError("Dasbor web khusus pemilik usaha.", 403, "OWNER_ONLY");
       if (id.includes("verif")) throw new ApiError("Email belum terverifikasi.", 403, "EMAIL_NOT_VERIFIED");
       const s: MockSession = { plan: id.includes("gratis") ? "free" : id.includes("uji") ? "trial" : "pro", remember: !!body.remember_me };
@@ -1050,7 +1050,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       await guard();
       await sleep(300);
       if ("password" in body && (!body.password || body.password === "salah")) {
-        throw new ApiError("Email/nomor HP atau password salah", 401, "INVALID_CREDENTIALS");
+        throw new ApiError("Email/nomor HP atau kata sandi salah", 401, "INVALID_CREDENTIALS");
       }
       confirmedUntil = Date.now() + 10 * 60_000;
       return { confirmed_until: new Date(confirmedUntil).toISOString() };
@@ -1074,7 +1074,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         const before = JSON.stringify(((cur?.settings ?? {}) as Record<string, unknown>).payment_methods ?? null);
         const after = JSON.stringify(((c.data?.settings ?? {}) as Record<string, unknown>).payment_methods ?? null);
         if (before !== after && confirmedUntil <= Date.now()) {
-          throw invalid(`changes[${i}]`, "CONFIRM_REQUIRED: Konfirmasi password untuk mengubah metode pembayaran (QRIS & rekening)");
+          throw invalid(`changes[${i}]`, "CONFIRM_REQUIRED: Konfirmasi kata sandi untuk mengubah metode pembayaran (QRIS & rekening)");
         }
       });
       // Pengajuan (api.md "Kelola data › Pengajuan"): status final beku → conflict; absen di kiriman yang sama hanya

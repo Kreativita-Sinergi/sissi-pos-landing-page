@@ -64,7 +64,7 @@ const APK_STEPS = [
 
 const NO_GOOGLE_LIMITS = [
   "Notifikasi push tidak masuk (notifikasi di dalam aplikasi tetap ada).",
-  "Masuk dengan Google tidak bisa dipakai. Gunakan email dan password.",
+  "Masuk dengan Google tidak bisa dipakai. Gunakan email dan kata sandi.",
   "Tidak ada pembaruan otomatis dari Play Store.",
 ];
 

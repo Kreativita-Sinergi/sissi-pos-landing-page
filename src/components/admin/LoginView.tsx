@@ -44,7 +44,7 @@ export function LoginView() {
     if (busy || lockedUntil) return;
     setError(null);
     if (!email.trim() || !password) {
-      setError("Isi email dan password.");
+      setError("Isi email dan kata sandi.");
       return;
     }
     setBusy(true);
@@ -56,13 +56,13 @@ export function LoginView() {
       setBusy(false);
       setPassword("");
       if (err instanceof ApiError && err.code === "INVALID_CREDENTIALS") {
-        setError("Email atau password salah.");
+        setError("Email atau kata sandi salah.");
       } else if (err instanceof ApiError && err.status === 429) {
         const wait = err.retryAfter ?? 900;
         setLockedUntil(Date.now() + wait * 1000);
         setError(null);
       } else if (err instanceof ApiError && err.code === "VALIDATION_ERROR") {
-        setError("Periksa format email dan password.");
+        setError("Periksa format email dan kata sandi.");
       } else {
         setError(errorMessage(err));
       }
@@ -109,7 +109,7 @@ export function LoginView() {
                   required
                 />
               </Field>
-              <Field id="password" label="Password">
+              <Field id="password" label="Kata sandi">
                 <div className="relative">
                   <input
                     id="password"
@@ -123,7 +123,7 @@ export function LoginView() {
                   <button
                     type="button"
                     onClick={() => setShow((s) => !s)}
-                    aria-label={show ? "Sembunyikan password" : "Tampilkan password"}
+                    aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                     aria-pressed={show}
                     className={`absolute top-1/2 right-1 inline-flex h-8 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-text-muted hover:text-text-heading ${focusRing}`}
                   >

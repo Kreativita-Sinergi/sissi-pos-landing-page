@@ -61,7 +61,7 @@ export function TeamView() {
       if (kind === "reset") {
         const temp = await api.resetAdminPassword(admin.id);
         setPending(null);
-        setReveal({ title: `Password sementara baru untuk ${admin.name}`, who: admin, temp });
+        setReveal({ title: `Kata sandi sementara baru untuk ${admin.name}`, who: admin, temp });
         reload();
       } else {
         const updated = await api.setAdminActive(admin.id, kind === "enable");
@@ -84,7 +84,7 @@ export function TeamView() {
     <>
       <PageHeader
         title="Tim admin"
-        description="Orang yang bisa masuk ke panel ini. Admin baru menerima password sementara (berlaku 72 jam) yang wajib diganti saat masuk pertama."
+        description="Orang yang bisa masuk ke panel ini. Admin baru menerima kata sandi sementara (berlaku 72 jam) yang wajib diganti saat masuk pertama."
         actions={
           <button type="button" className={btn.primary} onClick={() => setAdding(true)}>
             <UserPlus size={17} aria-hidden /> Tambah admin
@@ -186,19 +186,19 @@ export function TeamView() {
             ? `Nonaktifkan ${pending.admin.name}?`
             : pending?.kind === "enable"
               ? `Aktifkan ${pending?.admin.name}?`
-              : `Reset password ${pending?.admin.name}?`
+              : `Reset kata sandi ${pending?.admin.name}?`
         }
-        confirmLabel={pending?.kind === "disable" ? "Nonaktifkan" : pending?.kind === "enable" ? "Aktifkan" : "Reset password"}
+        confirmLabel={pending?.kind === "disable" ? "Nonaktifkan" : pending?.kind === "enable" ? "Aktifkan" : "Reset kata sandi"}
       >
         {pending?.kind === "disable" && (
           <p>
             Semua sesinya langsung berakhir dan <strong>{pending.admin.email}</strong> tidak bisa masuk sampai diaktifkan lagi.
           </p>
         )}
-        {pending?.kind === "enable" && <p>{pending.admin.email} bisa masuk lagi dengan password terakhirnya.</p>}
+        {pending?.kind === "enable" && <p>{pending.admin.email} bisa masuk lagi dengan kata sandi terakhirnya.</p>}
         {pending?.kind === "reset" && (
           <p>
-            Password lama berhenti berlaku dan semua sesinya berakhir. Anda akan menerima password sementara baru (72 jam) untuk
+            Kata sandi lama berhenti berlaku dan semua sesinya berakhir. Anda akan menerima kata sandi sementara baru (72 jam) untuk
             disampaikan ke <strong>{pending.admin.email}</strong>.
           </p>
         )}
@@ -211,9 +211,9 @@ export function TeamView() {
 
 function adminError(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.code === "CANNOT_TARGET_SELF") return "Tidak bisa untuk akun sendiri. Ganti password lewat Akun saya.";
+    if (err.code === "CANNOT_TARGET_SELF") return "Tidak bisa untuk akun sendiri. Ganti kata sandi lewat Akun saya.";
     if (err.code === "LAST_ACTIVE_ADMIN") return "Harus tersisa minimal satu admin aktif.";
-    if (err.code === "ADMIN_INACTIVE") return "Admin ini nonaktif. Aktifkan dulu sebelum reset password.";
+    if (err.code === "ADMIN_INACTIVE") return "Admin ini nonaktif. Aktifkan dulu sebelum reset kata sandi.";
     if (err.code === "ADMIN_EXISTS") return "Email ini sudah terdaftar sebagai admin.";
   }
   return errorMessage(err);
@@ -238,9 +238,9 @@ function StatusBadge({ a }: { a: AdminListItem }) {
   if (!a.active) return <Badge>Nonaktif</Badge>;
   if (a.must_change_password) {
     return (
-      <span title="Belum mengganti password sementara">
+      <span title="Belum mengganti kata sandi sementara">
         <Badge tone="warning">
-          <KeyRound size={12} aria-hidden /> Menunggu ganti password
+          <KeyRound size={12} aria-hidden /> Menunggu ganti kata sandi
         </Badge>
       </span>
     );
@@ -268,7 +268,7 @@ function RowActions({
     <span className="inline-flex flex-wrap justify-end gap-1">
       {a.active && (
         <button type="button" className={`${btn.ghost} ${smallBtn}`} onClick={() => onAction({ kind: "reset", admin: a })}>
-          Reset password
+          Reset kata sandi
         </button>
       )}
       {a.active ? (
@@ -343,7 +343,7 @@ function AddAdminDialog({
       onClose={close}
       dismissible={!busy}
       title="Tambah admin"
-      description="Server membuat password sementara yang hanya ditampilkan sekali setelah ini."
+      description="Server membuat kata sandi sementara yang hanya ditampilkan sekali setelah ini."
     >
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         {error && (
@@ -398,7 +398,7 @@ function TempPasswordDialog({ reveal, onClose }: { reveal: Reveal; onClose: () =
       dismissible={false}
       title={reveal?.title ?? ""}
       icon={<ShieldAlert size={22} aria-hidden className="text-warning" />}
-      description={reveal ? <>Sampaikan password sementara ini ke {reveal.who.email}.</> : undefined}
+      description={reveal ? <>Sampaikan kata sandi sementara ini ke {reveal.who.email}.</> : undefined}
       footer={
         <button type="button" className={btn.primary} onClick={onClose}>
           Sudah disalin
@@ -411,13 +411,13 @@ function TempPasswordDialog({ reveal, onClose }: { reveal: Reveal; onClose: () =
             <code className="min-w-0 flex-1 break-all font-mono text-[18px] font-semibold tracking-wide text-text-heading select-all">
               {reveal.temp.temporary_password}
             </code>
-            <CopyButton value={reveal.temp.temporary_password} label="Salin password sementara" />
+            <CopyButton value={reveal.temp.temporary_password} label="Salin kata sandi sementara" />
           </div>
           <Notice tone="warning">
             <p className="font-semibold">Hanya ditampilkan sekali.</p>
             <p>
-              Kirim lewat kanal aman (mis. berbagi item password manager), bukan chat biasa. Berlaku sampai{" "}
-              <strong>{formatDateTime(reveal.temp.expires_at)}</strong>; setelah itu buat ulang lewat Reset password.
+              Kirim lewat kanal aman (mis. berbagi item pengelola kata sandi), bukan chat biasa. Berlaku sampai{" "}
+              <strong>{formatDateTime(reveal.temp.expires_at)}</strong>; setelah itu buat ulang lewat Reset kata sandi.
             </p>
           </Notice>
         </div>

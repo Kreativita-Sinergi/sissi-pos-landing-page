@@ -118,7 +118,7 @@ export function GoogleButton({
         onReady={render}
         onError={() => {
           setFailed(true);
-          onError("Tombol Google gagal dimuat. Periksa koneksi atau gunakan email & password.");
+          onError("Tombol Google gagal dimuat. Periksa koneksi atau gunakan email & kata sandi.");
         }}
       />
       {/* Kotak tetap setinggi tombol Google agar tata letak tidak melompat saat skrip dimuat. */}

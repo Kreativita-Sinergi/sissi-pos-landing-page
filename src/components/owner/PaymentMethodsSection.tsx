@@ -38,7 +38,7 @@ function settingsOf(rec: Rec): Obj {
 const MONEY_NOTE = (
   <Notice tone="warning" icon={<AlertTriangle size={17} aria-hidden />} title="Ini mengubah tujuan uang pelanggan">
     <p className="text-[13.5px]">
-      Pelanggan membayar ke QRIS & rekening di sini. Periksa nama merchant dan nomor rekening dengan teliti. Menyimpan meminta konfirmasi password, dan setiap
+      Pelanggan membayar ke QRIS & rekening di sini. Periksa nama merchant dan nomor rekening dengan teliti. Menyimpan meminta konfirmasi kata sandi, dan setiap
       perubahan tercatat di Aktivitas (Perubahan data).
     </p>
   </Notice>
@@ -101,7 +101,7 @@ export function PaymentMethodsSection({ rec, onRecord }: { rec: Rec; onRecord: (
         description="Kasir hanya melihat metode yang aktif."
         aside={
           <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-text-muted">
-            <ShieldCheck size={15} aria-hidden /> Perlu konfirmasi password
+            <ShieldCheck size={15} aria-hidden /> Perlu konfirmasi kata sandi
           </span>
         }
         dirty={dirty}

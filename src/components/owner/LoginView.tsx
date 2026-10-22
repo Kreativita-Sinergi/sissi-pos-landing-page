@@ -20,7 +20,7 @@ function describe(err: unknown, via: "password" | "google"): LoginError | "locke
   if (!(err instanceof ApiError)) return { text: errorMessage(err) };
   switch (err.code) {
     case "INVALID_CREDENTIALS":
-      return { text: "Email/nomor HP atau password salah." };
+      return { text: "Email/nomor HP atau kata sandi salah." };
     case "OWNER_ONLY":
       return { title: "Khusus pemilik usaha", text: "Dasbor web khusus pemilik usaha. Karyawan memakai aplikasi.", tone: "warning" };
     case "EMAIL_NOT_VERIFIED":
@@ -47,14 +47,14 @@ function describe(err: unknown, via: "password" | "google"): LoginError | "locke
     case "GOOGLE_ACCOUNT_MISMATCH":
       return {
         title: "Akun Google berbeda",
-        text: "Email ini sudah tertaut ke akun Google lain. Pakai akun Google yang sama dengan di aplikasi, atau masuk dengan email & password.",
+        text: "Email ini sudah tertaut ke akun Google lain. Pakai akun Google yang sama dengan di aplikasi, atau masuk dengan email & kata sandi.",
       };
     case "GOOGLE_NOT_CONFIGURED":
-      return { text: "Masuk dengan Google belum tersedia saat ini. Gunakan email/nomor HP dan password." };
+      return { text: "Masuk dengan Google belum tersedia saat ini. Gunakan email/nomor HP dan kata sandi." };
     case "GOOGLE_TOKEN_INVALID":
       return { text: "Masuk dengan Google gagal. Coba lagi." };
     case "VALIDATION_ERROR":
-      return via === "password" ? { text: "Periksa email/nomor HP dan password." } : { text: errorMessage(err) };
+      return via === "password" ? { text: "Periksa email/nomor HP dan kata sandi." } : { text: errorMessage(err) };
     default:
       return { text: errorMessage(err) };
   }
@@ -130,7 +130,7 @@ export function LoginView() {
     const id = identifier.trim();
     const missing: Record<string, string> = {};
     if (!id) missing.identifier = "Isi email atau nomor HP.";
-    if (!password) missing.password = "Isi password.";
+    if (!password) missing.password = "Isi kata sandi.";
     if (Object.keys(missing).length) {
       setFields(missing);
       return;
@@ -216,7 +216,7 @@ export function LoginView() {
                     required
                   />
                 </Field>
-                <Field id="password" label="Password" error={fields.password}>
+                <Field id="password" label="Kata sandi" error={fields.password}>
                   <div className="relative">
                     <input
                       id="password"
@@ -232,7 +232,7 @@ export function LoginView() {
                     <button
                       type="button"
                       onClick={() => setShow((s) => !s)}
-                      aria-label={show ? "Sembunyikan password" : "Tampilkan password"}
+                      aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                       aria-pressed={show}
                       className={`absolute top-1/2 right-1 inline-flex h-8 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-text-muted hover:text-text-heading ${focusRing}`}
                     >
@@ -302,11 +302,11 @@ function ForgotPassword() {
         onClick={() => setOpen((o) => !o)}
         className={`min-h-9 text-[13.5px] font-semibold text-brand-ink underline-offset-2 hover:underline ${focusRing}`}
       >
-        Lupa password?
+        Lupa kata sandi?
       </button>
       {open && (
         <p id="forgot-help" className="mt-1 max-w-[260px] text-left text-[12.5px] leading-relaxed text-text-body">
-          Reset password lewat aplikasi Sissi: di layar Masuk, ketuk <strong className="font-semibold">Lupa password?</strong>, lalu ikuti kode yang dikirim ke email.
+          Reset kata sandi lewat aplikasi Sissi: di layar Masuk, ketuk <strong className="font-semibold">Lupa kata sandi?</strong>, lalu ikuti kode yang dikirim ke email.
         </p>
       )}
     </div>
