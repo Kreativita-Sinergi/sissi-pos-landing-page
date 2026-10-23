@@ -89,12 +89,12 @@ export interface GuideItem {
 
 export const GUIDE_CATEGORIES: GuideCategory[] = [
   { id: "mulai", label: "Mulai", description: "Daftar akun, siapkan outlet & perangkat, dan kenali menu aplikasi." },
-  { id: "produk", label: "Produk & HPP", description: "Produk, varian, harga modal (HPP), resep, bahan baku, modifier, dan diskon." },
+  { id: "produk", label: "Produk & HPP", description: "Produk, varian, harga modal (HPP), resep, bahan baku, pilihan ekstra, dan diskon." },
   { id: "jualan", label: "Jualan", description: "Kasir, pesanan berjalan, meja, dapur, pembayaran, kasbon, dan pembatalan." },
   { id: "shift", label: "Shift & kas", description: "Buka kasir, catat kas masuk/keluar, dan tutup kasir." },
-  { id: "stok", label: "Stok & inventori", description: "Stok barang, pembelian (PO), supplier, saran belanja, opname, dan transfer stok." },
+  { id: "stok", label: "Stok & inventori", description: "Stok barang, pesanan pembelian (PO), pemasok, saran belanja, opname, dan transfer stok." },
   { id: "pelanggan", label: "Pelanggan & member", description: "Data pelanggan, member, poin, dan tingkat member." },
-  { id: "laporan", label: "Laporan", description: "Penjualan, laba kotor, produk terlaris, jam ramai, dan riwayat penjualan." },
+  { id: "laporan", label: "Laporan", description: "Penjualan, laba kotor & laba bersih, produk terlaris, jam ramai, dan riwayat penjualan." },
   { id: "tim", label: "Tim", description: "Karyawan, PIN, absen, dan gaji." },
   { id: "jasa", label: "Jasa / servis", description: "Order servis, antrean, uang muka, dan penyerahan." },
   { id: "sewa", label: "Penyewaan", description: "Unit sewa, tarif, booking, dan sesi dengan timer." },
@@ -119,6 +119,7 @@ export const LEGACY_SLUGS: Record<string, string> = {};
 const UPDATED = "12 Oktober 2026";
 const UPDATED_NEW = "13 Oktober 2026";
 const UPDATED_OCT21 = "21 Oktober 2026";
+const UPDATED_OCT23 = "23 Oktober 2026";
 
 const HP = { device: "hp" as const, width: 390, height: 844 };
 const TABLET = { device: "tablet" as const, width: 1280, height: 800 };
@@ -200,7 +201,7 @@ export const GUIDES: GuideItem[] = [
     description: "Membuat akun usaha baru, verifikasi email, masuk dengan Google, dan lupa kata sandi.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 4,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Akun dibuat oleh pemilik usaha. Kamu bisa mendaftar dengan email dan kata sandi, atau dengan akun Google tanpa perlu kode verifikasi.",
     steps: [
@@ -209,7 +210,7 @@ export const GUIDES: GuideItem[] = [
         title: "Daftar dengan email",
         steps: [
           "Di layar pembuka, ketuk “Daftar Usaha Baru”.",
-          "Isi “Nama pemilik”, “Nama usaha”, “Email”, dan “Kata sandi” (minimal 8 karakter, berisi huruf dan angka). “No. HP (opsional)” boleh dikosongkan.",
+          "Isi “Nama pemilik”, “Nama usaha”, “Email”, dan “Kata sandi”. “No. HP (opsional)” boleh dikosongkan. Di bawah kolom kata sandi ada daftar syarat yang tercentang satu per satu saat kamu mengetik (lihat “Syarat kata sandi” di bawah).",
           "Ketuk “Jenis usaha”, pilih kategori (mis. Kuliner), lalu jenisnya, dan ketuk tombol “Pilih …”.",
           "Centang persetujuan “Syarat & Ketentuan” dan “Kebijakan Privasi”, lalu ketuk “Buat Akun”.",
           "Buka email, salin kode 6 digit, masukkan di layar “Masukkan kode verifikasi”, lalu ketuk “Verifikasi”.",
@@ -217,6 +218,23 @@ export const GUIDES: GuideItem[] = [
         callout: {
           type: "warning",
           text: "Jenis usaha tidak bisa diganti sendiri setelah daftar. Bila salah pilih, hubungi dukungan Sissi.",
+        },
+      },
+      {
+        id: "syarat-kata-sandi",
+        title: "Syarat kata sandi",
+        description:
+          "Syarat yang sama berlaku saat daftar, menerima undangan karyawan, mengganti, dan mengatur ulang kata sandi. Daftar syarat empat baris di bawah kolom kata sandi membantu mengeceknya sebelum disimpan.",
+        points: [
+          "“Minimal 8 karakter” (paling banyak 128 karakter).",
+          "“Huruf besar & huruf kecil” — minimal satu dari masing-masing.",
+          "“Angka” — minimal satu angka.",
+          "“Simbol (!@#…)” — minimal satu simbol, mis. ! @ # ?",
+          "Bukan kata sandi umum yang mudah ditebak, termasuk yang memakai nama aplikasi atau kata sehari-hari seperti “sissi”, “kasir”, atau “password” (mis. “Kasir123!” tetap ditolak). Bila ditolak, pesannya muncul di bawah kolom kata sandi.",
+        ],
+        callout: {
+          type: "tip",
+          text: "Kata sandi yang kuat sekaligus mudah diingat: gabungkan dua atau tiga kata yang hanya kamu tahu, lalu selipkan huruf besar, angka, dan simbol. Jangan pakai nama toko atau nomor HP.",
         },
       },
       {
@@ -256,7 +274,7 @@ export const GUIDES: GuideItem[] = [
           "Di layar masuk, ketuk “Lupa kata sandi?”.",
           "Isi “Email atau No. HP”, lalu ketuk “Kirim Kode”. Kode dikirim ke email akun.",
           "Masukkan kode, lalu isi “Kata sandi baru” dan “Ulangi kata sandi”.",
-          "Ketuk “Simpan Kata Sandi”, lalu masuk dengan kata sandi baru.",
+          "Kata sandi baru harus memenuhi syarat di atas. Ketuk “Simpan kata sandi”, lalu masuk dengan kata sandi baru.",
         ],
       },
     ],
@@ -268,11 +286,11 @@ export const GUIDES: GuideItem[] = [
       {
         question: "Bagaimana kasir masuk?",
         answer:
-          "Biasanya pemilik masuk sekali di perangkat kasir, lalu karyawan membuka kasir dengan PIN masing-masing. Baca “Karyawan, peran & PIN”.",
+          "Biasanya pemilik masuk sekali di perangkat kasir, lalu karyawan membuka kasir dengan PIN masing-masing. Baca “Karyawan, akses & PIN”.",
       },
     ],
     relatedSlugs: ["setup-outlet-dan-perangkat", "akun-dan-keamanan", "karyawan-dan-pin"],
-    keywords: ["registrasi", "sign up", "login", "otp", "kode verifikasi", "google", "reset kata sandi", "reset password"],
+    keywords: ["registrasi", "sign up", "login", "otp", "kode verifikasi", "google", "reset kata sandi", "reset password", "password", "syarat kata sandi", "kata sandi ditolak", "huruf besar", "simbol"],
   },
   {
     slug: "setup-outlet-dan-perangkat",
@@ -347,10 +365,10 @@ export const GUIDES: GuideItem[] = [
     slug: "mengenal-menu-aplikasi",
     category: "mulai",
     title: "Mengenal menu di HP dan tablet",
-    description: "Letak menu utama, isi “Lainnya”, Pengaturan, dan pencarian cepat.",
+    description: "Letak menu utama, isi “Lainnya”, susunan Pengaturan, dan pencarian cepat.",
     audience: ["Pemilik", "Kasir"],
-    readMinutes: 3,
-    lastUpdated: UPDATED_NEW,
+    readMinutes: 4,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Menu yang tampil mengikuti jenis usaha dan peran orang yang sedang memakai perangkat. Kasir tidak melihat Produk, Laporan, Inventori, dan Pengaturan.",
     steps: [
@@ -358,14 +376,15 @@ export const GUIDES: GuideItem[] = [
         id: "menu-utama",
         title: "Menu utama",
         devices: {
-          hp: "Menu ada di bawah layar: Beranda, Kasir, Pesanan (atau Antrean untuk jasa), Riwayat, dan “Lainnya”.",
+          hp: "Menu ada di bawah layar: empat menu utama sesuai jenis usaha, ditambah “Lainnya” di ujung kanan.",
           tablet: "Menu ada di sisi kiri. Notifikasi dan Pengaturan ada di bagian bawah sisi kiri.",
         },
         points: [
-          "Kuliner: Beranda, Kasir, Pesanan, Meja, Dapur, Riwayat (ditambah “Pesanan QR” bila Pesan & Bayar Mandiri aktif).",
-          "Ritel: Beranda, Kasir, Riwayat, Produk.",
-          "Jasa: Beranda, Antrean, Kasir, Riwayat. Menu Produk bernama “Layanan”.",
-          "Penyewaan: Beranda, Jadwal, Sesi, Kasir, Pesanan, Riwayat.",
+          "HP kuliner dengan meja: Beranda, Kasir, Pesanan, Meja, dan Lainnya. Riwayat pindah ke “Lainnya” › “Operasional”, karena pelayan jauh lebih sering membuka Meja.",
+          "HP kuliner tanpa meja: Beranda, Kasir, Pesanan, Riwayat, dan Lainnya.",
+          "HP ritel: Beranda, Kasir, Riwayat, dan Lainnya. HP jasa: Beranda, Kasir, Antrean, Riwayat, dan Lainnya. HP penyewaan: Beranda, Jadwal, Sesi, Riwayat, dan Lainnya (Kasir ada di Lainnya).",
+          "Tablet kuliner: Beranda, Kasir, Pesanan, Meja, Dapur, Riwayat (ditambah “Pesanan QR” bila Pesan & Bayar Mandiri aktif).",
+          "Tablet ritel: Beranda, Kasir, Riwayat, Produk. Tablet jasa: Beranda, Antrean, Kasir, Riwayat; menu Produk bernama “Layanan”. Tablet penyewaan: Beranda, Jadwal, Sesi, Kasir, Pesanan, Riwayat.",
           "Menu fitur Pro yang sedang terkunci diberi lencana “PRO”.",
         ],
         image: {
@@ -379,7 +398,13 @@ export const GUIDES: GuideItem[] = [
         id: "lainnya",
         title: "Menu “Lainnya”",
         description:
-          "Berisi menu yang tidak muat di menu utama, dikelompokkan menjadi “Operasional” (mis. “Shift & Kas”, “Kehadiran”, “Pesanan QR”), “Bisnis” (Produk, Inventori, Pelanggan, Tim), dan “Laporan” (Laporan, “Kasbon”, “Tutup Kasir”, “Gaji”).",
+          "Berisi menu yang tidak muat di menu utama, dikelompokkan menjadi empat:",
+        points: [
+          "“Operasional” — menu kerja harian yang tidak ada di menu utama (mis. “Riwayat”, “Pesanan QR”, “Dapur”) dan “Shift & Kas”.",
+          "“Tim” — “Tim”, “Kehadiran”, dan “Gaji” (kasir hanya melihat “Kehadiran”).",
+          "“Bisnis” — Produk, Inventori, dan Pelanggan.",
+          "“Laporan” — “Laporan”, “Kasbon”, dan “Riwayat tutup kasir” (khusus pemilik).",
+        ],
         devices: {
           hp: "“Lainnya” terbuka sebagai layar sendiri, dan juga memuat “Bantuan & Panduan”, “Kunci kasir”, dan “Keluar”.",
           tablet: "“Lainnya” terbuka sebagai panel di samping menu.",
@@ -389,10 +414,24 @@ export const GUIDES: GuideItem[] = [
         id: "pengaturan",
         title: "Pengaturan (khusus pemilik)",
         description:
-          "Pengaturan dikelompokkan: “Toko” (Profil toko, Jenis usaha, Kategori produk, Area meja), “Penjualan” (Pajak & biaya, Metode pembayaran, Transaksi, Struk, Kasir & jadwal shift, Pelanggan & Member, Pesan & Bayar Mandiri), “Perangkat” (Perangkat ini dengan pengaturan printer, Notifikasi), dan “Akun” (termasuk “Langganan”).",
+          "Paling atas ada kartu “Langganan” berisi status paket dan sisa harinya (berbingkai kuning bila tinggal 7 hari atau kurang, atau sedang masa tenggang). Di bawahnya, bagian dikelompokkan:",
+        points: [
+          "“Toko” — Profil toko, Jenis usaha, Kategori produk, Area meja.",
+          "“Penjualan” — Pajak & biaya, Metode pembayaran, “Pesanan & keamanan kasir” (jenis pesanan, kasbon, PIN pemilik, tutup kasir tanpa angka sistem), Struk, Pelanggan & Member, dan Pesan & Bayar Mandiri (bila aktif).",
+          "“Karyawan & absen” — “Jam kerja & telat”, “Lokasi absen”, dan “Shift kasir”.",
+          "“Perangkat” — “Printer & laci uang”, “Perangkat ini”, dan “Notifikasi”.",
+          "“Akun” — “Bahasa & mata uang” dan “Akun & keamanan”.",
+          "Baris yang butuh tindakan diberi keterangan singkat berwarna, mis. “QRIS belum diatur” atau printer “Belum diatur”. Baris yang sudah beres tidak diberi keterangan.",
+        ],
         devices: {
           hp: "Tiap bagian terbuka sebagai halaman sendiri.",
-          tablet: "Daftar bagian di kiri, isinya tampil di panel kanan — termasuk Kategori produk dan Area meja.",
+          tablet: "Daftar bagian di kiri, isinya tampil di panel kanan — termasuk Kategori produk, Area meja, dan Printer & laci uang.",
+        },
+        image: {
+          ...TABLET,
+          src: "/panduan/pengaturan-tablet.png",
+          alt: "Hub Pengaturan berkelompok: kartu Langganan di atas, lalu Toko, Penjualan, dan Karyawan & absen, dengan Profil toko terbuka di panel kanan",
+          caption: "Pengaturan dikelompokkan; tablet membuka tiap bagian di panel kanan.",
         },
       },
       {
@@ -421,7 +460,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["karyawan-dan-pin", "setup-outlet-dan-perangkat", "notifikasi"],
-    keywords: ["navigasi", "sidebar", "menu bawah", "lainnya", "pengaturan", "panel kanan", "cari"],
+    keywords: ["navigasi", "sidebar", "menu bawah", "lainnya", "pengaturan", "panel kanan", "cari", "tab meja", "riwayat di lainnya", "printer & laci uang", "karyawan & absen"],
   },
   {
     slug: "pasang-lewat-apk",
@@ -501,12 +540,12 @@ export const GUIDES: GuideItem[] = [
     slug: "menyambungkan-printer-thermal-bluetooth",
     category: "mulai",
     title: "Menyambungkan printer struk & dapur",
-    description: "Pasang printer Bluetooth atau jaringan (Wi-Fi/LAN), pakai beberapa printer untuk struk dan dapur, tes cetak, dan laci uang.",
+    description: "Pasang printer Bluetooth atau jaringan (Wi-Fi/LAN), pilih kegunaannya, tes cetak, cek status printer di Kasir, laci uang, dan logo struk.",
     audience: ["Pemilik"],
-    readMinutes: 6,
-    lastUpdated: UPDATED_NEW,
+    readMinutes: 8,
+    lastUpdated: UPDATED_OCT23,
     overview:
-      "Printer diatur per perangkat di Pengaturan › “Perangkat ini” › “Printer” › “Atur”, yang membuka layar “Atur printer”. Sissi mendukung printer thermal Bluetooth dan printer jaringan (Wi-Fi/LAN). Satu perangkat bisa memakai beberapa printer, misalnya satu untuk struk kasir dan satu khusus dapur. Printer USB belum tersedia.",
+      "Printer diatur per perangkat di Pengaturan › “Printer & laci uang”. Sissi mendukung printer thermal Bluetooth dan printer jaringan (Wi-Fi/LAN). Satu perangkat bisa memakai beberapa printer, misalnya satu untuk struk kasir dan satu khusus dapur. Printer USB belum tersedia.",
     prerequisites: [
       "Printer thermal ESC/POS ukuran kertas 58 mm atau 80 mm.",
       "Printer Bluetooth: printer menyala dan dekat dengan perangkat, serta tidak sedang tersambung ke HP lain.",
@@ -515,37 +554,51 @@ export const GUIDES: GuideItem[] = [
     steps: [
       {
         id: "atur-printer",
-        title: "Buka layar Atur printer",
+        title: "Buka Printer & laci uang",
         steps: [
-          "Buka Pengaturan › “Perangkat ini”.",
-          "Pada baris “Printer” (tertulis “Belum diatur” bila belum ada printer), ketuk “Atur”.",
-          "Di layar “Atur printer”, ketuk “Tambah printer”.",
+          "Buka Pengaturan, lalu di grup “Perangkat” ketuk “Printer & laci uang”.",
+          "Ketuk “Tambah printer”. Lembar “Printer baru” terbuka.",
         ],
         devices: {
-          hp: "“Atur printer” terbuka sebagai layar penuh.",
-          tablet: "“Atur printer” terbuka sebagai panel di sisi kanan.",
+          hp: "“Printer & laci uang” terbuka sebagai halaman sendiri.",
+          tablet: "“Printer & laci uang” tampil di panel kanan Pengaturan.",
         },
         points: [
           "Bisa juga lewat pencarian “Printer struk”, atau langkah “Hubungkan printer struk” di kartu persiapan Beranda.",
-          "Perubahan di layar ini langsung tersimpan (muncul “Pengaturan tersimpan”); tidak perlu menekan Simpan kedua kali.",
+          "“Perangkat ini” tidak lagi berisi pengaturan printer. Semua printer, cetak otomatis, dan laci uang diatur di “Printer & laci uang”.",
+          "Sakelar di halaman ini langsung tersimpan (muncul “Pengaturan tersimpan”). Printer baru atau yang diubah tersimpan saat kamu mengetuk “Simpan” di lembarnya.",
+          "Tiap printer tampil sebagai kartu, mis. “Bluetooth · 58 mm”, dengan tanda kegunaannya dan status sambungannya (baca “Status printer di Kasir” di bawah).",
         ],
         image: {
           ...HP,
           src: "/panduan/atur-printer-hp.png",
-          alt: "Layar Atur printer dengan printer kasir Bluetooth dan printer dapur jaringan",
+          alt: "Halaman Printer & laci uang dengan printer kasir Bluetooth dan printer dapur jaringan",
           caption: "Dua printer: Bluetooth untuk struk, Wi-Fi/LAN untuk dapur.",
         },
+      },
+      {
+        id: "lembar-printer",
+        title: "Isi lembar printer: bagian dasar",
+        description: "Lembar printer dibuat ringkas. Bagian dasar cukup untuk kebanyakan printer:",
+        steps: [
+          "“Nama printer” — terisi otomatis dari nama Bluetooth; ganti bila perlu, atau pilih nama cepat “Printer kasir”, “Printer dapur”, atau “Printer bar”.",
+          "“Jenis sambungan” — “Bluetooth” atau “Jaringan (Wi-Fi/LAN)”, lalu pilih printernya (lihat dua bagian di bawah).",
+          "“Lebar kertas” — “58 mm” atau “80 mm”, sesuai gulungan kertas printer ini.",
+          "“Dipakai untuk” — centang “Struk kasir”, “Tiket dapur”, atau keduanya (lihat “Kegunaan printer”).",
+          "Ketuk “Tes cetak”, periksa kertasnya, lalu ketuk “Simpan”.",
+        ],
+        points: [
+          "Setelah tes cetak muncul petunjuk “Struk terpotong, terlalu lebar, atau kertas terbuang banyak? Buka Penyesuaian lanjutan di bawah.”",
+        ],
       },
       {
         id: "bluetooth",
         title: "Printer Bluetooth",
         steps: [
-          "Di lembar “Printer baru”, pilih “Jenis sambungan”: “Bluetooth”.",
+          "Pilih “Jenis sambungan”: “Bluetooth”.",
           "Nyalakan printer dan dekatkan ke HP, lalu ketuk “Pilih printer Bluetooth”. Bila diminta, ketuk “Izinkan” untuk izin Perangkat sekitar (atau Lokasi di Android 11 ke bawah). Bila Bluetooth mati, ketuk “Nyalakan Bluetooth”.",
           "Sissi langsung mencari sendiri; printer muncul di “Sudah dipasangkan” atau “Ditemukan di sekitar”. Printer terdekat diberi tanda “Paling dekat”.",
           "Ketuk printernya untuk memilih. Printer yang belum dipasangkan bertanda “Pasangkan” — ketuk untuk memasangkannya langsung dari aplikasi.",
-          "“Nama printer” terisi otomatis dari nama Bluetooth; ganti bila perlu, atau pilih nama cepat “Printer kasir”, “Printer dapur”, atau “Printer bar”.",
-          "Atur peran, lebar kertas, dan pemotong (lihat di bawah), ketuk “Tes cetak”, lalu “Simpan”.",
         ],
         points: [
           "Punya beberapa printer bernama sama? Namanya dibedakan dengan kode singkat, mis. “RPP02N (1A90)”. Ketuk “Cetak tes” di sebelah printer — printer yang mengeluarkan kertas bertuliskan “PRINTER INI” adalah printer itu.",
@@ -569,59 +622,131 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Pilih “Jenis sambungan”: “Jaringan (Wi-Fi/LAN)”.",
           "Isi “Alamat printer (IP)” (mis. 192.168.1.50) dan “Port” (umumnya 9100).",
-          "Atur peran dan lebar kertas, ketuk “Tes cetak”, lalu “Simpan”.",
+          "Atur lebar kertas dan kegunaannya, ketuk “Tes cetak”, lalu “Simpan”.",
         ],
       },
       {
         id: "peran",
-        title: "Peran printer: struk kasir dan tiket dapur",
+        title: "Kegunaan printer: struk kasir dan tiket dapur",
         description:
           "Di “Dipakai untuk”, centang satu atau keduanya. Satu printer boleh mencetak struk sekaligus tiket dapur; punya printer khusus dapur, tambahkan sebagai printer kedua.",
         points: [
           "“Struk kasir” — struk, laporan shift, QR meja, dan laci uang. Bila ada beberapa printer struk, yang dipakai adalah printer struk pertama yang siap.",
           "“Tiket dapur” — pesanan yang dikirim ke dapur. Tiket dicetak ke semua printer dapur; bila satu gagal, printer lain tetap mencetak.",
-          "Printer pertama otomatis tercentang keduanya. Printer berikutnya otomatis hanya “Tiket dapur”.",
+          "Printer baru belum dicentang apa pun, supaya kegunaannya dipilih dengan sadar. Selama belum dipilih, tombol simpan bertuliskan “Pilih kegunaan printer dulu”; mengetuknya menggulir ke “Dipakai untuk” dan menandai bagian itu.",
           "Di daftar, tiap printer ditandai “Struk”, “Dapur”, “Tidak dipakai”, atau “Belum lengkap”.",
         ],
         callout: {
           type: "warning",
-          text: "Bila muncul “Belum ada printer untuk struk kasir”, centang “Struk kasir” di salah satu printer. Tanpa itu struk tidak tercetak.",
+          text: "Bila muncul “Belum ada printer untuk struk kasir”, centang “Struk kasir” di salah satu printer. Tanpa itu struk tidak tercetak, dan baris “Printer & laci uang” di Pengaturan bertuliskan “Belum ada printer struk”.",
         },
       },
       {
         id: "kertas",
-        title: "Lebar kertas, pemotong, dan sisa kertas",
+        title: "Penyesuaian lanjutan: sisa kertas, pemotong, logo, kalibrasi",
+        description:
+          "Bagian “Penyesuaian lanjutan” di lembar printer terlipat secara bawaan. Ketuk untuk membukanya bila hasil tes cetak belum pas. Bagian ini terbuka sendiri bila printer itu pernah disesuaikan.",
         points: [
-          "“Lebar kertas”: “58 mm” atau “80 mm”, diatur per printer.",
-          "“Punya pemotong kertas otomatis” — matikan bila kertas disobek manual. Kertas lalu dimajukan sampai batang sobek tanpa perintah potong. Bawaannya mati untuk Bluetooth dan menyala untuk jaringan.",
-          "“Sisa kertas di akhir”: “Pendek”, “Sedang”, atau “Panjang”. Pilih Pendek bila kertas terlalu banyak terbuang; Panjang bila tulisan terakhir ikut tersobek.",
+          "“Sisa kertas setelah struk”: “Pendek”, “Sedang”, atau “Panjang”. Pilih Pendek bila kertas terlalu banyak terbuang; Panjang bila tulisan terakhir ikut tersobek.",
+          "“Punya pemotong kertas otomatis” — matikan bila kertas disobek manual. Kertas lalu dimajukan sampai batang sobek tanpa perintah potong.",
+          "“Pilihan struk” › “Cetak logo toko” — matikan bila printer ini mencetak karakter acak pada logo.",
+          "“Uji kalibrasi” — “Cetak uji kalibrasi” mencetak penggaris kolom dan garis selebar kertas untuk memeriksa ukuran yang pas; “Lihat pratinjau” menampilkan contohnya di layar.",
+          "Lebar kertas diatur per printer. Di Pengaturan › “Struk”, bagian “Kertas” hanya menunjukkan lebar printer perangkat ini beserta tautan “Atur printer”; pilihan “Kertas untuk pratinjau” hanya muncul bila perangkat belum punya printer.",
         ],
       },
       {
         id: "cetak-otomatis-laci",
         title: "Cetak otomatis dan laci uang",
+        description:
+          "Bagian “Cetak otomatis” di “Printer & laci uang” muncul setelah ada printer yang siap. Sakelar struk dan laci hanya muncul bila ada printer “Struk kasir”; sakelar tiket dapur hanya bila ada printer “Tiket dapur”.",
         points: [
-          "“Cetak struk otomatis setelah bayar” — struk tercetak setelah pembayaran berhasil.",
-          "“Cetak tiket dapur otomatis saat pesanan dikirim ke dapur” — tiket tercetak di printer dapur.",
-          "“Buka laci saat bayar tunai (laci tersambung ke printer)” — laci terbuka hanya untuk pembayaran yang memuat tunai (termasuk split dan pelunasan kasbon tunai). QRIS, kartu, dan transfer tidak membuka laci.",
+          "“Cetak struk otomatis” — struk tercetak setelah pembayaran berhasil.",
+          "“Cetak tiket dapur otomatis” — tiket tercetak di printer dapur saat pesanan dikirim ke dapur.",
+          "“Buka laci otomatis” — laci terbuka hanya untuk pembayaran yang memuat tunai (termasuk pembayaran “Gabungan” dan pelunasan kasbon tunai). QRIS, kartu, dan transfer tidak membuka laci.",
           "Laci tetap terbuka walau cetak struk otomatis dimatikan. Cetak ulang struk tidak membuka laci.",
+          "Sakelar ini hanya ada di “Printer & laci uang”, dan berlaku untuk perangkat ini saja.",
         ],
-        description: "Sakelar yang sama juga ada di Pengaturan › “Perangkat ini” (“Cetak struk otomatis”, “Cetak tiket dapur otomatis”, “Buka laci otomatis”).",
+      },
+      {
+        id: "laci-uang",
+        title: "Memasang laci uang",
+        description:
+          "Laci uang (cash drawer) tidak disambungkan ke HP atau tablet, melainkan dicolok ke port laci di printer struk. Sissi mengirim perintah buka laci lewat printer itu.",
+        points: [
+          "Colokkan kabel laci (biasanya konektor RJ11/RJ12, port bertanda “DK” atau “Cash drawer”) ke printer yang dicentang “Struk kasir”, bukan ke printer dapur.",
+          "Printer meja 80 mm umumnya punya port laci. Printer portabel 58 mm umumnya tidak punya, sehingga laci tidak bisa dibuka otomatis.",
+          "Cocokkan tegangan laci dengan printer (umumnya 12V atau 24V). Lihat label atau spesifikasi keduanya sebelum membeli.",
+        ],
+        callout: {
+          type: "info",
+          text: "Spesifikasi port laci berbeda antar merek printer. Bila ragu, tanyakan ke penjual apakah printer “mendukung cash drawer” dan berapa tegangannya.",
+        },
       },
       {
         id: "tes",
         title: "Tes cetak dan tes laci",
         points: [
-          "“Tes cetak” di lembar printer mencetak “TES CETAK” ke printer itu, walau belum disimpan.",
-          "“Tes cetak struk” dan “Tes buka laci” ada di layar Atur printer dan di “Perangkat ini”. Tombol tes bisa ditekan bersamaan.",
-          "Bila muncul “Perintah buka laci terkirim” tetapi laci tidak terbuka, periksa kabel laci ke port printer.",
+          "“Tes cetak” ada di lembar tiap printer dan mencetak “TES CETAK” ke printer itu, walau belum disimpan. Tidak ada lagi tombol tes struk umum di halaman printer.",
+          "Ingin melihat tampilan struk? Buka Pengaturan › “Struk” › “Lihat pratinjau”.",
+          "“Tes buka laci” muncul di “Printer & laci uang” bila sudah ada printer “Struk kasir”.",
+          "Bila muncul “Perintah buka laci terkirim” tetapi laci tidak terbuka, periksa kabel laci ke port printer struk.",
+        ],
+      },
+      {
+        id: "status-printer",
+        title: "Status printer di Kasir",
+        description:
+          "Bila perangkat punya printer yang siap, kepala layar Kasir (HP dan tablet) menampilkan ikon printer berlatar warna. Warnanya merangkum semua printer perangkat ini:",
+        points: [
+          "Hijau — semua printer siap (“Semua printer siap”).",
+          "Kuning — ada printer yang kertasnya hampir habis.",
+          "Merah — ada printer yang belum siap: “Tidak terjangkau”, “Bluetooth mati”, “Izin Bluetooth belum diberikan”, atau “Kertas habis”.",
+          "Abu — printer belum dicek atau sedang dicek (“Mengecek…”).",
+          "Ketuk ikonnya untuk membuka lembar “Status printer”: daftar printer beserta statusnya dan waktu cek (“Dicek …”), tombol “Cek ulang”, langkah cepat di “Coba langkah ini” (mis. “Nyalakan printer & dekatkan ke perangkat ini”, “Putuskan printer dari HP/tablet lain”), dan “Buka pengaturan printer”.",
+          "Di “Printer & laci uang”, tiap kartu printer juga punya lencana status dan tombol “Cek”.",
+        ],
+        callout: {
+          type: "info",
+          title: "Kapan printer dicek?",
+          text: "Sissi mengecek printer tanpa mencetak, hanya di saat penting: aplikasi dibuka atau kembali dibuka, layar Kasir tampil, kasir dibuka (buka shift), halaman Printer & laci uang dibuka, dan saat kamu mengetuk “Cek ulang” atau “Cek”. Hasil setiap cetak juga langsung memperbarui status. Printer tidak dicek terus-menerus, agar baterai hemat dan printer tidak direbut dari HP/tablet lain.",
+        },
+        image: {
+          ...TABLET,
+          src: "/panduan/status-printer-tablet.png",
+          alt: "Kasir tablet dengan ikon printer berlatar merah dan lembar Status printer: printer kasir Terhubung, printer dapur Tidak terjangkau, langkah perbaikan, dan tombol Cek ulang",
+          caption: "Ikon printer merah = ada printer bermasalah; ketuk untuk melihat rinciannya.",
+        },
+      },
+      {
+        id: "status-tips",
+        title: "Bila status printer merah atau abu",
+        points: [
+          "Printer Bluetooth murah sering butuh beberapa detik untuk “bangun” setelah dinyalakan atau lama diam. Bila tertulis “Tidak terjangkau” padahal printer menyala, tunggu sebentar lalu ketuk “Cek ulang”.",
+          "Banyak printer Bluetooth murah tidak bisa melaporkan sisa kertas. Printer seperti ini tetap tampil “Terhubung”, tetapi kertas habis tidak terdeteksi — periksa gulungan kertasnya secara berkala.",
+          "“Tidak dapat dicek” berarti jenis printer ini tidak bisa dicek tanpa mencetak. Pakai “Tes cetak” untuk memastikan.",
+          "Status “Bluetooth mati” atau “Izin Bluetooth belum diberikan”: nyalakan Bluetooth perangkat ini, atau izinkan Perangkat sekitar di Pengaturan HP › Aplikasi › Sissi › Izin.",
         ],
       },
       {
         id: "isi-struk",
         title: "Atur isi struk",
         description:
-          "Buka Pengaturan › “Struk”. Isi “Header struk”, “Footer struk”, dan “Instagram”, pilih “Tampilkan persen pajak” bila perlu, lalu cek lewat “Lihat pratinjau”. Pengaturan ini berlaku untuk semua perangkat di outlet.",
+          "Buka Pengaturan › “Struk”. Isi “Teks atas struk” (mis. Selamat datang!), “Teks bawah struk” (mis. info WiFi), dan “Instagram”, pilih “Tampilkan persen pajak” bila perlu, lalu cek lewat “Lihat pratinjau”. Pengaturan ini berlaku untuk semua perangkat di outlet.",
+      },
+      {
+        id: "logo-struk",
+        title: "Logo toko di struk",
+        steps: [
+          "Buka Pengaturan › “Struk”, lalu di kartu “Logo toko” ketuk “Pilih logo” (atau “Ganti logo”). Unggah logo butuh internet; berkas JPG atau PNG maksimal 2 MB.",
+          "Nyalakan “Tampilkan logo di struk”. Logo dicetak hitam-putih di atas nama usaha pada struk pelanggan.",
+          "Pilih “Gaya cetak”: “Otomatis”, “Garis tegas” (untuk logo berwarna datar), atau “Foto (arsir)” (untuk gambar bergradasi). Periksa “Hasil cetak” di layar.",
+        ],
+        points: [
+          "Logo dicetak paling lebar ⅔ lebar kertas dan tidak terlalu tinggi (sekitar 12 mm di kertas 58 mm, 18 mm di 80 mm), supaya struk tidak boros kertas.",
+          "Paling bagus logo berwarna gelap dengan latar putih atau transparan. Aplikasi memberi peringatan bila logo terlalu terang, hampir hitam penuh, atau resolusinya kecil.",
+          "Logo diunduh ke tiap perangkat agar tetap tercetak saat offline. Bila muncul “Logo belum tersimpan di perangkat ini”, sambungkan internet sebentar.",
+          "Printer yang mencetak karakter acak pada logo: matikan “Cetak logo toko” di “Penyesuaian lanjutan” printer itu saja.",
+        ],
       },
       {
         id: "salinan-toko",
@@ -635,7 +760,7 @@ export const GUIDES: GuideItem[] = [
         ],
         points: [
           "Printer tanpa pemotong otomatis: setelah struk pelanggan, muncul “Sobek struk pelanggan dulu”. Sobek struknya, lalu ketuk “Cetak salinan”.",
-          "Butuh salinan untuk transaksi yang sudah lewat? Buka “Riwayat” › pilih transaksi › “Salinan toko”.",
+          "Butuh salinan untuk transaksi yang sudah lewat? Buka “Riwayat” › pilih transaksi › “Lainnya” › “Salinan toko”.",
         ],
         image: {
           ...HP,
@@ -647,11 +772,14 @@ export const GUIDES: GuideItem[] = [
       },
       {
         id: "cetak-ulang",
-        title: "Bila struk gagal dicetak dan cetak ulang",
+        title: "Bila struk atau tiket dapur gagal dicetak",
         points: [
-          "Bila gagal, muncul “Struk gagal dicetak” dengan pilihan “Coba lagi” atau “Lewati”. Transaksi tetap tersimpan.",
-          "Struk bisa dicetak ulang dari “Riwayat” › buka transaksi › “Cetak ulang”.",
-          "Tiket dapur yang gagal ditampilkan sebagai pesan “Tiket dapur tidak tercetak: …”; pesanan tetap tersimpan.",
+          "Bila struk gagal, muncul “Struk gagal dicetak” dengan pilihan “Coba lagi” atau “Lewati”. Transaksi tetap tersimpan.",
+          "Struk bisa dicetak ulang dari “Riwayat” › buka transaksi › “Cetak ulang” di bilah bawah.",
+          "Bila tiket dapur gagal saat bayar langsung, layar “Pembayaran berhasil” menampilkan kotak merah “Tiket dapur gagal dicetak” beserta sebabnya. Ketuk “Cetak ulang tiket dapur” setelah printer dapur siap. Bila belum ada printer dapur, muncul “Belum ada printer dapur. Atur di Pengaturan › Printer & laci uang.”",
+          "Tiket dapur transaksi yang sudah lewat bisa dicetak ulang dari “Riwayat” › buka transaksi › “Lainnya” › “Cetak tiket dapur” (muncul bila perangkat punya printer dapur dan transaksi itu punya tiket).",
+          "Saat menyimpan atau mengubah pesanan berjalan, tiket dapur yang gagal ditampilkan sebagai pesan “Tiket dapur tidak tercetak: …”; pesanan tetap tersimpan.",
+          "Bila sambungan ke printer dapur sempat ditolak, Sissi mencoba sekali lagi secara otomatis sebelum menyatakan gagal.",
           "Pengaturan printer tetap tersimpan di perangkat walau kamu keluar akun lalu masuk lagi atau mengulang setup perangkat.",
         ],
       },
@@ -662,14 +790,29 @@ export const GUIDES: GuideItem[] = [
         answer: "Gulungan kertas thermal kemungkinan terbalik. Lapisan yang bisa dicetak hanya satu sisi.",
       },
       {
-        question: "Muncul “Printer tidak terjangkau”.",
+        question: "Muncul “Printer tidak terjangkau” atau status printer merah.",
         answer:
-          "Pastikan printer menyala. Untuk printer jaringan, cek alamat IP dan pastikan satu Wi-Fi dengan perangkat (alamat IP bisa berubah bila router memberi alamat baru). Untuk Bluetooth, dekatkan printer dan pastikan tidak tersambung ke HP lain.",
+          "Pastikan printer menyala, lalu ketuk “Cek ulang” di lembar Status printer. Untuk printer jaringan, cek alamat IP dan pastikan satu Wi-Fi dengan perangkat (alamat IP bisa berubah bila router memberi alamat baru). Untuk Bluetooth, dekatkan printer, tunggu beberapa detik setelah dinyalakan, dan pastikan tidak tersambung ke HP lain.",
+      },
+      {
+        question: "Bagaimana memilih ulang printer Bluetooth?",
+        answer:
+          "Buka Pengaturan › “Printer & laci uang”, ketuk kartu printernya, lalu ketuk “Pilih printer Bluetooth” dan pilih printernya lagi. Ketuk “Tes cetak”, lalu “Simpan”.",
       },
       {
         question: "Muncul “Izin Bluetooth belum diberikan”.",
         answer:
-          "Buka Pengaturan HP › Aplikasi › Sissi › Izin, aktifkan Perangkat sekitar, lalu pilih ulang printernya di layar Atur printer.",
+          "Buka Pengaturan HP › Aplikasi › Sissi › Izin, aktifkan Perangkat sekitar, lalu pilih ulang printernya di Pengaturan › “Printer & laci uang”.",
+      },
+      {
+        question: "Printer sudah diatur, tetapi tertulis “Printer struk belum diatur” atau “Belum ada printer struk”.",
+        answer:
+          "Pastikan salah satu printer dicentang “Struk kasir” di “Dipakai untuk”. Printer yang hanya dicentang “Tiket dapur” tidak mencetak struk. Bila printer hilang sendiri dari daftar, perbarui aplikasi ke versi terbaru.",
+      },
+      {
+        question: "Laci uang tidak terbuka.",
+        answer:
+          "Laci hanya terbuka untuk pembayaran tunai, dan harus dicolok ke port laci printer “Struk kasir”. Pastikan “Buka laci otomatis” menyala, lalu coba “Tes buka laci”. Printer portabel 58 mm umumnya tidak punya port laci.",
       },
       {
         question: "Bisakah memakai printer USB?",
@@ -682,11 +825,11 @@ export const GUIDES: GuideItem[] = [
       },
       {
         question: "Apakah printer termasuk fitur Pro?",
-        answer: "Tidak. Printer, tes cetak, laci, dan cetak ulang bisa dipakai di paket Gratis.",
+        answer: "Tidak. Printer, tes cetak, status printer, laci, dan cetak ulang bisa dipakai di paket Gratis.",
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "layar-dapur", "tanya-jawab-masalah-umum"],
-    keywords: ["printer", "bluetooth", "thermal", "struk", "nota", "wifi", "lan", "58mm", "80mm", "laci", "cash drawer", "printer dapur", "pairing", "pemotong", "auto cut", "cetak tes", "paling dekat", "salinan struk", "salinan toko", "arsip struk"],
+    keywords: ["printer", "bluetooth", "thermal", "struk", "nota", "wifi", "lan", "58mm", "80mm", "laci", "cash drawer", "printer dapur", "pairing", "pemotong", "auto cut", "cetak tes", "paling dekat", "salinan struk", "salinan toko", "arsip struk", "printer & laci uang", "status printer", "cek printer", "cek ulang", "logo struk", "logo toko", "header struk", "footer struk", "teks atas struk", "tiket dapur gagal", "cetak ulang tiket dapur", "kalibrasi", "printer belum diatur"],
   },
 
   // ───────────────────────────── PRODUK ─────────────────────────────
@@ -696,10 +839,10 @@ export const GUIDES: GuideItem[] = [
     title: "Menambah produk (satu harga)",
     description: "Isi form Tambah produk: kategori, satuan & stok, harga, HPP, dan pengaturan jual.",
     audience: ["Pemilik"],
-    readMinutes: 5,
-    lastUpdated: UPDATED_NEW,
+    readMinutes: 6,
+    lastUpdated: UPDATED_OCT23,
     overview:
-      "Produk dikelola di menu “Produk” (khusus pemilik; untuk usaha jasa bernama “Layanan”). Form disusun dari atas ke bawah: identitas produk, satuan & stok, jenis harga, lalu pengaturan jual.",
+      "Produk dikelola di menu “Produk” (khusus pemilik; untuk usaha jasa bernama “Layanan”). Form disusun dari atas ke bawah: identitas produk, satuan & stok, jenis harga, kode barang, lalu pengaturan jual dan pilihan ekstra.",
     steps: [
       {
         id: "buka-form",
@@ -707,6 +850,7 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Buka “Produk”, lalu ketuk “Tambah produk”.",
           "Tambahkan “Foto produk” bila ada (“Ambil foto” atau “Pilih dari galeri”). Unggah foto butuh internet.",
+          "Pakai foto persegi: “Foto persegi (1:1), min. 600×600 px, objek di tengah”. Kartu produk di Kasir berbentuk persegi; foto yang tidak persegi tetap tampil utuh, dan sisa ruangnya diisi latar buram dari foto itu.",
           "Isi “Nama produk”.",
           "Ketuk “Kategori”. Belum ada kategori yang cocok? Ketuk “Buat kategori baru” di bawah daftar, isi namanya, dan kategori itu langsung terpilih.",
         ],
@@ -721,13 +865,25 @@ export const GUIDES: GuideItem[] = [
         id: "satuan-stok",
         title: "Satuan & stok",
         description:
-          "Pilih “Satuan” (pilih “Satuan lain…” untuk menulis sendiri). Nyalakan “Lacak stok” bila stok produk ini ingin berkurang otomatis saat terjual.",
+          "Pilih “Satuan” (pilih “Satuan lain…” untuk menulis sendiri). Nyalakan “Lacak stok” bila stok produk ini ingin berkurang otomatis saat terjual. Produk yang memakai resep tanpa lacak stok menampilkan “Stok dihitung dari bahan baku di resep”; ketuk “Hitung juga stok produk jadinya” bila tetap ingin melacak stok produknya.",
         image: {
           ...HP,
           src: "/panduan/produk-satuan-stok-hp.png",
           alt: "Bagian Satuan & stok dan Jenis harga di form Tambah produk",
           caption: "Satuan & stok ada di atas, sebelum Jenis harga.",
         },
+      },
+      {
+        id: "lipatan-hp",
+        title: "Di HP: bagian form bisa dilipat",
+        description:
+          "Supaya form tidak terlalu panjang di HP, bagian “Satuan & stok”, “Kode barang”, “Pengaturan jual”, dan “Pilihan ekstra” bisa dilipat. Bagian terlipat hanya menampilkan judul dan ringkasan isinya, mis. “pcs · Lacak stok · Stok 6” atau “Dijual · Kena pajak · Ke dapur”. Ketuk judulnya untuk membuka atau melipat.",
+        points: [
+          "Foto, nama, kategori, jenis harga, harga/HPP/varian, dan stok selalu terbuka.",
+          "Bagian yang sudah berisi data terbuka sendiri saat form dibuka. Setelah itu bagian hanya terlipat bila kamu sendiri yang melipatnya.",
+          "Bila ada isian yang salah di bagian terlipat (mis. barcode ganda), bagian itu dibuka otomatis saat “Simpan”.",
+          "Di tablet, form tetap satu kolom tanpa lipatan.",
+        ],
       },
       {
         id: "harga",
@@ -737,7 +893,7 @@ export const GUIDES: GuideItem[] = [
           "Isi “Harga”.",
           "Pada “HPP (harga modal)”, pilih “Modal manual” lalu isi “Harga modal”, atau pilih “Resep” untuk menghitung dari bahan baku. Aplikasi menampilkan laba dan margin.",
           "Bila “Lacak stok” menyala, isi “Stok awal” dan “Stok minimum” (batas untuk peringatan stok menipis).",
-          "“SKU (opsional)” dan “Barcode (opsional)” berguna untuk scan barcode di kasir.",
+          "“SKU (opsional)” dan “Barcode (opsional)” ada di bagian “Kode barang” dan berguna untuk scan barcode di kasir. Di tablet, usaha selain ritel melihatnya sebagai tautan “+ Tambah kode barang (SKU/barcode)” selama masih kosong; ketuk untuk membukanya.",
         ],
         callout: {
           type: "tip",
@@ -751,7 +907,7 @@ export const GUIDES: GuideItem[] = [
           "“Dijual di kasir” — matikan untuk menyembunyikan produk dari kasir tanpa menghapusnya.",
           "“Kena pajak” — ikut dihitung pajak.",
           "“Kirim ke dapur” — item masuk tiket dapur saat dipesan (muncul bila fitur dapur aktif).",
-          "“Grup modifier” — pasang pilihan tambahan seperti level gula atau topping.",
+          "“Pilihan ekstra” — pasang grup pilihan tambahan seperti level gula atau topping lewat “Pilih grup pilihan ekstra”.",
         ],
         description: "Terakhir, ketuk “Simpan”. Bila ada isian yang belum benar, aplikasi menggulir ke isian itu.",
       },
@@ -782,7 +938,17 @@ export const GUIDES: GuideItem[] = [
       {
         question: "Bagaimana mencari produk di daftar?",
         answer:
-          "Pakai kolom “Cari nama / SKU”. Saringan “Status” (Dijual / Tidak dijual), “Stok” (Habis, Menipis, Aman, Tidak dilacak), dan “Urutkan” ada di sebelahnya.",
+          "Pakai kolom “Cari nama / SKU”. Di HP, ketuk “Filter” untuk menyaring kategori, “Status” (Dijual / Tidak dijual), “Stok” (Habis, Menipis, Aman, Tidak dilacak), harga modal, dan urutan, lalu “Terapkan”. Tombolnya menjadi “Filter (n)” selama ada saringan aktif; saringan aktif juga tampil sebagai chip — ketuk chip untuk menghapusnya. Di tablet, saringan ada di sebelah kolom cari.",
+      },
+      {
+        question: "Bagaimana menyembunyikan produk dari kasir tanpa menghapusnya?",
+        answer:
+          "Matikan “Dijual di kasir” di form produk. Di daftar produk HP, ketuk menu ⋯ di baris produk › “Sembunyikan dari kasir” (dan “Jual lagi di kasir” untuk menampilkannya lagi); produknya diberi lencana “Tidak dijual”. Di tablet, pakai sakelar di kolom daftar.",
+      },
+      {
+        question: "Bagaimana mengatur urutan kategori di kasir?",
+        answer:
+          "Buka “Produk” › “Kelola” › “Kategori”, lalu seret pegangan ⠿ di kiri kategori ke urutan yang diinginkan. Ubah atau hapus kategori lewat menu ⋯ di barisnya. Menu ⋯ yang sama dipakai di daftar area meja, diskon, dan pilihan ekstra.",
       },
       {
         question: "Bisakah impor produk dari Excel?",
@@ -790,7 +956,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["impor-produk-dari-csv", "produk-dengan-varian", "hpp-resep-dan-bahan-baku"],
-    keywords: ["menu", "katalog", "item", "barang", "kategori", "harga", "foto produk", "draf", "sku", "barcode"],
+    keywords: ["menu", "katalog", "item", "barang", "kategori", "harga", "foto produk", "draf", "sku", "barcode", "foto persegi", "ukuran foto", "1:1", "kode barang", "sembunyikan produk", "filter produk", "urutan kategori", "modifier"],
   },
   {
     slug: "impor-produk-dari-csv",
@@ -799,7 +965,7 @@ export const GUIDES: GuideItem[] = [
     description: "Isi template Excel atau CSV, periksa hasilnya, lalu impor sampai 1.000 produk sekaligus — lengkap dengan varian, bahan baku, resep, dan pilihan ekstra.",
     audience: ["Pemilik"],
     readMinutes: 6,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Punya banyak produk? Daripada mengisi satu per satu, isi template lalu impor sekaligus. Berkas Excel (.xlsx) bisa langsung dipilih tanpa diubah ke CSV, dan template Excel lengkap juga memuat varian, bahan baku, resep, dan pilihan ekstra. Ekspor Excel dari aplikasi kasir lain juga bisa dicoba langsung: lembar dan kolomnya dikenali otomatis. Sebelum menyimpan, aplikasi menampilkan hasilnya sehingga kamu bisa memilih produk yang diimpor dan menangani baris kembar.",
     prerequisites: ["Aplikasi spreadsheet seperti Excel atau Google Sheets (di HP atau komputer)."],
@@ -808,7 +974,7 @@ export const GUIDES: GuideItem[] = [
         id: "buka",
         title: "Buka Impor produk",
         steps: [
-          "Buka “Produk”, ketuk “Kelola”, lalu “Impor produk”. Lembar “Kelola produk” juga berisi “Stok & harga modal”, “Stok menipis”, “Kategori”, “Grup modifier”, dan “Diskon”.",
+          "Buka “Produk”, ketuk “Kelola”, lalu “Impor produk”. Lembar “Kelola produk” juga berisi “Stok & harga modal”, “Stok menipis”, “Kategori”, “Pilihan ekstra”, dan “Diskon”.",
           "Bila daftar produk masih kosong, bisa juga lewat tautan “Atau impor banyak produk dari Excel atau CSV”.",
         ],
       },
@@ -836,7 +1002,7 @@ export const GUIDES: GuideItem[] = [
           "Template Excel lengkap punya lembar tambahan. Isi yang perlu saja; lembar dikenali dari judul kolomnya, dan lembar yang tidak dikenali diabaikan.",
         points: [
           "“Varian” — nama_produk, varian, harga, modal, sku, barcode.",
-          "“Bahan” — nama_bahan, satuan (g, kg, ml, l, pcs…), harga_beli, isi_kemasan, stok_min, sku, susut_persen (opsional: bagian yang terbuang saat dibersihkan, mis. 10).",
+          "“Bahan” — nama_bahan, satuan (g, kg, ml, l, pcs…; liter ditulis “l” di berkas dan tampil “L” di aplikasi), harga_beli, isi_kemasan, stok_min, sku, susut_persen (opsional: bagian yang terbuang saat dibersihkan, mis. 10).",
           "“Resep” — nama_produk, varian (boleh kosong), nama_bahan, jumlah, satuan, hasil_porsi (opsional: isi bila jumlah = berat bersih satu adonan yang menghasilkan N porsi).",
           "“Pilihan Ekstra” — grup, pilih_satu (ya/tidak), pilihan, harga.",
         ],
@@ -901,7 +1067,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["menambah-produk", "produk-dengan-varian", "hpp-resep-dan-bahan-baku", "stok-barang-dan-stok-masuk"],
-    keywords: ["impor", "import", "csv", "excel", "xlsx", "google sheets", "upload produk", "massal", "bulk", "template", "pindah dari aplikasi lain", "resep", "bahan baku"],
+    keywords: ["impor", "import", "csv", "excel", "xlsx", "google sheets", "upload produk", "massal", "bulk", "template", "pindah dari aplikasi lain", "resep", "bahan baku", "pilihan ekstra", "modifier"],
   },
   {
     slug: "produk-dengan-varian",
@@ -999,7 +1165,7 @@ export const GUIDES: GuideItem[] = [
     description: "Pilih Modal manual atau Resep, isi resep per porsi atau per adonan, atur susut bahan, dan pahami satuan yang terkunci.",
     audience: ["Pemilik"],
     readMinutes: 8,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "HPP (harga pokok penjualan) adalah modal per porsi atau per barang. Sissi memakainya untuk menghitung laba kotor. HPP bisa ditulis langsung (Modal manual) atau dihitung dari resep bahan baku.",
     steps: [
@@ -1019,6 +1185,7 @@ export const GUIDES: GuideItem[] = [
           "Pada “Cara isi takaran”, biarkan “Per porsi”. Ketuk “Tambah bahan”, pilih bahan baku, lalu isi “Jumlah” per porsi.",
           "Bahan belum ada? Ketuk “Buat bahan baku baru”: isi nama, satuan, stok minimum, dan harga beli awal, lalu langsung isi takarannya.",
           "Hasilnya tampil sebagai “HPP … · margin …%”.",
+          "Produk beresep yang stoknya tidak dilacak menampilkan “Stok dihitung dari bahan baku di resep”: setiap terjual, bahannya berkurang otomatis.",
         ],
         description: "Untuk produk bervarian, resep bisa dibuat untuk “Semua varian” atau per varian. Varian tanpa resep sendiri memakai resep “Semua varian”.",
       },
@@ -1041,7 +1208,7 @@ export const GUIDES: GuideItem[] = [
         },
         callout: {
           type: "warning",
-          text: "Bila bahan dicatat dalam satuan besar (mis. liter) dan takaran per porsinya kecil, takaran dibulatkan dan muncul peringatan kuning. Untuk bahan baru seperti ini, pilih satuan g atau ml.",
+          text: "Bila bahan dicatat dalam satuan besar (mis. liter) dan takaran per porsinya kecil, takaran dibulatkan dan muncul peringatan kuning. Barisnya tertulis mis. “Dibulatkan dari 2,5 ml — terpotong lebih ~20%”; ketuk ikon (i) untuk penjelasannya. Untuk bahan baru seperti ini, pilih satuan g atau ml.",
         },
       },
       {
@@ -1095,14 +1262,14 @@ export const GUIDES: GuideItem[] = [
         id: "satuan-terkunci",
         title: "Satuan bahan terkunci",
         description:
-          "Satuan bahan (mis. g, kg, l) tidak bisa diganti lagi setelah bahan punya riwayat: pernah ada stok masuk atau keluar, dipakai resep atau resep pilihan ekstra, atau tercantum di PO, opname, atau transfer. Kolom “Satuan” tampil dengan ikon gembok beserta sebabnya. Ini menjaga stok dan harga rata-rata yang sudah tercatat tetap benar, karena Sissi tidak mengubah angka lama secara otomatis.",
+          "Satuan bahan (mis. g, kg, L) tidak bisa diganti lagi setelah bahan punya riwayat: pernah ada stok masuk atau keluar, dipakai resep atau resep pilihan ekstra, atau tercantum di pesanan pembelian (PO), opname, atau transfer. Kolom “Satuan” tampil dengan ikon gembok beserta sebabnya. Ini menjaga stok dan harga rata-rata yang sudah tercatat tetap benar, karena Sissi tidak mengubah angka lama secara otomatis.",
         steps: [
           "Perlu satuan lain? Di form “Ubah bahan baku”, ketuk “Buat bahan baku baru” di bawah kolom “Satuan”.",
           "Isi nama dan satuan yang benar, lalu simpan.",
           "Pakai bahan baru itu di resep menu, dan catat stoknya lewat “Bahan masuk”.",
         ],
         points: [
-          "Terkunci karena PO? Hapus PO itu (bila masih draf) untuk membuka kunci.",
+          "Terkunci karena pesanan pembelian? Hapus pesanan itu (bila masih draf) untuk membuka kunci.",
           "Terkunci karena resep? Keluarkan bahan dari resep itu untuk membuka kunci.",
           "Bahan yang belum punya riwayat apa pun bebas diganti satuannya.",
         ],
@@ -1136,7 +1303,7 @@ export const GUIDES: GuideItem[] = [
     description: "Hitung harga jual dari target untung, catat biaya bulanan, dan lihat berapa porsi per hari supaya balik modal.",
     audience: ["Pemilik"],
     readMinutes: 6,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Menu “HPP & Harga jual” ada di “Inventori”. Isinya tiga tab: “Menu”, “Biaya usaha”, dan “Balik modal”. Semua hitungan di sini hanya simulasi; harga produk baru berubah bila kamu menekan “Pakai harga ini”.",
     prerequisites: [
@@ -1147,7 +1314,7 @@ export const GUIDES: GuideItem[] = [
         id: "kesehatan-menu",
         title: "Tab Menu: cek kesehatan menu",
         description:
-          "Buka “Inventori” › “HPP & Harga jual”. Tiap menu diberi tanda dari food cost (HPP bahan ÷ harga jual): “Sehat” 35% ke bawah, “Tipis” 35–45%, “Bahaya” di atas 45%, “Rugi” bila modal sama dengan atau lebih besar dari harga jual, dan “Belum ada modal”.",
+          "Buka “Inventori” › “HPP & Harga jual”. Tiap menu diberi tanda dari “Bahan %” (food cost: HPP bahan ÷ harga jual): “Sehat” 35% ke bawah, “Tipis” 35–45%, “Bahaya” di atas 45%, “Rugi” bila modal sama dengan atau lebih besar dari harga jual, dan “Belum ada modal”.",
         points: [
           "Saring dengan “Semua”, “Perlu dicek”, atau “Tanpa modal”, atau cari lewat “Cari menu”.",
           "Kartu “Modal naik di … menu” muncul bila HPP sekarang naik dibanding modal penjualan 30 hari terakhir dan margin jadi lebih tipis. Ketuk “Lihat” untuk melihat menunya. Peringatan yang sama tampil di Beranda pemilik.",
@@ -1159,15 +1326,20 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Ketuk menu di daftar. Di tablet, “Hitung harga jual” terbuka di sebelah kanan.",
           "Periksa “Modal per porsi”. Tambahkan bila perlu “Cadangan bahan kecil” (minyak, gas, bumbu yang tidak masuk resep), “Kemasan per porsi”, dan “Biaya usaha per porsi”.",
-          "Di “Mau untung berapa?”, pilih “Cara menentukan untung”: “Margin % (dari harga jual)”, “Markup % (dari modal)”, “Untung Rp per porsi”, atau “Food cost %”, lalu isi angkanya.",
+          "Di “Mau untung berapa?”, pilih “Cara menentukan untung”: “Margin % (dari harga jual)”, “Untung dari modal % (markup)”, “Untung Rp per porsi”, atau “Bahan dari harga jual % (food cost)”, lalu isi angkanya.",
           "Pilih “Bulatkan ke atas”, mis. “Kelipatan Rp 500”.",
           "Lihat “Harga jual saran”. Bila cocok, ketuk “Pakai harga ini” lalu “Pakai harga”.",
         ],
+        devices: {
+          hp: "Hasilnya menempel di bilah bawah selama kamu mengisi, mis. “Rp 23.500 · untung Rp 14.252 (60,7%)”, dengan tombol “Pakai Rp 23.500” untuk langsung memakai harga itu.",
+          tablet: "Kalkulator terbuka di sebelah kanan daftar menu; hasilnya tampil di bawah isian.",
+        },
         points: [
           "“Kalau diskon” — melihat untung bila menu didiskon sekian persen.",
           "“Jual di ojol” — harga tayang agar untung per porsi sama dengan di toko. Isi komisi sesuai kontrakmu.",
           "“Hitung bebas” — untuk menu yang belum dibuat. Hasilnya tidak disimpan.",
           "Dari form produk, ketuk “Hitung harga jual” untuk membuka kalkulator menu itu.",
+          "Bingung bedanya margin, untung dari modal (markup), dan bahan dari harga jual (food cost)? Ketuk ikon tanda tanya di judul “Mau untung berapa?” untuk contoh hitungannya.",
         ],
         image: {
           ...TABLET,
@@ -1209,10 +1381,10 @@ export const GUIDES: GuideItem[] = [
         id: "balik-modal",
         title: "Tab Balik modal",
         description:
-          "“Supaya balik modal” menunjukkan berapa porsi menu bermodal yang perlu terjual per hari agar biaya usaha tertutup, beserta perkiraan penjualan per hari (sesudah diskon, sebelum pajak).",
+          "“Supaya balik modal” menunjukkan berapa porsi menu bermodal yang perlu terjual per hari agar biaya usaha tertutup, beserta perkiraan penjualan per hari. Penjualan di sini = sesudah diskon, sebelum pajak & biaya layanan.",
         points: [
           "Isi “Untung bersih per bulan” di “Mau untung berapa?” untuk melihat target porsi per hari.",
-          "Bagian “30 hari terakhir” membandingkan laba kotor dengan biaya usaha, mis. “Sudah balik modal” atau “Belum balik modal · kurang 4 porsi menu bermodal/hari”.",
+          "Bagian “30 hari terakhir” membandingkan laba kotor (penjualan sesudah diskon − modal menu) dengan biaya usaha, mis. “Sudah balik modal” atau “Belum balik modal · kurang 4 porsi/hari”.",
           "Menu yang modalnya belum diisi tidak ikut dihitung.",
           "Ketuk “Lihat laba rugi” untuk membuka laporan laba rugi.",
         ],
@@ -1227,7 +1399,7 @@ export const GUIDES: GuideItem[] = [
     faqs: [
       {
         question: "Apakah kalkulator langsung mengubah harga produk?",
-        answer: "Tidak. Harga baru dipakai hanya bila kamu menekan “Pakai harga ini” dan mengonfirmasi “Pakai harga”.",
+        answer: "Tidak. Harga baru dipakai hanya bila kamu menekan “Pakai harga ini” (atau “Pakai Rp …” di bilah bawah HP) dan mengonfirmasi “Pakai harga”.",
       },
       {
         question: "Saran “Pakai Rp … (dari Biaya usaha)” tidak muncul.",
@@ -1236,28 +1408,29 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["hpp-resep-dan-bahan-baku", "laporan-laba-rugi", "membaca-laporan-penjualan-dan-margin"],
-    keywords: ["harga jual", "kalkulator harga", "margin", "markup", "food cost", "ojol", "gofood", "grabfood", "biaya usaha", "biaya operasional", "overhead", "balik modal", "bep", "break even"],
+    keywords: ["harga jual", "kalkulator harga", "margin", "markup", "food cost", "ojol", "gofood", "grabfood", "biaya usaha", "biaya operasional", "overhead", "balik modal", "bep", "break even", "omzet", "penjualan", "untung dari modal", "bahan dari harga jual"],
   },
   {
     slug: "modifier-dan-opsi-tambahan",
     category: "produk",
-    title: "Modifier: topping, level gula & HPP-nya",
-    description: "Buat grup modifier, atur wajib/opsional, harga tambahan, dan HPP per opsi.",
+    title: "Pilihan ekstra: topping, level gula & HPP-nya",
+    description: "Buat grup pilihan ekstra (dulu disebut modifier), atur wajib/opsional, harga tambahan, dan HPP per opsi.",
     audience: ["Pemilik"],
     readMinutes: 4,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_OCT23,
     overview:
-      "Modifier adalah pilihan tambahan saat memesan, misalnya Level gula (Normal, Less sugar) atau Topping (Boba +Rp5.000). Satu grup bisa dipasang di banyak produk.",
+      "Pilihan ekstra (dulu disebut modifier) adalah pilihan tambahan saat memesan, misalnya Level gula (Normal, Less sugar) atau Topping (Boba +Rp5.000). Satu grup bisa dipasang di banyak produk.",
     steps: [
       {
         id: "buat-grup",
-        title: "Buat grup modifier",
+        title: "Buat grup pilihan ekstra",
         steps: [
-          "Buka “Produk” › “Kelola” › “Grup modifier”, lalu “Tambah grup modifier”.",
+          "Buka “Produk” › “Kelola” › “Pilihan ekstra”, lalu “Tambah grup pilihan ekstra”.",
           "Isi “Nama grup” (mis. Level gula).",
           "Pilih “Opsional” atau “Wajib”, dan isi “Maksimal pilihan”.",
           "Tambahkan opsi dengan “Tambah opsi”: nama opsi dan “Harga tambahan” (0 bila gratis).",
         ],
+        points: ["Untuk mengubah atau menghapus grup, ketuk menu ⋯ di barisnya di daftar “Pilihan ekstra”."],
       },
       {
         id: "hpp-opsi",
@@ -1267,7 +1440,7 @@ export const GUIDES: GuideItem[] = [
         image: {
           ...HP,
           src: "/panduan/modifier-hpp-resep-hp.png",
-          alt: "Lembar HPP opsi modifier dengan pilihan Resep",
+          alt: "Lembar HPP opsi pilihan ekstra dengan pilihan Resep",
           caption: "Topping Boba memakai resep 30 g bahan Boba mentah.",
         },
       },
@@ -1275,17 +1448,18 @@ export const GUIDES: GuideItem[] = [
         id: "pasang",
         title: "Pasang di produk",
         description:
-          "Di form produk, bagian “Grup modifier”, ketuk “Pilih grup modifier”. Grup baru juga bisa dibuat dari situ lewat “Buat grup modifier baru”.",
+          "Di form produk, bagian “Pilihan ekstra”, ketuk “Pilih grup pilihan ekstra”. Grup baru juga bisa dibuat dari situ lewat “Buat grup pilihan ekstra baru”. Di HP, bagian ini bisa dilipat; saat terlipat, judulnya menampilkan nama grup yang terpasang.",
       },
       {
         id: "di-kasir",
         title: "Yang terlihat di kasir",
         description:
-          "Saat produk diketuk, grup tampil dengan label “Wajib” atau “Opsional”. Kasir tidak bisa menambahkan item sebelum grup wajib dipilih.",
+          "Saat produk diketuk, grup tampil dengan label “Wajib” atau “Opsional”. Selama grup wajib belum dipilih, tombol bawah menyebut langkah yang kurang, mis. “Pilih Level gula dulu” atau “Pilih minimal 2 di Topping”. Setelah lengkap, tombolnya menjadi “Tambah · Rp …” dengan harga akhir.",
+        points: ["Mengetuk tombol saat pilihan belum lengkap menandai grup yang kurang dengan warna merah dan menggulir ke sana."],
       },
     ],
     relatedSlugs: ["hpp-resep-dan-bahan-baku", "menambah-produk", "mencatat-transaksi-di-kasir"],
-    keywords: ["modifier", "topping", "add on", "extra", "level gula", "level pedas", "opsi tambahan"],
+    keywords: ["modifier", "pilihan ekstra", "grup modifier", "topping", "add on", "extra", "level gula", "level pedas", "opsi tambahan"],
   },
   {
     slug: "diskon-dan-promo",
@@ -1294,7 +1468,7 @@ export const GUIDES: GuideItem[] = [
     description: "Diskon persen atau nominal untuk nota, kategori, atau produk, plus diskon per baris langsung di kasir.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 5,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Ada tiga cara memberi potongan: diskon yang dibuat pemilik (promo), diskon per baris untuk satu item di pesanan, dan diskon manual per nota yang diisi kasir saat pembayaran.",
     steps: [
@@ -1317,7 +1491,11 @@ export const GUIDES: GuideItem[] = [
         id: "di-kasir",
         title: "Memakai diskon saat bayar (kasir)",
         description:
-          "Di layar “Pembayaran”, ketuk “Diskon, pajak & catatan”. Pilih promo di bagian “Promo”, atau isi diskon manual “Persen”/“Nominal” beserta “Alasan diskon”.",
+          "Di layar “Pembayaran”, buka lembar “Diskon, pajak & catatan”. Pilih promo di bagian “Promo”, atau isi diskon manual “Persen”/“Nominal” beserta “Alasan diskon”.",
+        devices: {
+          hp: "Ketuk tombol “Diskon” di samping tombol bayar. Setelah diskon manual diisi, tombol itu menampilkan nilainya, mis. “-10%” atau “-Rp 5.000”.",
+          tablet: "Ketuk tombol “Diskon, pajak & catatan”.",
+        },
         callout: {
           type: "warning",
           text: "Diskon terkunci setelah ada pembayaran masuk. Atur diskon sebelum menerima uang.",
@@ -1328,7 +1506,7 @@ export const GUIDES: GuideItem[] = [
         title: "Diskon per baris (kasir)",
         description: "Untuk memotong harga satu item saja, mis. kue yang agak rusak atau minuman gratis untuk pelanggan setia.",
         steps: [
-          "Di Kasir, ketuk “Diskon” di bawah nama item di pesanan.",
+          "Di Kasir, ketuk “Diskon” di baris tautan bawah nama item (sebaris dengan “Tambah catatan” dan tombol − / +).",
           "Di lembar “Diskon baris”, pilih “Persen” (5%, 10%, 15%, 20%, “Gratis”, atau “Lainnya”) atau “Nominal”. Di “Nominal”, bila jumlah item lebih dari 1, ada pilihan cepat “Gratis 1”.",
           "Bila perlu, isi “Alasan diskon (opsional)” — alasan ikut tersimpan di rincian transaksi dan struk.",
           "Periksa “Harga baris jadi”, lalu ketuk “Terapkan”.",
@@ -1373,7 +1551,7 @@ export const GUIDES: GuideItem[] = [
     description: "Tambah produk, pilih varian, catatan item, item cepat, pelanggan, lalu bayar.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Layar “Kasir” (judul “Transaksi Baru”) adalah tempat mencatat penjualan. Pastikan kasir sudah dibuka; selama belum dibuka, layar hanya menampilkan tombol “Buka Kasir”.",
     prerequisites: ["Kasir sudah dibuka (lihat “Shift kas & tutup kasir harian”).", "Produk sudah dibuat."],
@@ -1383,11 +1561,15 @@ export const GUIDES: GuideItem[] = [
         title: "Tambahkan produk ke pesanan",
         steps: [
           "Ketuk produk. Cari cepat lewat “Cari menu atau SKU”, atau saring dengan chip kategori.",
-          "Untuk produk bervarian atau bermodifier, pilih varian dan opsinya, isi “Catatan (opsional)” bila perlu, lalu ketuk “Tambah · …”.",
-          "Ubah jumlah dengan tombol − / +. Ketuk “Tambah catatan” di bawah item untuk catatan seperti “kurang manis”.",
+          "Untuk produk bervarian atau berpilihan ekstra, pilih varian dan opsinya, isi “Catatan (opsional)” bila perlu. Selama ada yang belum dipilih, tombol bawah menyebut langkahnya, mis. “Pilih varian dulu” atau “Pilih Level gula dulu”. Setelah lengkap, ketuk “Tambah · Rp …” (harga akhir).",
+          "Ubah jumlah dengan tombol − / + di baris item, sebaris dengan tautan “Tambah catatan” dan “Diskon”. Pada jumlah 1, tombol − berubah menjadi ikon hapus merah (“Hapus dari pesanan”).",
+          "Ketuk “Tambah catatan” untuk catatan seperti “kurang manis”.",
+        ],
+        points: [
+          "Kartu produk berbentuk persegi dengan foto produk. Bila belum ada satu pun produk berfoto, kartu tampil ringkas dengan inisial di samping nama.",
         ],
         devices: {
-          hp: "Pesanan tampil sebagai bilah “… item” di bawah layar. Ketuk “Lihat” untuk membuka layar “Pesanan” berisi item, ringkasan, serta tombol Simpan dan Bayar.",
+          hp: "Pesanan tampil sebagai bilah melayang di bawah layar. Ketuk sisi kirinya (jumlah item, meja, “Lihat pesanan”) untuk membuka layar “Pesanan” berisi item, ringkasan, serta tombol Simpan dan Bayar. Tombol oranye “Bayar Rp …” di bilah itu langsung membuka layar Pembayaran.",
           tablet: "Pesanan tampil tetap di panel kanan.",
         },
         image: {
@@ -1401,14 +1583,14 @@ export const GUIDES: GuideItem[] = [
         id: "jenis-pelanggan-meja",
         title: "Jenis pesanan, pelanggan, dan meja",
         points: [
-          "Pilih jenis pesanan, mis. “Makan di tempat” atau “Bawa pulang”. Pilihan ini hanya muncul bila lebih dari satu jenis diaktifkan di Pengaturan › “Transaksi” › “Jenis pesanan”.",
+          "Pilih jenis pesanan, mis. “Makan di tempat” atau “Bawa pulang”. Pilihan ini hanya muncul bila lebih dari satu jenis diaktifkan di Pengaturan › “Pesanan & keamanan kasir” › “Jenis pesanan”.",
           "“Pilih pelanggan” untuk mencatat pelanggan (poin member dan kasbon butuh ini). Pelanggan baru bisa dibuat lewat “Tambah pelanggan”.",
           "“Pilih meja” hanya muncul untuk jenis pesanan “Makan di tempat” dan bila outlet punya meja aktif. Bila jenis diganti ke “Bawa pulang”, meja yang sudah dipilih otomatis dilepas.",
         ],
         callout: {
           type: "info",
           title: "Wajib nama pelanggan",
-          text: "Bila pemilik menyalakan Pengaturan › “Transaksi” › “Wajib nama pelanggan”, menekan “Bayar” atau “Simpan” tanpa pelanggan terpilih memunculkan isian “Nama pelanggan”. Isi namanya lalu ketuk “Lanjut”.",
+          text: "Bila pemilik menyalakan Pengaturan › “Pesanan & keamanan kasir” › “Wajib nama pelanggan”, menekan “Bayar” atau “Simpan” tanpa pelanggan terpilih memunculkan isian “Nama pelanggan”. Isi namanya lalu ketuk “Lanjut”.",
         },
       },
       {
@@ -1421,7 +1603,7 @@ export const GUIDES: GuideItem[] = [
         id: "bayar-atau-simpan",
         title: "Bayar sekarang atau simpan dulu",
         points: [
-          "“Bayar …” — buka layar pembayaran. Baca “Pembayaran: tunai, QRIS, kartu, transfer”. Bila kasir belum dibuka, muncul lembar Buka kasir dan pembayaran langsung dilanjutkan setelahnya.",
+          "“Bayar Rp …” — buka layar pembayaran. Angkanya adalah total tagihan; bila pembulatan tunai aktif, angka tunai yang dibulatkan baru tampil di layar Pembayaran. Baca “Pembayaran: tunai, QRIS, kartu, transfer”. Bila kasir belum dibuka, muncul lembar Buka kasir dan pembayaran langsung dilanjutkan setelahnya.",
           "“Simpan” — simpan sebagai pesanan berjalan untuk dibayar nanti (mis. makan dulu bayar belakangan). Baca “Pesanan berjalan & meja”.",
           "Ikon tempat sampah mengosongkan pesanan setelah konfirmasi “Kosongkan pesanan?”.",
         ],
@@ -1450,11 +1632,15 @@ export const GUIDES: GuideItem[] = [
       },
       {
         question: "Bisakah memberi diskon per item?",
-        answer: "Bisa. Ketuk “Diskon” di bawah nama item di pesanan. Baca “Membuat diskon” bagian Diskon per baris.",
+        answer: "Bisa. Ketuk “Diskon” di baris item di pesanan. Baca “Membuat diskon” bagian Diskon per baris.",
+      },
+      {
+        question: "Bagaimana menghapus satu item dari pesanan?",
+        answer: "Kurangi jumlahnya dengan tombol −. Saat jumlahnya tinggal 1, tombol − berubah menjadi ikon hapus merah; ketuk untuk menghapus item itu.",
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "mencatat-pesanan-dan-denah-meja", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["kasir", "transaksi", "jualan", "pos", "keranjang", "checkout", "item cepat", "scan barcode", "bawa pulang", "takeaway"],
+    keywords: ["kasir", "transaksi", "jualan", "pos", "keranjang", "checkout", "item cepat", "scan barcode", "bawa pulang", "takeaway", "hapus item", "lihat pesanan", "pilih varian", "modifier"],
   },
   {
     slug: "mencatat-pesanan-dan-denah-meja",
@@ -1463,7 +1649,7 @@ export const GUIDES: GuideItem[] = [
     description: "Simpan pesanan untuk dibayar nanti, terima DP, ubah, pisah pesanan, batalkan, dan kelola meja.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 7,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Pesanan berjalan adalah pesanan yang sudah dicatat tetapi belum dibayar, misalnya tamu makan dulu bayar belakangan. Pesanan bisa ditautkan ke meja dan dikirim ke dapur. Meja, pesanan berjalan, dan layar dapur termasuk paket Pro; pesanan yang sudah tersimpan tetap bisa dibayar walau Pro berakhir.",
     steps: [
@@ -1486,14 +1672,20 @@ export const GUIDES: GuideItem[] = [
         title: "Melihat dan mengubah pesanan",
         description:
           "Buka “Pesanan” (judul “Pesanan berjalan”). Cari dengan “Cari nomor, nama, atau meja”. Tiap kartu menunjukkan status bayar dan progres dapur, mis. “2/3 siap”.",
+        points: [
+          "Pesanan yang sudah siap semua naik ke paling atas dan diberi bingkai hijau.",
+          "Pakai saringan “Siap diantar” untuk melihat pesanan yang tinggal diantar saja. Status dapur kini tampil langsung di kartu, tanpa tab terpisah.",
+          "Lama menunggu berwarna kuning setelah 15 menit dan merah setelah 30 menit, selama dapur belum selesai.",
+        ],
         steps: [
-          "Ketuk menu ⋯ di kartu, lalu “Ubah”. Pesanan terbuka di Kasir dengan judul “Ubah pesanan …”.",
+          "Ketuk pesanan untuk membuka rinciannya. Bilah bawah berisi tombol ⋯, “Ubah”, dan “Bayar Rp …”. “Terima DP”, “Pisah pesanan”, dan “Batalkan pesanan” ada di menu ⋯.",
+          "Ketuk “Ubah” (atau menu ⋯ di kartu › “Ubah”). Pesanan terbuka di Kasir dengan judul “Ubah pesanan …”.",
           "Tambah atau kurangi item, lalu ketuk “Simpan perubahan” dan konfirmasi “Simpan perubahan pesanan?”. Item tambahan dikirim ke dapur dengan tanda TAMBAHAN.",
-          "Untuk menagih, ketuk “Bayar” di kartu pesanan.",
+          "Untuk menagih, ketuk “Bayar Rp …” di rincian atau “Bayar” di kartu pesanan.",
         ],
         callout: {
           type: "info",
-          text: "Mengurangi item atau membatalkan pesanan bisa meminta PIN pemilik bila “PIN pemilik untuk batal & refund” aktif di Pengaturan › “Transaksi”.",
+          text: "Mengurangi item atau membatalkan pesanan bisa meminta PIN pemilik bila “PIN pemilik untuk batal & refund” aktif di Pengaturan › “Pesanan & keamanan kasir”.",
         },
       },
       {
@@ -1501,8 +1693,8 @@ export const GUIDES: GuideItem[] = [
         title: "Terima DP untuk pesanan berjalan",
         description: "Tamu bisa membayar sebagian dulu (DP) untuk pesanan yang belum dibayar, mis. pesanan nasi kotak.",
         steps: [
-          "Buka “Pesanan”, ketuk pesanannya, lalu “Terima DP”.",
-          "Pilih “Dibayar lewat”, lalu isi “Nominal DP”. Nominal harus di bawah sisa tagihan; untuk melunasi, pakai “Bayar”.",
+          "Buka “Pesanan”, ketuk pesanannya, lalu ketuk ⋯ di bilah bawah › “Terima DP”.",
+          "Pilih “Dibayar lewat”, lalu isi “Nominal DP” atau ketuk pilihan cepat (pilihan setengah tagihan dibulatkan ke Rp 10.000). Nominal harus kurang dari sisa tagihan; untuk melunasi, pakai “Bayar”.",
           "Centang “Cetak bukti DP” bila perlu (muncul bila printer tersambung; gulir ke bawah bila tidak terlihat), lalu ketuk “Terima DP Rp …”.",
         ],
         points: ["Kasir harus sudah dibuka untuk menerima DP."],
@@ -1533,18 +1725,19 @@ export const GUIDES: GuideItem[] = [
         id: "pisah-pesanan",
         title: "Pisah pesanan (tagihan terpisah)",
         steps: [
-          "Di kartu pesanan, ketuk ⋯ › “Pisah pesanan”.",
-          "Tekan + pada item yang mau dipindah ke tagihan baru. Total “Pesanan asal” dan “Pesanan baru” berubah langsung.",
+          "Di kartu pesanan atau di rincian pesanan, ketuk ⋯ › “Pisah pesanan”.",
+          "Ketuk nama item untuk memindah semua porsinya (ketuk lagi untuk membatalkan), atau atur jumlahnya dengan − / + di kanan. Ringkasan “Pesanan asal” dan “Pesanan baru” di atas tombol berubah langsung.",
           "Ketuk “Pisahkan”. Pesanan baru mendapat nomor sendiri dan bisa dibayar dengan cara berbeda.",
         ],
         points: [
+          "Bila pesanan sudah ada DP, ringkasannya menulis “DP Rp … tetap di sini”: DP tetap di pesanan asal.",
           "Pajak, biaya layanan, dan diskon persen dihitung ulang untuk tiap pesanan. Diskon nominal tetap di pesanan asal.",
           "Tiket dapur ikut berpindah ke pesanan baru.",
         ],
         image: {
           ...HP,
           src: "/panduan/pisah-pesanan-hp.png",
-          alt: "Lembar Pisah pesanan dengan tombol Pindah per item",
+          alt: "Lembar Pisah pesanan: ketuk nama item atau atur jumlah yang dipindah ke pesanan baru",
           caption: "Pilih jumlah yang dipindah ke pesanan baru.",
         },
       },
@@ -1552,21 +1745,23 @@ export const GUIDES: GuideItem[] = [
         id: "batalkan",
         title: "Membatalkan pesanan",
         description:
-          "Ketuk ⋯ › “Batalkan pesanan”, isi “Alasan” (wajib), lalu “Batalkan”. Tiket dapurnya ikut dihapus.",
+          "Di kartu atau rincian pesanan, ketuk ⋯ › “Batalkan pesanan” (merah), isi “Alasan” (wajib), lalu “Batalkan”. Tiket dapurnya ikut dihapus. Bila pesanan sudah ada DP, tombolnya menjadi “Batalkan & kembalikan Rp …”.",
       },
       {
         id: "meja",
         title: "Layar Meja",
         points: [
-          "Saring dengan tombol “Area: Semua (…)” dan segmen “Semua / Kosong / Terisi”.",
-          "Tambah meja lewat “Tambah meja” (ikon + di HP): isi “Nama meja”, “Area” (atau “Buat area baru”), dan “Kapasitas (kursi)”.",
-          "Kelola area lewat tombol ⋯ di kanan atas (“Menu meja”) › “Kelola area”. Tombol + di paling kanan untuk “Tambah meja”. Keduanya hanya terlihat oleh pemilik.",
+          "Saring dengan tombol “Area: Semua (…)” dan segmen “Semua / Kosong / Dipesan / Terisi”. “Dipesan” = meja kosong yang sedang ditahan untuk reservasi (muncul bila ada).",
+          "Warna status: “Kosong” hijau, “Dipesan” kuning, “Terisi” oranye. Meja dengan tamu reservasi yang telat ditandai merah.",
+          "Kartu meja memberi lencana bila perlu tindakan: “N siap antar” (hijau), progres dapur mis. “3/20”, “DP” (kuning), dan “Pesanan awal belum ke dapur” (kuning). Lama duduk berwarna kuning setelah 60 menit.",
+          "Tambah meja dan kelola area lewat tombol ⋯ di kanan atas (“Menu meja”) › “Tambah meja” atau “Kelola area”. Menu ini hanya terlihat oleh pemilik.",
+          "Saat menambah meja, isi “Nama meja”, “Area” (atau “Buat area baru”), dan “Kapasitas (kursi)”.",
           "Ketuk meja kosong lalu “Mulai pesanan” untuk membuka Kasir dengan meja itu terpilih.",
           "Ketuk meja terisi untuk melihat “Lama duduk”, “Tagihan berjalan”, serta tombol “Ubah” dan “Bayar …”.",
         ],
         devices: {
           hp: "Rincian meja terbuka sebagai lembar dari bawah layar.",
-          tablet: "Rincian meja terbuka sebagai dialog di tengah layar. Tutup dengan ✕ atau ketuk di luar dialog.",
+          tablet: "Saat “Semua area” dipilih, meja dikelompokkan per area. Rincian meja terbuka sebagai dialog di tengah layar; tutup dengan ✕ atau ketuk di luar dialog.",
         },
         image: {
           ...TABLET,
@@ -1587,7 +1782,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["layar-dapur", "reservasi-meja-dan-dp", "menerima-pembayaran-qris-dan-tunai"],
-    keywords: ["open bill", "pesanan", "meja", "denah", "area", "split bill", "pisah tagihan", "hold order", "simpan pesanan", "dp pesanan", "uang muka"],
+    keywords: ["open bill", "pesanan", "meja", "denah", "area", "split bill", "pisah tagihan", "hold order", "simpan pesanan", "dp pesanan", "uang muka", "status dapur", "siap diantar", "meja dipesan", "warna meja"],
   },
   {
     slug: "reservasi-meja-dan-dp",
@@ -1596,7 +1791,7 @@ export const GUIDES: GuideItem[] = [
     description: "Catat reservasi, terima DP, beri bukti DP, potong DP saat tamu datang, dan proses DP bila batal atau tidak datang.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 7,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Reservasi dicatat di layar “Meja”, tab “Reservasi”. Reservasi bisa disertai uang muka (DP). DP ditahan sampai tamu datang, lalu otomatis dipotong dari tagihan pesanan mejanya. Reservasi termasuk paket Pro dan memakai fitur meja.",
     prerequisites: [
@@ -1616,7 +1811,10 @@ export const GUIDES: GuideItem[] = [
         ],
         points: [
           "Durasi bawaan 90 menit. Ubah durasi dan isi catatan (mis. kursi bayi, ulang tahun) di bagian “Lainnya”.",
-          "Bila meja sudah direservasi tamu lain di jam yang beririsan, reservasi diberi tanda “Bentrok”. Reservasi tetap bisa disimpan lewat “Tetap simpan”; pindahkan salah satunya ke meja lain.",
+          "Bila meja sudah direservasi tamu lain di jam yang beririsan, reservasi diberi tanda “Bentrok”, mis. “Bentrok dgn Dewi 08.41”, di daftar dan rinciannya. Reservasi tetap bisa disimpan lewat “Tetap simpan”; pindahkan salah satunya ke meja lain.",
+          "Jumlah tamu melebihi kursi meja? Muncul lencana kuning “Melebihi kapasitas (10/4)” beserta saran ganti meja atau siapkan meja tambahan.",
+          "Meja reservasi masih punya pesanan berjalan tamu lain menjelang jam datang (30 menit atau kurang)? Muncul tanda “Meja masih terisi”. Selesaikan atau pindahkan pesanan itu sebelum tamu datang.",
+          "Judul tab menunjukkan ringkasan hari itu, mis. “8 hari ini · 1 telat”.",
         ],
         image: {
           ...TABLET,
@@ -1648,22 +1846,32 @@ export const GUIDES: GuideItem[] = [
         id: "bukti-dp",
         title: "Bukti DP",
         description:
-          "Setelah DP dicatat, muncul lembar “Bukti DP”. Pilih “Cetak bukti DP” (struk berjudul BUKTI DP dengan jadwal reservasi) atau “Kirim lewat WhatsApp” (hanya bila no. HP tamu diisi). Bukti bisa diberikan lagi dari rincian reservasi lewat “Cetak bukti” atau “Kirim bukti”.",
+          "Bukti DP berupa struk berjudul BUKTI DP dengan jadwal reservasi, atau pesan WhatsApp ke no. HP tamu.",
+        points: [
+          "Saat menerima DP lewat “Terima DP” dan printer struk siap, centang “Cetak bukti DP” agar bukti langsung tercetak setelah DP diterima.",
+          "Tanpa printer, setelah DP dicatat muncul lembar “Bukti DP” dengan pilihan “Cetak bukti DP” atau “Kirim lewat WhatsApp” (hanya bila no. HP tamu diisi).",
+          "Bukti bisa diberikan lagi dari kartu DP di rincian reservasi lewat “Cetak bukti” atau “Kirim bukti”.",
+        ],
       },
       {
         id: "tamu-datang",
         title: "Tamu datang: DP dipotong dari tagihan",
         steps: [
-          "Ketuk reservasinya, lalu “Tamu datang”. Bila belum ada meja, pilih meja tempat tamu duduk.",
+          "Di daftar “Akan datang”, ketuk tombol cepat “Datang” pada baris reservasi. Atau buka reservasinya, lalu ketuk “Tamu datang” yang menempel di bawah rincian. Bila belum ada meja, pilih meja tempat tamu duduk.",
           "Pesanan meja terbuka. Tambahkan menu seperti biasa.",
           "Saat menagih, tagihan menampilkan “Sudah dibayar (DP)” dan “Sisa tagihan”. Kasir hanya menagih sisanya.",
         ],
-        points: ["Salah ketuk “Tamu datang”? Pakai “Aksi lain” › “Batalkan kedatangan”."],
+        points: [
+          "Setelah tamu datang, tombol di bawah rincian berganti menjadi “Buka pesanan meja”.",
+          "Salah ketuk “Tamu datang”? Pakai “Aksi lain” (⋯) › “Batalkan kedatangan”.",
+          "Tamu sudah selesai dan pergi? Pakai “Aksi lain” › “Tamu sudah pulang”, lalu konfirmasi. Reservasi ditandai selesai; pesanan meja yang belum dibayar tetap berjalan.",
+          "Pada ukuran huruf besar, tombol cepat “Datang” disembunyikan agar daftar tetap rapi; pakai “Tamu datang” di rincian.",
+        ],
         image: {
           ...TABLET,
           src: "/panduan/reservasi-dp-detail-tablet.png",
           alt: "Rincian reservasi Sari di tablet dengan kartu Uang muka (DP) berstatus DP tertahan dan tombol Tamu datang",
-          caption: "DP tertahan sampai tamu datang. Bilah merah di atas daftar = antrean DP perlu diproses.",
+          caption: "DP tertahan sampai tamu datang. Bilah kuning di atas daftar = antrean DP perlu diproses.",
         },
       },
       {
@@ -1687,13 +1895,15 @@ export const GUIDES: GuideItem[] = [
         title: "Reservasi batal atau tamu tidak datang",
         steps: [
           "Di rincian reservasi, ketuk “Aksi lain” › “Batalkan reservasi” atau “Tandai tidak datang”.",
-          "Untuk reservasi ber-DP, pilih apa yang terjadi dengan DP-nya.",
+          "Reservasi tanpa DP yang dibatalkan: di dialog “Batalkan reservasi?”, pilih alasan cepat (“Tamu minta batal”, “Ganti jadwal”, “Tidak bisa dihubungi”, “Salah catat”) atau tulis sendiri di “Alasan (opsional)”. Alasan boleh dikosongkan.",
+          "Untuk reservasi ber-DP, pilih apa yang terjadi dengan DP-nya, lalu konfirmasi sekali lagi: “Ya, DP Rp … hangus” (merah) atau “Ya, kembalikan Rp …”.",
         ],
         points: [
           "“Kembalikan DP” — uang dikembalikan lewat metode DP. Bila dilakukan kasir, perlu PIN pemilik.",
           "“DP hangus” — DP dicatat sebagai pendapatan hari ini dan tidak bisa dikembalikan lagi.",
           "“Proses nanti” — status reservasi tetap berubah, DP masuk antrean “DP perlu diproses”.",
           "Pilihan yang sudah ditandai: “Kembalikan DP” untuk batal, “DP hangus” untuk tidak datang.",
+          "Rincian reservasi mencatat siapa dan kapan statusnya diubah, mis. “Dibatalkan — Rani · 22 Okt 10.31”, ditambah “Alasan” bila diisi. Hal yang sama tercatat untuk “Ditandai tidak datang” dan “Selesai”.",
         ],
         image: {
           ...TABLET,
@@ -1711,7 +1921,7 @@ export const GUIDES: GuideItem[] = [
         id: "antrean-dp",
         title: "Antrean DP perlu diproses",
         description:
-          "DP dari reservasi batal atau tidak datang yang belum dikembalikan atau dihanguskan muncul sebagai bilah merah “… DP perlu diproses · Rp …” di tab Reservasi, dan di kartu “Perlu perhatian” Beranda pemilik. Ketuk bilahnya, buka reservasinya, lalu pilih “Kembalikan DP” atau “DP hangus”.",
+          "DP dari reservasi batal atau tidak datang yang belum dikembalikan atau dihanguskan muncul sebagai bilah kuning “… DP perlu diproses · Rp …” di tab Reservasi, dan di kartu “Perlu perhatian” Beranda pemilik. Ketuk bilahnya, buka reservasinya, lalu pilih “Kembalikan DP” atau “DP hangus”.",
         points: [
           "Ringkasan shift dan laporan tutup kasir memisahkan DP diterima dan DP dikembalikan, jadi uang di laci tetap cocok.",
         ],
@@ -1729,7 +1939,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["pesanan-awal-reservasi", "mencatat-pesanan-dan-denah-meja", "menerima-pembayaran-qris-dan-tunai"],
-    keywords: ["reservasi", "booking meja", "pesan meja", "dp", "uang muka", "down payment", "deposit", "tidak datang", "no show", "hangus", "bukti dp"],
+    keywords: ["reservasi", "booking meja", "pesan meja", "dp", "uang muka", "down payment", "deposit", "tidak datang", "no show", "hangus", "bukti dp", "tamu datang", "tamu sudah pulang", "bentrok", "kapasitas", "alasan batal"],
   },
   {
     slug: "pesanan-awal-reservasi",
@@ -1738,7 +1948,7 @@ export const GUIDES: GuideItem[] = [
     description: "Catat menu yang dipesan tamu sebelum datang, lihat perkiraan total, dan kirim ke dapur saat tamu tiba.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Pesanan awal adalah menu yang sudah dipilih tamu saat reservasi, misalnya untuk acara ulang tahun. Harga dikunci saat disimpan. Stok belum dipotong dan dapur belum menerima tiket sampai tamu datang. Pesanan awal hanya ada bila fitur DP reservasi juga aktif.",
     prerequisites: [
@@ -1790,7 +2000,7 @@ export const GUIDES: GuideItem[] = [
           "Pesanan awal menjadi pesanan meja biasa: tambah menu bila perlu, lalu tagih seperti biasa. DP otomatis dipotong.",
         ],
         points: [
-          "Memilih “Nanti”: tiket ikut terkirim saat pesanan disimpan atau dibayar, atau lewat tombol “Kirim pesanan awal ke dapur” di rincian pesanan.",
+          "Memilih “Nanti”: tiket ikut terkirim saat pesanan disimpan atau dibayar, atau lewat tombol “Kirim pesanan awal ke dapur” di rincian pesanan. Selama belum dikirim, kartu mejanya diberi lencana kuning “Pesanan awal belum ke dapur”.",
           "Bila stok menu kurang, ada pilihan “Ubah pesanan” untuk mengganti menunya.",
         ],
         image: {
@@ -1835,7 +2045,7 @@ export const GUIDES: GuideItem[] = [
     description: "Tiket masuk, dimasak, siap, dan sudah diambil — untuk dapur dan pelayan.",
     audience: ["Dapur", "Kasir"],
     readMinutes: 3,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Layar dapur menampilkan item yang perlu dimasak. Hanya produk dengan “Kirim ke dapur” yang masuk ke sini. Fitur “Layar dapur” diaktifkan pemilik di Pengaturan › “Jenis usaha” dan termasuk paket Pro. Tiket dapur juga bisa dicetak ke printer dapur; baca “Menyambungkan printer struk & dapur”.",
     steps: [
@@ -1843,7 +2053,11 @@ export const GUIDES: GuideItem[] = [
         id: "kolom",
         title: "Tiga kolom: Masuk, Dimasak, Siap",
         description:
-          "Tiket baru muncul di “Masuk”, lengkap dengan meja atau nomor antrean, jenis pesanan, catatan, dan lama menunggu. Item tambahan diberi tanda TAMBAHAN.",
+          "Tiket baru muncul di “Masuk”, lengkap dengan meja atau nomor antrean, jenis pesanan, catatan, dan lama menunggu. Item tambahan diberi tanda TAMBAHAN. Subjudul layar menghitung item yang belum siap, mis. “5 belum siap”, atau “Semua siap · 2 menunggu diambil”.",
+        points: [
+          "Warna kepala tiket menunjukkan lama menunggu: biru di bawah 10 menit, kuning 10–20 menit, merah 20 menit atau lebih.",
+          "Kolom “Siap” selalu hijau.",
+        ],
         image: {
           ...TABLET,
           src: "/panduan/dapur-tablet.png",
@@ -1855,21 +2069,24 @@ export const GUIDES: GuideItem[] = [
         id: "aksi",
         title: "Menandai progres",
         steps: [
-          "Ketuk “Mulai” pada item, atau “Masak semua” untuk seluruh tiket.",
-          "Ketuk “Siap” pada item, atau “Semua siap”.",
+          "Ketuk tombol “Mulai” (▶) pada item, atau “Masak semua” untuk seluruh tiket.",
+          "Ketuk tombol “Siap” (✓) pada item, atau “Semua siap”.",
           "Setelah diambil pelayan, ketuk “Sudah diambil”.",
         ],
-        points: ["Salah ketuk? Gunakan “Batalkan langkah”."],
+        points: [
+          "Hanya tombol “Mulai” dan “Siap” yang memindahkan status item. Mengetuk nama menu atau baris item tidak mengubah apa pun, jadi aman dari salah sentuh.",
+          "Salah ketuk? Gunakan “Batalkan langkah”.",
+        ],
       },
       {
         id: "pelayan",
         title: "Untuk pelayan dan kasir",
         description:
-          "Saat dapur menandai pesanan siap, Kasir langsung memberi tahu. Antar ke tamu, lalu ketuk “Tandai sudah diantar”. Daftar lengkapnya juga ada di “Pesanan” › “Status dapur”.",
-        devices: {
-          hp: "Muncul ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap diantar”. Ketuk loncengnya untuk membuka lembar “Siap diantar”.",
-          tablet: "Muncul spanduk “Pesanan siap diantar” di layar Kasir; ketuk “Lihat”.",
-        },
+          "Saat dapur menandai pesanan siap, Kasir langsung memberi tahu: ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap diantar”, di HP maupun tablet. Ketuk loncengnya untuk membuka lembar “Siap diantar”, antar ke tamu, lalu ketuk “Tandai sudah diantar”.",
+        points: [
+          "Di “Pesanan”, pesanan yang siap naik ke atas dengan bingkai hijau. Pakai saringan “Siap diantar” untuk melihatnya saja.",
+          "Di layar Meja, kartu meja diberi lencana hijau “N siap antar”.",
+        ],
         image: {
           ...HP,
           src: "/panduan/kasir-lonceng-siap-hp.png",
@@ -1885,7 +2102,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["setup-outlet-dan-perangkat", "mencatat-pesanan-dan-denah-meja", "karyawan-dan-pin"],
-    keywords: ["dapur", "kitchen", "kds", "bar", "tiket", "chef", "masak"],
+    keywords: ["dapur", "kitchen", "kds", "bar", "tiket", "chef", "masak", "siap diantar", "siap disajikan", "lonceng", "warna tiket", "status dapur"],
   },
   {
     slug: "pesan-dan-bayar-mandiri-qr",
@@ -2092,6 +2309,12 @@ export const GUIDES: GuideItem[] = [
           "Tanpa layar dapur, ketuk “Tandai siap” di tab “Diproses” saat pesanan siap. Dapur juga bisa menekannya.",
           "Pesanan “Siap” ditutup otomatis setelah 60 menit (tidak ada tombol untuk menyelesaikan manual).",
         ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pesanan-siap-diantar-tablet.png",
+          alt: "Pesanan berjalan dengan saringan Siap diantar aktif: tiga pesanan siap berbingkai hijau",
+          caption: "Saringan “Siap diantar” menampilkan pesanan yang tinggal diserahkan.",
+        },
       },
       {
         id: "notifikasi",
@@ -2128,10 +2351,10 @@ export const GUIDES: GuideItem[] = [
     slug: "menerima-pembayaran-qris-dan-tunai",
     category: "jualan",
     title: "Pembayaran: tunai, QRIS, kartu, transfer",
-    description: "Uang pas dan kembalian, QRIS statis, bayar dengan beberapa cara, dan struk.",
+    description: "Uang pas dan kembalian, pembulatan tunai, QRIS toko, bayar pakai 2 metode, dan struk.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 6,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Layar “Pembayaran” muncul setelah menekan “Bayar”. Tunai selalu tersedia; QRIS, Kartu, Transfer, dan Kasbon hanya muncul bila diaktifkan pemilik.",
     steps: [
@@ -2140,8 +2363,12 @@ export const GUIDES: GuideItem[] = [
         title: "Bayar tunai",
         steps: [
           "Di “Cara bayar”, pilih “Tunai”.",
-          "Ketuk “Uang pas” atau salah satu nominal saran, atau “Nominal lain” untuk mengetik sendiri.",
+          "Ketuk “Uang pas” atau salah satu nominal saran, atau “Nominal lain” untuk mengetik sendiri. Selama uang diterima belum dipilih, tombol utama bertuliskan “Pilih uang diterima dulu”.",
           "Periksa “Kembalian”, lalu ketuk “Selesaikan pembayaran”.",
+        ],
+        points: [
+          "Di lembar “Nominal lain”, tagihan tampil di atas (“Tagihan Rp …”), dan di bawah angka yang diketik langsung terlihat “Kembalian Rp …” (hijau) atau “Kurang Rp … (dicatat sebagian)” (kuning) bila uangnya kurang.",
+          "Bila pembulatan tunai diatur pemilik (Pengaturan › “Pajak & biaya” › “Pembulatan tunai”), total di layar Pembayaran ikut dibulatkan selama Tunai dipilih, dengan catatan kecil “Termasuk pembulatan tunai +Rp …”. QRIS, kartu, dan transfer tetap memakai total asli, karena itu tombol “Bayar Rp …” di Kasir menampilkan total sebelum pembulatan.",
         ],
         image: {
           ...HP,
@@ -2154,13 +2381,13 @@ export const GUIDES: GuideItem[] = [
         id: "qris",
         title: "Bayar dengan QRIS",
         steps: [
-          "Pilih “QRIS”, lalu ketuk “Tampilkan QRIS · …”.",
+          "Pilih “QRIS”, lalu ketuk “Tampilkan QRIS · Rp …”.",
           "Minta pelanggan memindai kode dan mengetik nominal yang tertera.",
           "Setelah dana masuk di rekening atau aplikasi merchant, ketuk “Sudah dibayar”.",
         ],
         callout: {
           type: "warning",
-          text: "QRIS di Sissi adalah QRIS statis: nominal tidak tertanam di kode dan aplikasi tidak mengecek dana masuk. Pastikan dana benar-benar masuk sebelum menekan “Sudah dibayar”.",
+          text: "Sissi menampilkan QRIS toko (QRIS statis): nominal tidak tertanam di kode dan aplikasi tidak mengecek dana masuk. Pastikan dana benar-benar masuk sebelum menekan “Sudah dibayar”.",
         },
       },
       {
@@ -2173,14 +2400,18 @@ export const GUIDES: GuideItem[] = [
       },
       {
         id: "beberapa-cara",
-        title: "Bayar dengan beberapa cara (split)",
+        title: "Bayar pakai 2 metode (Gabungan)",
         steps: [
-          "Pilih cara bayar pertama, ketuk “Ubah nominal”, lalu isi bagian yang dibayar.",
-          "Ketuk “Tambah pembayaran · …”.",
+          "Pilih cara bayar pertama, mis. Tunai, lalu ketuk tautan “Bayar pakai 2 metode” di bawah “Cara bayar” (muncul sebelum ada pembayaran masuk).",
+          "Masukkan nominal untuk metode pertama. Bila kurang dari tagihan, ketuk “Tambah pembayaran · Rp …”.",
           "Pada “Bayar sisa dengan”, pilih cara bayar berikutnya sampai “Sisa tagihan” habis.",
           "Ketuk “Selesaikan pembayaran”.",
         ],
-        points: ["Salah masukkan? Hapus dengan “Hapus pembayaran”. Di Riwayat, transaksi ini tercatat sebagai “Split”."],
+        points: [
+          "Salah masukkan? Hapus dengan “Hapus pembayaran”.",
+          "Di Riwayat, laporan, dan struk, transaksi ini tercatat dengan metode “Gabungan” (dulu “Split”).",
+          "Keluar dari layar Pembayaran setelah ada pembayaran masuk memunculkan “Keluar dari pembayaran?”. Pilih “Lanjutkan pembayaran”, atau “Keluar, buang Rp …” bila uangnya memang sudah dikembalikan ke tamu.",
+        ],
       },
       {
         id: "selesai",
@@ -2188,6 +2419,10 @@ export const GUIDES: GuideItem[] = [
         description:
           "Layar “Pembayaran berhasil” menyediakan “Cetak struk” (berubah menjadi “Cetak ulang” setelah dicetak), “Kirim struk via WhatsApp”, “Lihat detail”, dan “Transaksi baru”.",
         points: [
+          "Bila ada kembalian, angka “Kembalian” tampil paling besar berwarna hijau, dengan “Total tagihan Rp …” kecil di bawahnya, supaya kasir tidak salah memberi uang.",
+          "Di HP, kartu rincian juga menampilkan pembayaran per metode (untuk tunai: uang yang diterima).",
+          "Transaksi kasbon menampilkan kartu “Pelanggan: nama · no. HP”.",
+          "Bila tiket dapur gagal dicetak, muncul kotak “Tiket dapur gagal dicetak” dengan tombol “Cetak ulang tiket dapur”.",
           "Laci uang terbuka otomatis untuk pembayaran tunai bila diaktifkan di pengaturan printer. Cetak ulang tidak membuka laci lagi.",
           "Bila printer struk belum diatur, muncul “Struk tidak dicetak: printer struk belum diatur.”; transaksi tetap tersimpan.",
         ],
@@ -2198,7 +2433,7 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Buka Pengaturan › “Metode pembayaran”, lalu nyalakan “QRIS”.",
           "Ketuk “Unggah gambar QRIS” dan pilih foto atau screenshot QRIS toko. Bisa juga “Pindai dengan kamera”.",
-          "Bila terbaca, muncul “QRIS statis terbaca” beserta nama merchant, kota, dan NMID. Periksa, lalu ketuk “Simpan”.",
+          "Bila terbaca, muncul “QRIS terbaca” beserta “Nama di QRIS” dan kotanya. Periksa, lalu ketuk “Simpan”.",
         ],
         points: [
           "QRIS dinamis (sekali pakai untuk satu transaksi) ditolak; gunakan QRIS statis toko.",
@@ -2208,8 +2443,8 @@ export const GUIDES: GuideItem[] = [
         image: {
           ...HP,
           src: "/panduan/qris-pengaturan-hp.png",
-          alt: "Pengaturan Metode pembayaran dengan pratinjau QRIS statis terbaca",
-          caption: "QRIS terbaca dari gambar, lengkap dengan nama merchant dan NMID.",
+          alt: "Pengaturan Metode pembayaran dengan pratinjau QRIS terbaca",
+          caption: "QRIS terbaca dari gambar, lengkap dengan nama di QRIS.",
         },
       },
     ],
@@ -2226,7 +2461,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["kasbon-pelanggan", "membatalkan-transaksi-void-refund", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["bayar", "pembayaran", "qris", "tunai", "cash", "kembalian", "edc", "debit", "transfer", "split payment", "struk", "whatsapp"],
+    keywords: ["bayar", "pembayaran", "qris", "tunai", "cash", "kembalian", "edc", "debit", "transfer", "split payment", "split", "gabungan", "2 metode", "pembulatan", "qris statis", "nominal lain", "struk", "whatsapp"],
   },
   {
     slug: "kasbon-pelanggan",
@@ -2235,9 +2470,9 @@ export const GUIDES: GuideItem[] = [
     description: "Catat utang pelanggan, atur jatuh tempo, tagih via WhatsApp, dan terima pelunasan.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 4,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
-      "Kasbon mencatat transaksi yang belum dibayar penuh atas nama pelanggan. Fitur ini mati secara bawaan; pemilik menyalakannya di Pengaturan › “Transaksi” › “Izinkan kasbon”. Kasbon baru termasuk paket Pro (pilihan “Kasbon” bertanda “PRO” di paket Gratis), tetapi kasbon lama selalu bisa dilunasi.",
+      "Kasbon mencatat transaksi yang belum dibayar penuh atas nama pelanggan. Fitur ini mati secara bawaan; pemilik menyalakannya di Pengaturan › “Pesanan & keamanan kasir” › “Izinkan kasbon”. Kasbon baru termasuk paket Pro (pilihan “Kasbon” bertanda “PRO” di paket Gratis), tetapi kasbon lama selalu bisa dilunasi.",
     steps: [
       {
         id: "catat",
@@ -2246,14 +2481,14 @@ export const GUIDES: GuideItem[] = [
           "Di layar Pembayaran, pilih “Kasbon”. (Bila pelanggan membayar sebagian dulu, masukkan pembayaran itu terlebih dahulu.)",
           "Ketuk “Simpan sebagai kasbon · …”.",
           "Di lembar “Simpan sebagai kasbon?”, isi “Nama pelanggan” bila belum dipilih, dan “Jatuh tempo” bila perlu.",
-          "Ketuk “Simpan kasbon”.",
+          "Ketuk “Simpan kasbon”. Layar berhasil menampilkan kartu “Pelanggan: nama · no. HP” agar mudah dicek.",
         ],
       },
       {
         id: "pantau",
         title: "Memantau kasbon",
         points: [
-          "“Riwayat” › tab “Kasbon” berisi semua kasbon, dengan tanda “Jatuh tempo hari ini” atau “Terlambat … hari”.",
+          "“Riwayat” › tab “Kasbon” (juga lewat “Lainnya” › “Kasbon”) berisi semua kasbon. Kartu atasnya merangkum “Piutang belum tertagih Rp … · N nota”. Tiap baris menampilkan nama pelanggan, sejak kapan (mis. “Sejak 22 Okt”), dan tanda jatuh tempo — merah bila sudah lewat. Kasbon yang terlambat ada di paling atas.",
           "Notifikasi “Kasbon jatuh tempo” muncul di menu Notifikasi.",
           "Di detail pelanggan, bagian “Kasbon berjalan” merangkum total utangnya.",
         ],
@@ -2268,39 +2503,45 @@ export const GUIDES: GuideItem[] = [
         id: "lunasi",
         title: "Menerima pelunasan",
         steps: [
-          "Buka transaksinya dari “Riwayat”, lalu ketuk “Lunasi …”. Atau dari detail pelanggan, ketuk “Lunasi semua”.",
+          "Buka transaksinya dari “Riwayat”, lalu ketuk “Lunasi Rp …” di bilah bawah. Atau dari detail pelanggan, ketuk “Lunasi semua”.",
           "Pilih lunas penuh atau “Sebagian” (isi “Nominal dibayar”), pilih “Cara bayar”.",
           "Ketuk “Terima …”. Centang “Cetak bukti pelunasan” bila perlu.",
         ],
-        points: ["Untuk menagih, ketuk “Ingatkan via WA” di detail pelanggan."],
+        points: [
+          "Untuk menagih, buka transaksinya lalu ketuk “Kirim via WA” › “Pengingat tagihan kasbon”. Pilih “Struk transaksi” bila ingin mengirim struknya. Dari detail pelanggan, pakai “Ingatkan via WA”.",
+          "Aksi lain ada di tombol “Lainnya” di rincian transaksi: “Atur jatuh tempo”, “Cetak ulang”, “Salinan toko”, dan “Pesan ulang” (yang tersedia saja). Jatuh tempo tampil di blok “Sisa kasbon”.",
+        ],
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "pelanggan-dan-member", "membaca-laporan-penjualan-dan-margin"],
-    keywords: ["kasbon", "utang", "hutang", "piutang", "bon", "bayar nanti", "tempo", "pelunasan"],
+    keywords: ["kasbon", "utang", "hutang", "piutang", "bon", "bayar nanti", "tempo", "jatuh tempo", "pelunasan", "tagih", "pengingat", "kirim via wa"],
   },
   {
     slug: "membatalkan-transaksi-void-refund",
     category: "jualan",
-    title: "Membatalkan transaksi (void, refund penuh & refund sebagian)",
+    title: "Membatalkan transaksi & refund (penuh atau sebagian)",
     description: "Batalkan transaksi dari Riwayat, atau kembalikan sebagian barang saja, dengan alasan dan persetujuan PIN pemilik.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Transaksi yang sudah dibayar tidak dihapus, tetapi dibatalkan dengan catatan. Uang yang sudah diterima dicatat kembali ke pelanggan, dan stok dikembalikan.",
     steps: [
       {
         id: "buka-transaksi",
         title: "Buka transaksinya",
-        description:
-          "Buka “Riwayat”, cari dengan “Cari no. struk / pelanggan”, lalu ketuk transaksinya. Tombol “Refund” tersedia untuk transaksi lunas atau dibayar sebagian; “Batalkan” untuk yang belum dibayar.",
+        steps: [
+          "Buka “Riwayat”, cari dengan “Cari no. struk / pelanggan”, lalu ketuk transaksinya.",
+          "Di bilah bawah rincian, ketuk tombol ⋯ di samping tombol utama.",
+          "Pilih “Refund” (transaksi lunas atau dibayar sebagian) atau “Batalkan” (yang belum dibayar). Pilihan ini sengaja disimpan di menu ⋯ dan berwarna merah, supaya tidak tertekan tanpa sengaja.",
+        ],
       },
       {
         id: "pilih-jenis",
         title: "Pilih jenis dan alasan",
         steps: [
-          "Pilih “Refund semua”, “Refund sebagian”, atau “Batalkan” (uang belum diterima / salah input).",
-          "Pilih alasan: “Salah input”, “Pelanggan batal”, “Pelanggan komplain”, atau “Transaksi ganda”, dan tambahkan keterangan bila perlu.",
+          "Di lembar “Refund transaksi”, pilih segmen “Refund semua”, “Refund sebagian”, atau “Batalkan” (uang belum diterima / salah input). Judul lembar ikut berubah, dan nomor struk tampil di bawah judul.",
+          "Di “Alasan”, pilih “Salah input”, “Pelanggan batal”, “Pelanggan komplain”, atau “Transaksi ganda”, dan tambahkan keterangan bila perlu.",
           "Pada “Kembalikan lewat”, pilih “Sesuai pembayaran” atau cara lain.",
         ],
       },
@@ -2350,19 +2591,19 @@ export const GUIDES: GuideItem[] = [
           "Bila dilakukan kasir, pemilik perlu memasukkan PIN untuk menyetujui. Di detail transaksi tercatat “Disetujui …”.",
         callout: {
           type: "tip",
-          text: "Pemilik bisa menerima peringatan di HP setiap ada void atau refund. Baca “Notifikasi di aplikasi & peringatan pemilik”.",
+          text: "Pemilik bisa menerima peringatan di HP setiap ada transaksi dibatalkan atau di-refund. Baca “Notifikasi di aplikasi & peringatan pemilik”.",
         },
       },
     ],
     faqs: [
       {
-        question: "Muncul “perubahan ditolak” setelah membatalkan.",
+        question: "Muncul “tidak tersimpan” atau “perubahan ditolak” setelah membatalkan.",
         answer:
           "Server menolak pembatalan bila perangkat ini belum menerima semua pembayaran transaksi itu dari perangkat lain. Tunggu sinkron selesai, lalu ulangi pembatalan.",
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "perubahan-ditolak", "notifikasi"],
-    keywords: ["void", "refund", "batal", "retur", "pengembalian", "salah input", "refund sebagian", "retur sebagian", "kembalikan satu barang"],
+    keywords: ["void", "refund", "batal", "retur", "pengembalian", "salah input", "refund sebagian", "retur sebagian", "kembalikan satu barang", "batalkan transaksi", "refund semua"],
   },
 
   // ───────────────────────────── SHIFT ─────────────────────────────
@@ -2373,7 +2614,7 @@ export const GUIDES: GuideItem[] = [
     description: "Buka kasir dengan kas awal, catat kas masuk/keluar, hitung uang, dan cetak laporan tutup kasir.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 6,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Setiap uang tunai di laci tercatat dalam satu shift: dari kas awal, penjualan tunai, kas masuk/keluar, sampai hitungan akhir saat tutup kasir.",
     steps: [
@@ -2398,9 +2639,12 @@ export const GUIDES: GuideItem[] = [
         description:
           "Setiap uang yang diambil atau ditambahkan ke laci di luar penjualan harus dicatat, agar hitungan akhir cocok.",
         steps: [
-          "Di “Shift saat ini”, ketuk “Kas Masuk/Keluar”.",
+          "Di “Shift saat ini”, ketuk “Kas masuk/keluar”.",
           "Pilih “Kas Masuk” atau “Kas Keluar”, isi “Nominal”.",
-          "Pilih “Kategori” (wajib — tidak dipilih otomatis; mis. “Beli bahan”, “Operasional”, “Setor ke pemilik”) dan tulis “Catatan”.",
+          "Pilih “Kategori” (wajib — tidak dipilih otomatis; mis. “Beli bahan”, “Operasional”, “Setor ke pemilik”) dan tulis “Catatan”. Bila lupa memilih, muncul “Pilih kategori kas dulu.”",
+        ],
+        points: [
+          "Di “Shift saat ini”, pembayaran non-tunai tidak dihitung ke laci. Angkanya tampil di baris terpisah di bawah “Perkiraan uang di laci”: “Masuk ke rekening (QRIS/kartu/transfer)”.",
         ],
         callout: {
           type: "warning",
@@ -2413,9 +2657,12 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Ketuk “Tutup Kasir”.",
           "Langkah 1: hitung uang fisik. Pilih “Per pecahan” (isi jumlah lembar per pecahan) atau “Isi total”, lalu “Lanjut”.",
-          "Langkah 2: periksa “Ringkasan shift”. Selisih ditulis dengan kata: “Pas”, “Kurang Rp…”, atau “Lebih Rp…”. Bila ada selisih, isi “Alasan selisih”.",
+          "Langkah 2: periksa “Ringkasan shift”. Sebelum ada uang dihitung, tertulis “Hitung uang di laci dulu — selisih tampil setelah uang dihitung.” Setelah dihitung, selisih ditulis dengan kata: “Pas”, “Kurang Rp…”, atau “Lebih Rp…”. Bila ada selisih, isi “Alasan selisih”.",
           "Konfirmasi “Tutup kasir sekarang?”. Shift yang sudah ditutup tidak bisa dibuka lagi.",
         ],
+        devices: {
+          hp: "Selama tutup kasir, menu bawah disembunyikan agar papan angka punya ruang. Baris pecahan yang sedang diisi digulir otomatis ke atas papan angka; tekan Enter untuk pindah ke pecahan berikutnya.",
+        },
         image: {
           ...HP,
           src: "/panduan/tutup-kasir-hp.png",
@@ -2429,15 +2676,31 @@ export const GUIDES: GuideItem[] = [
         description:
           "Setelah ditutup, muncul “Laporan tutup kasir” berisi penjualan, metode pembayaran, kas masuk/keluar, uang fisik, dan selisih. Ketuk “Cetak” untuk mencetaknya.",
         points: [
-          "Pemilik melihat semua laporan di “Lainnya” › “Tutup Kasir” (Riwayat Tutup Kasir).",
+          "Pemilik melihat semua laporan di “Lainnya” › “Laporan” › “Riwayat tutup kasir”. Ringkasannya memisahkan “Uang kurang” dan “Uang lebih”.",
+          "Ketuk chip “Hanya yang ada selisih” untuk menampilkan shift yang kurang atau lebih saja; angka ringkasan ikut saringan.",
         ],
+      },
+      {
+        id: "tutup-buta",
+        title: "Tutup kasir tanpa angka sistem (bawaan untuk kasir)",
+        description:
+          "Secara bawaan, kasir menutup shift tanpa melihat jumlah uang yang seharusnya ada di laci. Kasir cukup menghitung uang fisik dengan jujur; pemilik yang memeriksa selisihnya.",
+        points: [
+          "Yang disembunyikan dari kasir: penjualan tunai dan total penjualan, kas masuk/keluar, DP dan refund, uang seharusnya di laci, dan selisih — di layar, juga di laporan yang dicetak atau dibagikan.",
+          "Yang tetap terlihat oleh kasir: penjualan non-tunai, jumlah transaksi dan pembatalan, modal awal, uang fisik yang dihitung, dan catatan.",
+          "Pemilik selalu melihat semua angka, termasuk saat membuka laporan shift kasir.",
+          "Bila kasir boleh melihat angka sistem, matikan Pengaturan › “Pesanan & keamanan kasir” › “Tutup kasir tanpa melihat angka sistem”.",
+        ],
+        callout: {
+          type: "info",
+          text: "Perangkat yang masih memakai aplikasi versi lama bisa tetap menampilkan angka sistem ke kasir. Perbarui aplikasi di semua perangkat kasir.",
+        },
       },
       {
         id: "pengaturan-pemilik",
         title: "Pengaturan pemilik",
         points: [
-          "Pengaturan › “Transaksi” › “Tutup kasir tanpa melihat angka sistem” (aktif bawaan): kasir menghitung tanpa melihat jumlah seharusnya; pemilik yang memeriksa selisihnya. Matikan bila kasir boleh melihat angka sistem.",
-          "Pengaturan › “Kasir & jadwal shift”: “Daftar shift” (nama dan jam, tampil di Beranda) dan “Batas lama shift” (peringatan bila shift berjalan terlalu lama).",
+          "Pengaturan › “Shift kasir” (grup “Karyawan & absen”): “Daftar shift” (nama dan jam, tampil di Beranda) dan “Batas lama shift” (peringatan bila shift berjalan terlalu lama).",
           "“Kunci kasir” mengunci layar tanpa menutup shift; dibuka lagi dengan PIN karyawan.",
         ],
       },
@@ -2455,7 +2718,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "membaca-laporan-penjualan-dan-margin", "karyawan-dan-pin"],
-    keywords: ["shift", "buka kasir", "tutup kasir", "kas awal", "modal laci", "petty cash", "kas keluar", "selisih", "laporan z", "blind close"],
+    keywords: ["shift", "buka kasir", "tutup kasir", "kas awal", "modal laci", "petty cash", "kas keluar", "kas masuk", "selisih", "laporan z", "blind close", "tutup buta", "riwayat tutup kasir", "uang kurang", "uang lebih"],
   },
 
   // ───────────────────────────── STOK ─────────────────────────────
@@ -2466,7 +2729,7 @@ export const GUIDES: GuideItem[] = [
     description: "Pantau stok, catat barang datang, koreksi stok hilang/rusak, atur stok minimum, dan pantau bahan baku menipis.",
     audience: ["Pemilik"],
     readMinutes: 6,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Stok hanya dihitung untuk produk yang “Lacak stok”-nya menyala. Stok berkurang saat pesanan ditagih, bukan saat pesanan disimpan. Semua menu stok ada di “Inventori” (tidak tersedia untuk usaha jasa dan penyewaan).",
     steps: [
@@ -2474,7 +2737,7 @@ export const GUIDES: GuideItem[] = [
         id: "hub",
         title: "Inventori",
         description:
-          "Menu “Inventori” berisi “Stok barang”, “Bahan baku”, “Barang keluar”, “HPP & Harga jual”, “Stok opname”, “Pembelian”, “Supplier”, dan “Transfer stok”, ditambah kartu “Saran belanja ke pemasok” dan “Gerakan stok terakhir”.",
+          "Menu “Inventori” berisi “Stok barang”, “Bahan baku”, “Barang keluar”, “HPP & Harga jual”, “Stok opname”, “Pembelian”, “Pemasok”, dan “Transfer stok”, ditambah kartu “Saran belanja ke pemasok” dan “Gerakan stok terakhir”.",
         image: {
           ...TABLET,
           src: "/panduan/inventori-tablet.png",
@@ -2490,7 +2753,10 @@ export const GUIDES: GuideItem[] = [
           "Isi “Jumlah masuk” dan “Harga beli per satuan”.",
           "Nyalakan “Jadikan harga modal” bila harga beli ini mau dipakai sebagai HPP.",
         ],
-        points: ["Untuk pembelian lewat pemasok yang dicatat lengkap, gunakan “Pembelian” (PO)."],
+        points: [
+          "Untuk pembelian lewat pemasok yang dicatat lengkap, gunakan “Pembelian” (pesanan pembelian/PO).",
+          "Di riwayat gerakan stok, stok masuk ditandai hijau; barang keluar, penyesuaian, dan selisih opname yang mengurangi stok ditandai merah.",
+        ],
       },
       {
         id: "penyesuaian",
@@ -2505,7 +2771,8 @@ export const GUIDES: GuideItem[] = [
           "Atur “Stok minimum” per barang. Barang di bawah batas tampil di tab “Perlu dibeli”, di kartu “Perlu perhatian” Beranda, dan sebagai notifikasi “Stok menipis”. Tombol “Salin daftar belanja” menyalin daftar untuk ditempel ke WhatsApp.",
         points: [
           "Kartu “Perlu perhatian” menyebut paling banyak 3 nama barang. Bila lebih, tertulis jumlahnya, mis. “5 barang menipis atau habis”.",
-          "Ketuk “Restok” di kartu itu untuk membuka daftar stok menipis.",
+          "Ketuk “Beli lagi” di kartu itu untuk membuka daftar stok menipis. Dari layar “Stok menipis”, tombol “Buat pesanan ke pemasok” membuat draf pesanan pembelian.",
+          "Warna stok sama di semua layar: “Menipis” kuning, “Habis” merah.",
         ],
       },
       {
@@ -2527,7 +2794,11 @@ export const GUIDES: GuideItem[] = [
         id: "bahan-perlu-dibeli",
         title: "Tab Perlu dibeli",
         description:
-          "Buka “Inventori” › “Bahan baku” › tab “Perlu dibeli”. Tiap bahan ditandai “Habis”, “… menipis”, atau keterangan “Diperkirakan habis … hari lagi”. Dari sini kamu bisa langsung “Buat draf PO per supplier”.",
+          "Buka “Inventori” › “Bahan baku” › tab “Perlu dibeli”. Tiap bahan diberi lencana, mis. “Habis”, “… · menipis”, atau perkiraan habis seperti “3,4 kg · habis ±3 hari”. Dari sini kamu bisa langsung membuat draf pesanan pembelian per pemasok.",
+        devices: {
+          hp: "Bilah bawah tab “Perlu dibeli” berisi “Buat pesanan ke pemasok (n)” dan “Salin daftar belanja”.",
+          tablet: "Panel ringkasan di kanan berisi tombol “Buat daftar pesanan ke pemasok”.",
+        },
         image: {
           ...TABLET,
           src: "/panduan/bahan-perlu-dibeli-tablet.png",
@@ -2549,7 +2820,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["barang-keluar", "pembelian-po-dan-supplier", "stok-opname"],
-    keywords: ["stok", "inventori", "stock", "barang masuk", "restok", "stok minimum", "stok habis", "penyesuaian", "bahan menipis", "bahan habis", "perlu dibeli"],
+    keywords: ["stok", "inventori", "stock", "barang masuk", "restok", "stok minimum", "stok habis", "penyesuaian", "bahan menipis", "bahan habis", "perlu dibeli", "beli lagi", "habis berapa hari"],
   },
   {
     slug: "barang-keluar",
@@ -2630,36 +2901,42 @@ export const GUIDES: GuideItem[] = [
   {
     slug: "pembelian-po-dan-supplier",
     category: "stok",
-    title: "Pembelian (PO), supplier & saran belanja",
-    description: "Buat purchase order, kirim ke supplier lewat WhatsApp, terima barang, dan pakai saran belanja.",
+    title: "Pesanan pembelian (PO), pemasok & saran belanja",
+    description: "Buat pesanan pembelian ke pemasok (supplier), kirim lewat WhatsApp, terima barang, dan pakai saran belanja.",
     audience: ["Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_OCT23,
     overview:
-      "Pembelian (purchase order/PO) mencatat barang yang dipesan ke supplier. Saat barang diterima, stok dan harga rata-rata ikut diperbarui.",
+      "“Pembelian” mencatat barang yang dipesan ke pemasok (supplier), disebut juga pesanan pembelian atau purchase order (PO). Saat barang diterima, stok dan harga rata-rata ikut diperbarui.",
     steps: [
       {
         id: "supplier",
-        title: "Tambah supplier",
+        title: "Tambah pemasok",
         description:
-          "Buka “Inventori” › “Supplier” › “Supplier baru”. Isi “Nama supplier” dan “No. HP / WhatsApp”; email, alamat, dan catatan opsional.",
+          "Buka “Inventori” › “Pemasok” › “Pemasok baru”. Isi “Nama pemasok” dan “No. HP / WhatsApp”; email, alamat, dan catatan opsional.",
       },
       {
         id: "buat-po",
-        title: "Buat PO",
+        title: "Buat pesanan pembelian",
         steps: [
-          "Buka “Pembelian” › “PO baru”, lalu pilih supplier.",
+          "Buka “Inventori” › “Pembelian” › “Pesanan baru”, lalu pilih pemasok.",
           "Ketuk “Tambah barang”, isi “Jumlah” dan “Harga per …”.",
           "Isi “Perkiraan tiba (opsional)” bila tahu.",
-          "Ketuk “Simpan draf”, atau “Simpan & pesan” bila sudah dipesan.",
-          "Kirim rinciannya ke supplier lewat “Kirim ke WhatsApp” atau “Bagikan”.",
+          "Ketuk “Simpan draf”, atau “Simpan & pesan” bila sudah dipesan. Total pesanan menempel di atas tombol.",
+          "Kirim rinciannya ke pemasok lewat “Kirim ke WhatsApp” atau “Bagikan”. Pesannya memakai nomor dokumen, mis. “PO …”.",
         ],
+        devices: {
+          tablet: "Tiap barang tampil satu baris: nama, jumlah, harga, subtotal, dan tombol ✕ untuk menghapus.",
+        },
       },
       {
         id: "terima",
         title: "Terima barang",
         description:
-          "Buka PO, ketuk “Terima barang”. Barang boleh diterima sebagian; gunakan “Terima semua” bila lengkap. Status berubah menjadi “Diterima sebagian” atau “Diterima”.",
+          "Buka pesanannya, ketuk “Terima barang”. Barang boleh diterima sebagian; gunakan “Terima semua” bila lengkap. Status berubah menjadi “Diterima sebagian” atau “Diterima”.",
+        points: [
+          "Membatalkan pesanan yang sudah dipesan atau menghapus draf ada di tombol teks merah di bawah daftar barang.",
+        ],
       },
       {
         id: "saran-belanja",
@@ -2667,22 +2944,23 @@ export const GUIDES: GuideItem[] = [
         description:
           "Kartu ini di halaman Inventori mendaftar barang yang perlu dibeli: stoknya di bawah minimum, atau diperkirakan tidak cukup untuk 7 hari ke depan berdasarkan pemakaian 30 hari terakhir. Jumlah saran dan pemasoknya diambil dari pembelian terakhir.",
         points: [
-          "“Buat draf PO per supplier” — membuat draf PO sekaligus, satu per supplier.",
+          "“Buat daftar pesanan ke pemasok” (di HP: “Buat pesanan ke pemasok (n)”) — membuat draf pesanan pembelian sekaligus, satu per pemasok.",
           "“Salin daftar belanja” — menyalin daftar untuk ditempel di chat.",
+          "Dari kartu “Perlu perhatian” di Beranda, tombol “Beli lagi” membuka daftar barang yang perlu dibeli.",
         ],
       },
     ],
     relatedSlugs: ["stok-barang-dan-stok-masuk", "stok-opname", "transfer-stok"],
-    keywords: ["po", "purchase order", "pembelian", "supplier", "pemasok", "belanja", "restock", "saran belanja"],
+    keywords: ["po", "purchase order", "pembelian", "pesanan pembelian", "supplier", "pemasok", "belanja", "restock", "restok", "beli lagi", "saran belanja"],
   },
   {
     slug: "stok-opname",
     category: "stok",
     title: "Stok opname",
-    description: "Hitung stok fisik, lihat selisih, lalu posting hasilnya.",
+    description: "Hitung stok fisik, lihat selisih, lalu terapkan hasil hitungnya.",
     audience: ["Pemilik"],
     readMinutes: 3,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Stok opname mencocokkan stok di aplikasi dengan jumlah fisik di rak atau gudang. Lakukan secara berkala, misalnya akhir bulan.",
     steps: [
@@ -2700,18 +2978,21 @@ export const GUIDES: GuideItem[] = [
           "Isi “Jumlah fisik”. Aplikasi menampilkan selisihnya.",
           "Gunakan saringan “Belum dihitung”, “Sudah dihitung”, dan “Ada selisih” untuk memeriksa.",
         ],
+        points: [
+          "Di HP, progres tampil satu baris, mis. “3/5 dihitung · selisih −Rp …”, dan bilah bawah berisi “Batalkan” dan “Terapkan hasil hitung”.",
+        ],
         image: {
           ...HP,
           src: "/panduan/opname-hp.png",
-          alt: "Layar Stok opname dengan ringkasan selisih dan tombol Posting",
-          caption: "Ringkasan: lebih, kurang, dan nilai bersih.",
+          alt: "Layar Stok opname dengan ringkasan selisih dan tombol Terapkan hasil hitung",
+          caption: "Progres hitung dan nilai selisih tampil satu baris; selisih lebih kuning, kurang merah.",
         },
       },
       {
         id: "posting",
-        title: "Posting",
+        title: "Terapkan hasil hitung",
         description:
-          "Periksa “Ringkasan”, lalu ketuk “Posting”. Stok disesuaikan dengan hasil hitung. Barang yang belum dihitung tidak diubah. Bila batal, ketuk “Batalkan opname”.",
+          "Periksa ringkasannya, lalu ketuk “Terapkan hasil hitung”. Konfirmasi “Terapkan hasil hitung?” menyebut berapa barang sudah dihitung dan nilai selisihnya; barang yang belum dihitung dianggap sesuai stok sistem (tidak diubah). Stok lalu disesuaikan dengan hasil hitung, dan sesi berstatus “Diterapkan”. Bila batal, ketuk “Batalkan opname”.",
         callout: {
           type: "tip",
           text: "Opname bisa dihentikan lalu dilanjutkan lewat “Lanjutkan opname”.",
@@ -2719,7 +3000,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["stok-barang-dan-stok-masuk", "pembelian-po-dan-supplier"],
-    keywords: ["opname", "stock opname", "hitung stok", "audit stok", "selisih stok"],
+    keywords: ["opname", "stock opname", "hitung stok", "audit stok", "selisih stok", "posting", "terapkan hasil hitung"],
   },
   {
     slug: "transfer-stok",
@@ -2809,11 +3090,11 @@ export const GUIDES: GuideItem[] = [
   {
     slug: "membaca-laporan-penjualan-dan-margin",
     category: "laporan",
-    title: "Laporan penjualan & laba kotor",
-    description: "Penjualan, laba kotor, produk terjual, jam ramai, per kasir, riwayat, dan ekspor CSV.",
+    title: "Laporan penjualan, laba & jam ramai",
+    description: "Penjualan, laba bersih & laba kotor, produk terjual, peta jam ramai & saran jadwal kasir, per kasir, riwayat, dan ekspor CSV.",
     audience: ["Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Menu “Laporan” (khusus pemilik) merangkum penjualan per periode. Untuk melihat transaksi satu per satu, gunakan “Riwayat”.",
     prerequisites: ["Harga modal (HPP) produk sudah diisi agar laba kotor akurat."],
@@ -2828,7 +3109,13 @@ export const GUIDES: GuideItem[] = [
         id: "ringkasan",
         title: "Ringkasan",
         description:
-          "Tab “Ringkasan” menampilkan “Penjualan” (termasuk pajak), “Transaksi”, “Laba bersih” (ketuk untuk Laba rugi), “Piutang kasbon”, “Laba kotor”, “Rata-rata/transaksi”, diskon, pajak & biaya layanan, perbandingan dengan periode lalu, grafik penjualan, “Per metode bayar”, dan “Wawasan periode ini” (3 butir teratas; “Lihat semua” untuk sisanya). Untuk rincian laba setelah biaya usaha, baca “Laporan laba rugi”.",
+          "Tab “Ringkasan” dimulai dengan angka utama, di HP maupun tablet:",
+        points: [
+          "“Penjualan” — total uang penjualan, sudah termasuk pajak (tertulis “Termasuk pajak Rp …”). Istilah ini sama di Beranda, Riwayat, Laporan, Shift, dan dasbor web.",
+          "“Transaksi”, “Laba bersih”, “Piutang kasbon” (dengan jumlah yang “lewat jatuh tempo”), “Laba kotor”, “Rata-rata/transaksi”, “Diskon”, dan “Pajak” (dengan “Biaya layanan Rp …” bila ada).",
+          "Ketuk “Laba bersih” untuk membuka Laba rugi. Bila biaya usaha atau modal menu belum lengkap, angkanya diberi tanda “Sementara — belum lengkap”.",
+          "Di bawahnya: perbandingan dengan periode lalu, grafik penjualan, “Per metode bayar”, dan “Wawasan periode ini” (3 butir teratas; “Lihat semua (N)” untuk sisanya).",
+        ],
         image: {
           ...TABLET,
           src: "/panduan/laporan-tablet.png",
@@ -2842,10 +3129,10 @@ export const GUIDES: GuideItem[] = [
       },
       {
         id: "tab-lain",
-        title: "Produk terjual, jam ramai, per kasir",
+        title: "Produk terjual dan per kasir",
+        description: "Di HP, tab-tab ini berlabel singkat “Produk”, “Jam”, dan “Kasir”.",
         points: [
-          "“Produk terjual” — urutkan “Terlaris” atau “Penjualan terbesar”. Pilihan urutan tetap terlihat saat daftar digulir.",
-          "“Jam ramai” — “Jam tersibuk” dan “Hari tersibuk”, selalu dari 30 hari terakhir. Berguna untuk jadwal karyawan.",
+          "“Produk terjual” — urutkan “Terlaris”, “Penjualan terbesar”, “Laba terbesar”, atau “Margin terendah” (untung paling tipis dulu — cek harga atau modalnya). Pilihan urutan tetap terlihat saat daftar digulir.",
           "“Per kasir” — penjualan per kasir.",
         ],
         callout: {
@@ -2854,11 +3141,40 @@ export const GUIDES: GuideItem[] = [
         },
       },
       {
+        id: "jam-ramai",
+        title: "Jam ramai: peta jam × hari dan saran jadwal kasir",
+        description:
+          "Tab “Jam ramai” selalu memakai data 30 hari terakhir (tertulis “30 hari terakhir · …” di bawah judul), tidak ikut pemilih periode.",
+        points: [
+          "“Jam tersibuk” dan “Hari tersibuk” merangkum puncaknya. Bila dua hari sama ramainya, ditulis mis. “Senin & Kamis”.",
+          "“Peta jam ramai” — kisi hari (Sen–Min) × jam. Tiap kotak = rata-rata transaksi per jam pada hari itu, dibagi berapa kali hari tersebut muncul sejak transaksi pertama di periode itu (jadi toko baru tidak tampak sepi). Makin pekat oranyenya, makin ramai; kotak polos = “Tanpa transaksi”. Jam yang tak pernah ada transaksi di awal dan akhir hari disembunyikan.",
+          "Ketuk satu kotak untuk melihat rinciannya, mis. “Rata-rata Rp 450.000 dari 12 transaksi per hari”. Di HP, kolom jam bisa digeser ke samping.",
+          "Grafik batang per jam tetap ada di bawah peta. Angka tampil di puncak batang bila muat; ketuk batang untuk melihat nilainya.",
+        ],
+        callout: {
+          type: "tip",
+          title: "Saran jadwal kasir",
+          text: "Di bawah peta ada “Saran jadwal kasir”: “Paling padat: …” (jendela 2 jam teramai), “Tambah 1 kasir …” bila jam puncak jauh lebih ramai dari jam biasa (atau “Satu kasir masih cukup”), dan “Sepi … — cocok untuk restok/opname”. Saran baru muncul setelah ada data minimal 7 hari. Jadwal tetap Anda yang atur.",
+        },
+        image: {
+          ...TABLET,
+          src: "/panduan/jam-ramai-tablet.png",
+          alt: "Laporan Jam ramai: peta jam × hari berwarna oranye bertingkat dan kartu Saran jadwal kasir",
+          caption: "Makin gelap = makin ramai; saran jadwal muncul setelah 7 hari data.",
+        },
+      },
+      {
         id: "riwayat-ekspor",
         title: "Riwayat penjualan dan ekspor",
         description:
-          "“Riwayat” (Riwayat Penjualan) berisi semua transaksi dengan tab “Semua”, “Lunas”, “Kasbon”, “Batal”, serta saringan kasir, metode, dan periode. Detail transaksi bisa dicetak ulang, dikirim WA, atau dipesan ulang.",
-        points: ["“Ekspor CSV” tersedia di Laporan dan Riwayat. File CSV bisa dibuka di Excel atau Google Sheets."],
+          "“Riwayat” (Riwayat Penjualan) berisi semua transaksi dengan tab “Semua”, “Lunas”, “Kasbon”, “Batal”, serta saringan kasir, metode, dan periode. Di HP kuliner yang memakai meja, Riwayat ada di “Lainnya” › “Operasional”.",
+        points: [
+          "Di HP, judul tiap baris adalah nama pelanggan (atau “Umum · Meja … · Antrean …”), dan baris kedua berisi jam · jenis pesanan · metode bayar · nomor struk pendek, mis. “#028”. Pencarian tetap memakai nomor struk lengkap.",
+          "Di tablet, tabel transaksi memenuhi layar; panel rincian muncul setelah transaksi diketuk.",
+          "Rincian transaksi: “Cetak ulang” di bilah bawah (atau “Pratinjau struk” bila belum ada printer), “Kirim via WA”, “Lihat struk”, dan tombol “Lainnya” untuk aksi yang jarang dipakai (mis. “Salinan toko”, “Cetak tiket dapur”, “Pesan ulang”). Refund dan pembatalan ada di tombol ⋯ di bilah bawah.",
+          "Metode bayar campuran tercatat sebagai “Gabungan”.",
+          "“Ekspor CSV” tersedia di Laporan dan Riwayat. File CSV bisa dibuka di Excel atau Google Sheets.",
+        ],
       },
     ],
     faqs: [
@@ -2868,11 +3184,16 @@ export const GUIDES: GuideItem[] = [
       },
       {
         question: "Di mana laporan tutup kasir?",
-        answer: "Di Laporan bagian “Laporan tutup kasir”, atau “Lainnya” › “Tutup Kasir”.",
+        answer: "Di Laporan bagian “Laporan tutup kasir”, atau “Lainnya” › “Laporan” › “Riwayat tutup kasir”.",
+      },
+      {
+        question: "Kenapa tidak ada lagi istilah “omzet”?",
+        answer:
+          "Supaya tidak membingungkan, aplikasi kini memakai “Penjualan” (termasuk pajak) di Beranda, Riwayat, Laporan, dan Shift. “Pendapatan” (penjualan tanpa pajak) hanya dipakai di Laba rugi. Kolom CSV ikut memakai “Penjualan”.",
       },
     ],
     relatedSlugs: ["laporan-laba-rugi", "hpp-resep-dan-bahan-baku", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["laporan", "report", "omzet", "laba", "profit", "margin", "terlaris", "jam ramai", "csv", "excel", "riwayat"],
+    keywords: ["laporan", "report", "omzet", "laba", "profit", "margin", "terlaris", "jam ramai", "peta jam ramai", "heatmap", "saran jadwal", "jadwal kasir", "laba bersih", "penjualan", "csv", "excel", "riwayat"],
   },
   {
     slug: "laporan-laba-rugi",
@@ -2881,7 +3202,7 @@ export const GUIDES: GuideItem[] = [
     description: "Baca pendapatan, laba kotor, pendapatan lain, biaya usaha, dan laba bersih per periode.",
     audience: ["Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "“Laba rugi” menunjukkan untung bersih usaha setelah modal menu (HPP) dan biaya usaha bulanan. Angkanya dihitung dari data di perangkat, jadi tetap bisa dibuka saat offline.",
     prerequisites: [
@@ -2893,20 +3214,22 @@ export const GUIDES: GuideItem[] = [
         id: "buka",
         title: "Buka laba rugi",
         steps: [
-          "Buka “Laporan”, tab “Ringkasan”, lalu ketuk kartu “Laba rugi”. Bisa juga dari “HPP & Harga jual” › “Balik modal” › “Lihat laba rugi”.",
+          "Buka “Laporan”, tab “Ringkasan”, lalu ketuk angka “Laba bersih”. Bisa juga dari “HPP & Harga jual” › “Balik modal” › “Lihat laba rugi”.",
           "Pilih outlet dan periode. Selain pilihan biasa, ada “Bulan ini” dan “Bulan lalu”.",
         ],
         description: "Periode dan outlet sama dengan yang dipilih di Laporan, jadi angkanya mudah dicocokkan.",
         image: {
           ...TABLET,
           src: "/panduan/laporan-tablet.png",
-          alt: "Laporan Ringkasan di tablet dengan kartu Laba rugi di bawah angka utama",
-          caption: "Kartu “Laba rugi” di tab Ringkasan Laporan.",
+          alt: "Laporan Ringkasan di tablet dengan angka Laba bersih di antara angka utama",
+          caption: "Ketuk “Laba bersih” di tab Ringkasan Laporan untuk membuka Laba rugi.",
         },
       },
       {
         id: "cara-baca",
         title: "Cara membaca",
+        description:
+          "Paling atas ada kartu utama “Laba bersih” beserta “Untung …% dari pendapatan”. Tepat di bawahnya ada kartu “Dari penjualan ke pendapatan” (HP: kartu pertama; tablet: kolom kanan paling atas).",
         points: [
           "“Pendapatan” = penjualan dikurangi pajak (PB1). Pajak dititipkan untuk disetor, jadi bukan pendapatan. Kartu “Dari penjualan ke pendapatan” menjelaskan bedanya dengan angka Laporan.",
           "“Laba kotor” = penjualan menu bermodal dikurangi “Modal barang terjual”. Angkanya sama dengan Laba kotor di Laporan.",
@@ -2930,6 +3253,7 @@ export const GUIDES: GuideItem[] = [
         id: "syarat",
         title: "Agar angkanya lengkap",
         points: [
+          "Bila datanya belum lengkap, kartu “Laba bersih” diberi chip kuning “Sementara — biaya usaha belum diisi” atau “Sementara — modal menu belum lengkap”, dengan tombol “Isi biaya usaha” atau “Isi modal menu” di kartu itu.",
           "Muncul “… baris penjualan (Rp …) belum punya modal”? Penjualan itu tidak dihitung ke laba. Ketuk “Isi modal menu” dan isi modalnya.",
           "Biaya usaha “Belum diisi”? Ketuk “Isi biaya usaha”, lalu tambahkan sewa, gaji, listrik, dan biaya bulanan lain.",
           "Bila belum ada satu pun menu bermodal, laba kotor dan laba bersih tampil “—”.",
@@ -2961,29 +3285,59 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["membaca-laporan-penjualan-dan-margin", "harga-jual-biaya-usaha-dan-balik-modal", "hpp-resep-dan-bahan-baku"],
-    keywords: ["laba rugi", "profit loss", "p&l", "laba bersih", "rugi", "untung bersih", "biaya operasional", "biaya usaha"],
+    keywords: ["laba rugi", "profit loss", "p&l", "laba bersih", "rugi", "untung bersih", "biaya operasional", "biaya usaha", "pendapatan", "sementara", "omzet"],
   },
 
   // ───────────────────────────── TIM ─────────────────────────────
   {
     slug: "karyawan-dan-pin",
     category: "tim",
-    title: "Karyawan, peran & PIN",
-    description: "Tambah karyawan, pilih peran Kasir/Dapur, atur PIN, dan kunci kasir.",
+    title: "Karyawan, akses & PIN",
+    description: "Tambah karyawan, pilih akses di aplikasi (Pemilik/Kasir/Dapur/absen saja), undang ke HP pribadi, atur PIN, dan kunci kasir.",
     audience: ["Pemilik", "Kasir"],
-    readMinutes: 4,
-    lastUpdated: UPDATED_NEW,
+    readMinutes: 6,
+    lastUpdated: UPDATED_OCT23,
     overview:
-      "Karyawan tidak perlu akun email sendiri. Mereka memakai perangkat yang sudah dimasuki pemilik, lalu membuka kasir dengan PIN 6 digit masing-masing.",
+      "Karyawan tidak wajib punya akun email sendiri. Di perangkat toko yang sudah dimasuki pemilik, mereka membuka kasir dengan PIN 6 digit masing-masing. Bila perlu, karyawan juga bisa diundang masuk dari HP pribadinya.",
     steps: [
       {
         id: "tambah",
         title: "Tambah karyawan",
         steps: [
-          "Buka “Tim” › “Karyawan” › “Tambah karyawan”.",
-          "Isi “Nama karyawan”; No. HP dan email opsional.",
-          "Pilih “Peran”: “Kasir” (transaksi, pesanan, riwayat, pelanggan, absen) atau “Dapur” (layar dapur dan pesanan; untuk usaha kuliner atau bila fitur dapur aktif).",
-          "Simpan.",
+          "Buka “Tim” › “Karyawan” › “Tambah karyawan” (di HP tombolnya “+ Karyawan”).",
+          "Isi “Nama karyawan”; “No. HP (opsional)” dan “Email (opsional)” boleh dikosongkan. No. HP wajib bila karyawan akan diundang ke HP pribadinya.",
+          "Pilih “Akses di aplikasi” (lihat di bawah).",
+          "Bila perlu, pilih “Jabatan (label saja, opsional)”, mis. barista atau pelayan. Jabatan hanya label dan tidak mengubah akses.",
+          "Simpan. Gaji bisa diatur setelah karyawan disimpan (Tim › Gaji).",
+        ],
+      },
+      {
+        id: "akses",
+        title: "Akses di aplikasi",
+        description: "Tiap pilihan berupa kartu dengan penjelasan singkat:",
+        points: [
+          "“Pemilik” — semua menu, termasuk produk, laporan, tim, dan pengaturan. Memilih ini meminta konfirmasi “Beri akses pemilik?” lalu “Ya, jadikan pemilik”, karena orang itu juga bisa menyetujui refund dan pembatalan dengan PIN pemilik.",
+          "“Kasir” — transaksi, pesanan, riwayat, pelanggan, dan absen.",
+          "“Dapur” — layar dapur dan pesanan. Tersedia untuk usaha kuliner atau bila fitur dapur outlet diaktifkan.",
+          "“Karyawan (absen saja)” — tanpa menu kasir dan tidak tampil di layar kunci. Absen dari HP pribadinya (Ruang Karyawan) atau di perangkat toko dengan PIN-nya. PIN untuk peran ini opsional.",
+          "Kamu tidak dapat mengubah aksesmu sendiri.",
+        ],
+      },
+      {
+        id: "hp-pribadi",
+        title: "Akses dari HP pribadi (undangan)",
+        description:
+          "Di kartu “Akses dari HP pribadi”, pilih “Akses”: “Tidak bisa login” (hanya PIN di perangkat toko), “Ruang Karyawan” (absen, riwayat kehadiran, dan slip gaji miliknya saja), atau “Sesuai tugas” (seperti di perangkat toko: Kasir atau Dapur sesuai tugasnya).",
+        steps: [
+          "Pastikan no. HP karyawan terisi dan karyawan aktif, lalu simpan.",
+          "Di kartu “Akun HP pribadi”, ketuk “Undang”. Kirim tautan dan kodenya lewat WhatsApp. Kode hanya tampil sekali; bila hilang, ketuk “Kirim ulang undangan”.",
+          "Karyawan membuka tautan, membuat kata sandi sendiri (syaratnya sama dengan kata sandi pemilik), lalu masuk di aplikasi dengan no. HP + kata sandi.",
+        ],
+        points: [
+          "Karyawan berperan “Karyawan (absen saja)” juga bisa diundang; mereka masuk ke Ruang Karyawan.",
+          "Satu akun terikat ke satu HP. Ganti HP? Ketuk “Lepas ikatan HP”, lalu karyawan masuk lagi dari HP baru.",
+          "Lupa kata sandi? Ketuk “Kirim tautan reset kata sandi”.",
+          "Perangkat toko tetap memakai PIN.",
         ],
       },
       {
@@ -2994,7 +3348,10 @@ export const GUIDES: GuideItem[] = [
           "Minta karyawan memasukkan PIN 6 digit, lalu mengulanginya.",
           "PIN yang terlalu mudah (angka sama atau berurutan) ditolak.",
         ],
-        points: ["Pemilik juga bisa “Atur PIN saya” untuk menyetujui void, refund, dan aksi kasir lainnya."],
+        points: [
+          "Pemilik juga bisa “Atur PIN saya”. PIN ini disebut “PIN pemilik” dan dipakai untuk menyetujui refund, pembatalan transaksi, dan aksi kasir lainnya.",
+          "Bila masih ada karyawan aktif tanpa PIN, Beranda menampilkan catatan kuning yang menyebut namanya, mis. “Rani belum punya PIN…”, dengan tombol “Atur PIN” dan “Tutup”.",
+        ],
         image: {
           ...HP,
           src: "/panduan/pin-karyawan-hp.png",
@@ -3014,7 +3371,7 @@ export const GUIDES: GuideItem[] = [
         ],
         callout: {
           type: "warning",
-          text: "Tombol “Keluar” di layar kunci mengeluarkan akun dari perangkat, bukan sekadar ganti karyawan.",
+          text: "Tombol “Keluar dari akun usaha” di layar kunci mengeluarkan akun usaha dari perangkat, bukan sekadar ganti karyawan. Karena itu tombol ini meminta “PIN pemilik” (pilih pemiliknya bila lebih dari satu). Pengecualian: bila belum ada pemilik ber-PIN di perangkat itu, cukup konfirmasi biasa.",
         },
         image: {
           ...HP,
@@ -3025,7 +3382,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["absensi-karyawan", "gaji-dan-slip-gaji", "mengenal-menu-aplikasi"],
-    keywords: ["karyawan", "staf", "pegawai", "pin", "peran", "role", "kasir", "dapur", "kunci", "lock"],
+    keywords: ["karyawan", "staf", "pegawai", "pin", "pin pemilik", "pin supervisor", "peran", "role", "akses", "jabatan", "kasir", "dapur", "absen saja", "undangan", "hp pribadi", "ruang karyawan", "kunci", "lock", "keluar dari akun usaha"],
   },
   {
     slug: "absensi-karyawan",
@@ -3034,7 +3391,7 @@ export const GUIDES: GuideItem[] = [
     description: "Absen masuk dan pulang dengan PIN, aturan jam kerja, dan koreksi manual.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 3,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview: "Absen dicatat di perangkat kasir dengan PIN, sehingga tidak perlu alat absen terpisah. Kehadiran termasuk paket Pro.",
     steps: [
       {
@@ -3043,25 +3400,29 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Buka “Kehadiran” (atau pintasan “Absen” di Beranda).",
           "Ketuk “Absen masuk” atau “Absen pulang”.",
-          "Pilih nama, lalu masukkan PIN.",
+          "Pilih nama, lalu masukkan PIN. Kartu absen menuliskan: “Untuk siapa pun yang bertugas: pilih nama, lalu masukkan PIN.”",
         ],
-        points: ["Karyawan tanpa PIN ditandai “Belum punya PIN” dan belum bisa absen sendiri."],
+        points: [
+          "Karyawan tanpa PIN ditandai “Belum punya PIN” dan belum bisa absen di perangkat toko.",
+          "Karyawan yang diundang ke HP pribadi (Ruang Karyawan) bisa absen dari HP-nya sendiri, di lokasi yang diatur pemilik di Pengaturan › “Lokasi absen”.",
+          "Di layar Kehadiran, “Hari ini” dan “Riwayat” berupa chip kecil di bawah tab utama.",
+        ],
       },
       {
         id: "aturan",
-        title: "Aturan jam kerja (pemilik)",
+        title: "Jam kerja & telat (pemilik)",
         description:
-          "Buka “Aturan jam kerja”: isi “Jam mulai”, “Jam selesai”, “Toleransi terlambat (menit)”, dan “Hari libur mingguan”. Aturan ini dipakai untuk status terlambat, lembur, dan libur.",
+          "Buka Pengaturan › grup “Karyawan & absen” › “Jam kerja & telat”, lalu ketuk “Ubah jam kerja”. Bisa juga lewat tombol “Jam kerja” di layar Kehadiran (tablet: di kepala layar; HP: di baris chip). Di lembar “Aturan jam kerja”, isi “Jam mulai”, “Jam selesai”, “Toleransi terlambat (menit)”, dan “Hari libur mingguan”. Aturan ini dipakai untuk status terlambat, lembur, dan libur.",
       },
       {
         id: "manual",
-        title: "Absen manual dan koreksi (pemilik)",
+        title: "Koreksi absen (pemilik)",
         description:
-          "Gunakan “Absen manual” untuk mencatat izin, sakit, cuti, atau lupa absen. Isi karyawan, tanggal, status, jam, dan “Alasan perubahan”, lalu “Simpan absen”.",
+          "Ketuk “Koreksi absen” di layar Kehadiran untuk mencatat izin, sakit, cuti, atau lupa absen. Isi karyawan, tanggal, status, jam, dan “Alasan perubahan”, lalu “Simpan absen”. Catatan ini ditandai sebagai input manual oleh pemilik.",
       },
     ],
     relatedSlugs: ["karyawan-dan-pin", "gaji-dan-slip-gaji"],
-    keywords: ["absen", "absensi", "presensi", "kehadiran", "terlambat", "izin", "sakit", "cuti"],
+    keywords: ["absen", "absensi", "presensi", "kehadiran", "terlambat", "telat", "jam kerja", "koreksi absen", "absen manual", "lokasi absen", "izin", "sakit", "cuti"],
   },
   {
     slug: "gaji-dan-slip-gaji",
@@ -3070,7 +3431,7 @@ export const GUIDES: GuideItem[] = [
     description: "Atur gaji per karyawan, terbitkan slip dari data kehadiran, dan tandai sudah dibayar.",
     audience: ["Pemilik"],
     readMinutes: 4,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview: "Gaji dihitung dari pengaturan gaji tiap karyawan dan data kehadirannya. Fitur gaji termasuk paket Pro.",
     steps: [
       {
@@ -3087,17 +3448,20 @@ export const GUIDES: GuideItem[] = [
         title: "Terbitkan slip",
         description:
           "Buka slip karyawan untuk bulan itu, periksa rekap, lalu ketuk “Terbitkan slip”. Setelah terbit, perubahan kehadiran tidak lagi mengubah slip.",
+        points: [
+          "Status slip: “Belum terbit” (abu) → “Belum dibayar” (kuning, setelah slip terbit) → “Dibayar” (hijau).",
+        ],
       },
       {
         id: "bayar",
         title: "Tandai sudah dibayar",
         description:
-          "Ketuk “Tandai sudah dibayar”. Bila dibayar dari laci, centang “Bayar tunai dari laci kasir” agar tercatat sebagai kas keluar shift.",
+          "Untuk slip “Belum dibayar”, ketuk “Tandai sudah dibayar”. Bila dibayar dari laci, centang “Bayar tunai dari laci kasir” agar tercatat sebagai kas keluar shift. Statusnya menjadi “Dibayar”.",
         callout: { type: "warning", text: "Status dibayar tidak dapat dibatalkan." },
       },
     ],
     relatedSlugs: ["absensi-karyawan", "karyawan-dan-pin", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["gaji", "payroll", "slip gaji", "upah", "lembur", "potongan"],
+    keywords: ["gaji", "payroll", "slip gaji", "upah", "lembur", "potongan", "belum dibayar", "dibayar"],
   },
 
   // ───────────────────────────── JASA ─────────────────────────────
@@ -3108,7 +3472,7 @@ export const GUIDES: GuideItem[] = [
     description: "Catat order servis, pantau antrean, terima DP, dan serahkan ke pelanggan.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Untuk usaha jasa (bengkel, servis HP, laundry, salon, percetakan, dan lainnya). Isian order menyesuaikan jenis usaha, misalnya plat nomor untuk bengkel atau berat untuk laundry. Order servis baru termasuk paket Pro; order yang sudah berjalan tetap bisa diselesaikan dan ditagih.",
     steps: [
@@ -3116,7 +3480,7 @@ export const GUIDES: GuideItem[] = [
         id: "order-baru",
         title: "Buat order servis",
         steps: [
-          "Buka “Antrean” › “Order baru”.",
+          "Buka “Antrean” › “Order baru” (di HP: “+ Order baru”).",
           "Isi data pelanggan (nama, No. HP) dan “Data order” sesuai jenis usaha.",
           "“Tambah layanan” dari katalog, atau “Buat layanan baru” langsung di sini.",
           "Isi “Estimasi selesai” dan pilih petugas (mis. teknisi).",
@@ -3134,13 +3498,22 @@ export const GUIDES: GuideItem[] = [
         id: "antrean",
         title: "Pantau antrean",
         description:
-          "Status order: “Diterima” → “Dikerjakan” → “Siap diambil” → “Diambil”. Majukan dengan tombol “Kerjakan”, “Selesai”, dan “Serahkan”. Order yang lewat estimasi ditandai “Terlambat”.",
+          "Status order: “Diterima” → “Dikerjakan” → “Siap diambil” → “Diambil”. Majukan dengan tombol “Kerjakan”, “Selesai”, dan “Serahkan”. Order yang lewat estimasi ditandai “Terlambat” (merah).",
+        points: [
+          "Kartu antrean menampilkan kendaraan/plat (atau barang) lebih dulu; nomor nota tampil kecil di bawahnya.",
+          "Tanda “Belum bayar” abu selama order dikerjakan, lalu kuning bila order sudah siap diambil tetapi belum lunas — tanda untuk ditagih saat pelanggan datang.",
+        ],
       },
       {
         id: "serahkan",
         title: "Serahkan dan lunasi",
-        description:
-          "Saat “Serahkan” dan masih ada sisa tagihan, pilih “Bayar dulu” atau “Serahkan sebagai kasbon”.",
+        description: "Di rincian order yang sudah siap tetapi belum lunas, pilih salah satu:",
+        points: [
+          "“Bayar Rp … & serahkan” (tombol utama) — tagih sisanya, lalu order langsung tercatat diambil.",
+          "“Serahkan tanpa bayar (jadi kasbon)” — barang diserahkan dan sisa tagihan menjadi kasbon pelanggan, setelah konfirmasi. Hanya muncul bila kasbon diizinkan.",
+          "“Bayar Rp … saja (belum diserahkan)” — terima pembayaran sekarang, barang diserahkan nanti.",
+          "Dari tombol “Serahkan” di antrean, pilihannya “Bayar dulu” atau “Serahkan sebagai kasbon”.",
+        ],
       },
       {
         id: "batal",
@@ -3150,7 +3523,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["kasbon-pelanggan", "menerima-pembayaran-qris-dan-tunai", "karyawan-dan-pin"],
-    keywords: ["servis", "service", "jasa", "bengkel", "laundry", "salon", "antrean", "teknisi", "dp", "uang muka"],
+    keywords: ["servis", "service", "jasa", "bengkel", "laundry", "salon", "antrean", "teknisi", "dp", "uang muka", "serahkan", "ambil barang", "kasbon servis"],
   },
 
   // ───────────────────────────── SEWA ─────────────────────────────
@@ -3161,7 +3534,7 @@ export const GUIDES: GuideItem[] = [
     description: "Atur unit dan tarif, terima booking dengan DP, jalankan sesi dengan timer, dan tagih.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 5,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Untuk usaha sewa per waktu seperti lapangan, meja biliar, konsol game, atau ruangan. Menu utamanya “Jadwal” (booking) dan “Sesi” (pemakaian yang sedang berjalan). Booking dan sesi baru termasuk paket Pro; yang sudah berjalan tetap bisa diselesaikan.",
     steps: [
@@ -3169,17 +3542,37 @@ export const GUIDES: GuideItem[] = [
         id: "unit",
         title: "Atur unit dan tarif (pemilik)",
         steps: [
-          "Buka “Tarif & unit” › “Tambah unit”.",
+          "Buka “Tarif & unit” (juga lewat tombol “Tarif & unit” di layar Sesi) › “Tambah unit”.",
           "Isi “Nama unit”, “Jenis”, “Tarif reguler per jam”, “Jam buka”, dan “Jam tutup”.",
           "Pilih “Cara tagih sesi walk-in”: “Per menit (meter)” atau “Paket”.",
-          "Tambahkan tarif jam ramai lewat “Tambah jam ramai” bila tarif berbeda di jam tertentu.",
+          "Tambahkan tarif jam ramai lewat “Tambah jam ramai” bila tarif berbeda di hari & jam tertentu (lihat di bawah).",
         ],
+      },
+      {
+        id: "jam-ramai",
+        title: "Tarif jam ramai per unit (pemilik)",
+        description:
+          "Pada hari & jam yang dipilih, tarif tiap unit naik dari tarif regulernya, atau memakai satu harga tetap.",
+        steps: [
+          "Di “Tarif & unit”, ketuk “Tambah jam ramai”.",
+          "Pilih “Berlaku untuk” (satu unit atau semua unit), “Hari”, serta jam mulai dan selesai.",
+          "Pilih “Cara hitung tarif ramai”: “Naik %” (tarif reguler tiap unit dinaikkan sekian persen; bawaannya naik 50%), “Naik Rp” (tarif reguler ditambah nominal per jam), atau “Harga tetap” (semua unit yang dipilih memakai satu harga).",
+          "Periksa pratinjau “Tarif ramai per unit”, mis. “Rp 40.000 → Rp 60.000/jam”, lalu simpan.",
+        ],
+        points: [
+          "Unit yang tarif ramainya lebih murah dari reguler (“Lebih murah dari reguler”) atau lebih dari tiga kali lipat (“Lebih dari 3× reguler”) ditandai kuning. Tarif tetap boleh disimpan; periksa dulu bila tidak sengaja.",
+          "Aturan untuk unit tertentu mengalahkan aturan “semua unit”. Bila ada beberapa aturan di jam yang sama, dipakai tarif tertinggi.",
+        ],
+        callout: {
+          type: "warning",
+          text: "Perbarui aplikasi di semua perangkat toko. Perangkat dengan aplikasi versi lama bisa menghitung tarif ramai berbeda.",
+        },
       },
       {
         id: "booking",
         title: "Terima booking",
         steps: [
-          "Buka “Jadwal” › “Booking baru”.",
+          "Buka “Jadwal” › “Booking baru” (di HP: “+ Booking baru”).",
           "Pilih unit, jam mulai, dan “Durasi”. Jadwal yang bentrok ditolak.",
           "Isi nama pemesan.",
           "Pilih pembayaran: “Bayar nanti”, “DP 50%”, atau “Lunas”, lalu simpan.",
@@ -3195,9 +3588,9 @@ export const GUIDES: GuideItem[] = [
         id: "sesi",
         title: "Jalankan sesi",
         steps: [
-          "Saat pemesan datang, ketuk “Mulai main (check-in)” pada booking. Untuk tamu tanpa booking, ketuk “Mulai” di unit kosong di “Sesi”.",
+          "Saat pemesan datang, ketuk “Tamu datang · mulai main” pada booking. Timer sesi langsung berjalan. Untuk tamu tanpa booking, ketuk “Mulai” di unit kosong di “Sesi”.",
           "Gunakan “Tambah waktu” atau “Perpanjang” bila perlu.",
-          "Ketuk “Stop”, lalu “Hentikan & tagih”. Tagihan terbuka di layar Bayar.",
+          "Ketuk “Selesai” (dulu “Stop”), lalu “Hentikan & tagih”. Tagihan terbuka di layar Bayar.",
         ],
       },
       {
@@ -3208,7 +3601,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["sewa", "rental", "booking", "reservasi", "lapangan", "biliar", "ps", "timer", "sesi", "dp"],
+    keywords: ["sewa", "rental", "booking", "reservasi", "lapangan", "biliar", "ps", "timer", "sesi", "dp", "jam ramai", "tarif ramai", "peak hour", "check-in", "stop"],
   },
 
   // ───────────────────────────── NOTIFIKASI ─────────────────────────────
@@ -3219,7 +3612,7 @@ export const GUIDES: GuideItem[] = [
     description: "Isi menu Notifikasi, cara mengaktifkan peringatan pemilik di HP, dan pilihan kategorinya.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 4,
-    lastUpdated: UPDATED_OCT21,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Ada dua jenis notifikasi: daftar di menu “Notifikasi” (ikon lonceng) untuk semua pengguna, dan peringatan pemilik yang muncul di HP walau aplikasi tertutup.",
     steps: [
@@ -3227,7 +3620,7 @@ export const GUIDES: GuideItem[] = [
         id: "menu-notifikasi",
         title: "Menu Notifikasi",
         description:
-          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap diantar, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan ditolak server.",
+          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap diantar, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan yang tidak tersimpan (“Perubahan gagal disimpan”).",
         points: [
           "Untuk membersihkan tanda baru, ketuk “Tandai semua dibaca”. Muncul konfirmasi “Tandai semua dibaca?”; ketuk “Tandai dibaca”.",
         ],
@@ -3263,7 +3656,7 @@ export const GUIDES: GuideItem[] = [
         title: "Pilih kategori",
         points: [
           "“Shift ditutup dengan selisih kas”.",
-          "“Transaksi dibatalkan (void) atau di-refund” — berisi nomor struk, nominal, dan outlet.",
+          "“Transaksi dibatalkan atau di-refund” — berisi nomor struk, nominal, dan outlet.",
           "“Login di perangkat baru” — akun dimasuki dari HP/tablet yang belum pernah dipakai.",
           "“Langganan” — pengingat masa Pro berakhir, batas transaksi Gratis, dan pembayaran tercatat.",
           "“Stok menipis atau habis” — barang atau bahan baku turun ke batas minimum atau habis, per outlet.",
@@ -3286,7 +3679,7 @@ export const GUIDES: GuideItem[] = [
         answer: "Tidak. Peringatan pemilik hanya untuk perangkat yang dipakai pemilik. Perangkat kasir hanya menerima notifikasi pesanan QR dan pengingat booking (usaha sewa).",
       },
       {
-        question: "Saya void dari HP sendiri tetapi tidak dapat peringatan.",
+        question: "Saya membatalkan transaksi dari HP sendiri tetapi tidak dapat peringatan.",
         answer: "Peringatan tidak dikirim ke perangkat yang melakukan aksi tersebut; yang menerima adalah perangkat pemilik lainnya.",
       },
     ],
@@ -3452,10 +3845,10 @@ export const GUIDES: GuideItem[] = [
     slug: "akun-dan-keamanan",
     category: "akun",
     title: "Akun & keamanan",
-    description: "Ganti kata sandi, PIN supervisor, login di perangkat baru, dan keluar akun.",
+    description: "Ganti kata sandi, PIN pemilik, login di perangkat baru, dan keluar akun.",
     audience: ["Pemilik"],
     readMinutes: 3,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview: "Pengaturan akun ada di Pengaturan › “Akun & keamanan”.",
     steps: [
       {
@@ -3464,27 +3857,28 @@ export const GUIDES: GuideItem[] = [
         description: "Khusus pemilik; karyawan masuk memakai PIN. Mengganti kata sandi butuh internet.",
         steps: [
           "Buka Pengaturan › “Akun & keamanan”. Di kartu “Keamanan”, pada baris “Kata sandi”, ketuk “Ganti”.",
-          "Isi “Kata sandi saat ini”, lalu “Kata sandi baru” dan “Ulangi kata sandi”.",
+          "Isi “Kata sandi saat ini”, lalu “Kata sandi baru” dan “Ulangi kata sandi”. Kata sandi baru harus 8–128 karakter, berisi huruf besar & huruf kecil, angka, dan simbol, serta bukan kata sandi umum (mis. yang memakai kata “sissi”, “kasir”, atau “password”). Daftar syarat di bawah kolom membantu mengeceknya.",
           "Nyalakan “Keluarkan perangkat lain” bila HP, tablet, dan dasbor web lain harus masuk lagi dengan kata sandi baru. Perangkat ini tetap masuk.",
-          "Ketuk “Simpan Kata Sandi”. Muncul “Kata sandi berhasil disimpan.”",
+          "Ketuk “Simpan kata sandi”. Muncul “Kata sandi berhasil disimpan.”",
         ],
         points: [
           "Daftar lewat Google dan belum pernah membuat kata sandi? Kosongkan “Kata sandi saat ini” untuk mengatur kata sandi.",
           "Lupa kata sandi saat ini? Gunakan “Lupa kata sandi?” di layar masuk; kode dikirim ke email akun.",
           "Bila muncul “Terlalu banyak percobaan”, tunggu sekitar 15 menit, lalu coba lagi.",
+          "Kata sandi ditolak? Pesan penyebabnya tampil langsung di bawah kolom yang perlu diperbaiki.",
         ],
         image: {
           ...HP,
           src: "/panduan/ganti-password-hp.png",
           alt: "Lembar Ganti kata sandi: kata sandi saat ini, kata sandi baru, ulangi kata sandi, dan sakelar Keluarkan perangkat lain",
-          caption: "Isi kata sandi lama dan baru, lalu ketuk “Simpan Kata Sandi”.",
+          caption: "Isi kata sandi lama dan baru, lalu ketuk “Simpan kata sandi”.",
         },
       },
       {
         id: "pin-supervisor",
-        title: "PIN supervisor",
+        title: "PIN pemilik",
         description:
-          "PIN pemilik dipakai untuk menyetujui refund, void, dan aksi kasir lainnya. Atur di “Tim” › “Karyawan” (tombol “Atur PIN saya”).",
+          "“PIN pemilik” (dulu disebut PIN supervisor) dipakai untuk refund, membatalkan transaksi, menyetujui aksi kasir, dan keluar dari akun usaha di layar kunci. Atur di “Tim” › “Karyawan” (tombol “Atur PIN saya”), atau lewat Pengaturan › “Akun & keamanan” › “PIN pemilik” › “Atur”.",
       },
       {
         id: "perangkat-baru",
@@ -3496,7 +3890,7 @@ export const GUIDES: GuideItem[] = [
         id: "keluar",
         title: "Keluar dari akun",
         description:
-          "Pilih “Keluar” di menu akun atau di “Lainnya”. Data di perangkat ini dihapus dan perlu internet untuk masuk lagi.",
+          "Pilih “Keluar” di menu akun atau di “Lainnya”. Data di perangkat ini dihapus dan perlu internet untuk masuk lagi. Dari layar kunci, tombolnya bernama “Keluar dari akun usaha” dan meminta PIN pemilik.",
         callout: {
           type: "warning",
           text: "Bila muncul “Ada … perubahan yang belum terkirim ke server”, batalkan dulu dan sambungkan internet. Memilih “Tetap keluar” menghapus perubahan itu.",
@@ -3504,7 +3898,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["hapus-akun", "notifikasi", "karyawan-dan-pin"],
-    keywords: ["akun", "password", "kata sandi", "keamanan", "logout", "keluar", "perangkat baru"],
+    keywords: ["akun", "password", "kata sandi", "ganti password", "syarat kata sandi", "keamanan", "logout", "keluar", "perangkat baru", "pin pemilik", "pin supervisor"],
   },
   {
     slug: "hapus-akun",
@@ -3513,7 +3907,7 @@ export const GUIDES: GuideItem[] = [
     description: "Cara mengajukan penghapusan akun dan data usaha, serta masa tunggunya.",
     audience: ["Pemilik"],
     readMinutes: 2,
-    lastUpdated: UPDATED,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Penghapusan akun menghapus akun dan seluruh data usaha secara permanen. Hanya pemilik usaha yang bisa mengajukannya.",
     steps: [
@@ -3540,7 +3934,7 @@ export const GUIDES: GuideItem[] = [
         id: "karyawan",
         title: "Akun karyawan",
         description:
-          "Karyawan (kasir dan dapur) tidak punya akun terpisah. Pemilik cukup menonaktifkan karyawan di “Tim” › “Karyawan” (matikan “Aktif”).",
+          "Karyawan tidak perlu mengajukan penghapusan sendiri. Pemilik cukup menonaktifkan karyawan di “Tim” › “Karyawan” (matikan “Aktif”).",
       },
     ],
     relatedSlugs: ["akun-dan-keamanan"],
@@ -3555,14 +3949,14 @@ export const GUIDES: GuideItem[] = [
     description: "Beda paket Gratis dan Pro, batas 50 transaksi per bulan, halaman Langganan, dan cara memperpanjang Pro.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 6,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview:
       "Sissi punya dua paket: Gratis dan Pro. Fitur dasar kasir selalu bisa dipakai gratis. Fitur lanjutan seperti meja, kasbon, dan laporan jam ramai termasuk paket Pro. Data kamu tidak pernah dihapus saat paket berakhir.",
     steps: [
       {
         id: "beda-paket",
         title: "Apa saja yang termasuk tiap paket",
-        description: "Paket Gratis sudah mencakup kasir, struk, printer, semua metode bayar, mode offline, laporan dasar, diskon, void/refund, serta buka/tutup kasir. Paket Pro menambahkan:",
+        description: "Paket Gratis sudah mencakup kasir, struk, printer, semua metode bayar, mode offline, laporan dasar, diskon, pembatalan/refund, serta buka/tutup kasir. Paket Pro menambahkan:",
         points: [
           "“Transaksi tanpa batas”.",
           "“Kasbon & pengingat”.",
@@ -3582,21 +3976,21 @@ export const GUIDES: GuideItem[] = [
         id: "batas-transaksi",
         title: "Batas 50 transaksi per bulan di paket Gratis",
         points: [
-          "Dihitung per bulan kalender (WIB): transaksi lunas dan yang di-refund. Transaksi void dan pesanan yang belum dibayar tidak dihitung.",
+          "Dihitung per bulan kalender (WIB): transaksi lunas dan yang di-refund. Transaksi yang dibatalkan dan pesanan yang belum dibayar tidak dihitung.",
           "Mulai transaksi ke-40, Kasir menampilkan “Sisa … transaksi Gratis bulan ini”.",
           "Saat batas tercapai, transaksi baru tidak bisa dimulai dan muncul “Batas Gratis bulan ini tercapai”. Pemilik bisa langsung ketuk “Upgrade ke Pro”.",
-          "Pesanan yang sudah berjalan tetap bisa dibayar. Pelunasan kasbon, refund, void, tutup kasir, dan laporan juga tetap bisa.",
+          "Pesanan yang sudah berjalan tetap bisa dibayar. Pelunasan kasbon, refund, pembatalan transaksi, tutup kasir, dan laporan juga tetap bisa.",
         ],
       },
       {
         id: "buka-halaman",
         title: "Membuka halaman Langganan (pemilik)",
         steps: [
-          "Buka Pengaturan, lalu di grup “Akun” ketuk “Langganan”.",
-          "Lihat kartu status: “Paket Pro” atau “Paket Gratis”, statusnya (“Pro aktif”, “Uji coba Pro”, “Masa tenggang”, atau “Gratis”), dan sisa harinya.",
+          "Buka Pengaturan. Kartu “Langganan” ada paling atas, berisi status dan sisa hari (mis. “Uji coba Pro · Sisa 10 hari”). Bingkainya kuning bila tinggal 7 hari atau kurang, atau sedang masa tenggang. Ketuk kartunya.",
+          "Lihat kartu status: “Paket Pro” atau “Paket Gratis”, statusnya (“Pro aktif”, “Uji coba Pro”, “Masa tenggang”, atau “Gratis”), dan sisa harinya. Di hari terakhir tertulis “Berakhir hari ini”.",
           "Kartu “Transaksi bulan ini” menunjukkan pemakaian, mis. “32 dari 50”.",
           "Kartu “Fitur Pro” menandai fitur yang aktif (centang) dan yang terkunci (gembok).",
-          "Status diperbarui otomatis saat online. Ketuk “Perbarui” untuk mengambil status terbaru sekarang.",
+          "Status diperbarui otomatis saat online. Ketuk “Muat ulang status” untuk mengambil status terbaru sekarang, mis. setelah admin mengonfirmasi pembayaran.",
         ],
         points: ["Halaman ini juga terbuka dari tombol “Lihat Langganan”, “Upgrade ke Pro”, atau “Perpanjang”."],
         image: {
@@ -3613,7 +4007,8 @@ export const GUIDES: GuideItem[] = [
         title: "Berlangganan atau memperpanjang Pro",
         description: "Pembayaran Pro saat ini dilakukan manual lewat transfer, lalu dikonfirmasi admin Sissi.",
         steps: [
-          "Di halaman Langganan, lihat kartu “Cara bayar”: harga bulanan/tahunan, rekening tujuan, dan petunjuk pembayaran. Ketuk ikon salin untuk menyalin nomor rekening. Bila rekening belum tampil, tanyakan lewat “Chat admin via WhatsApp”.",
+          "Di halaman Langganan, ketuk “Berlangganan Pro” (atau “Perpanjang Pro” bila sedang Pro). Halaman langsung bergulir ke kartu “Cara bayar”.",
+          "Di kartu “Cara bayar”, lihat harga bulanan/tahunan, rekening tujuan, dan petunjuk pembayaran. Ketuk ikon salin untuk menyalin nomor rekening. Bila rekening belum tampil, tanyakan lewat “Chat admin via WhatsApp”.",
           "Transfer sesuai harga paket yang dipilih.",
           "Ketuk “Chat admin via WhatsApp”. Pesan berisi nama usahamu sudah terisi; kirim beserta bukti transfer.",
           "Setelah admin mencatat pembayaran, status menjadi “Pro aktif” dan HP pemilik menerima notifikasi “Pro aktif sampai …”. Riwayatnya tampil di kartu “Riwayat pembayaran”.",
@@ -3672,7 +4067,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["notifikasi", "akun-dan-keamanan", "pesan-dan-bayar-mandiri-qr"],
-    keywords: ["langganan", "subscription", "pro", "gratis", "free", "upgrade", "perpanjang", "harga", "bayar langganan", "batas transaksi", "uji coba", "trial", "masa tenggang"],
+    keywords: ["langganan", "subscription", "pro", "gratis", "free", "upgrade", "perpanjang", "harga", "bayar langganan", "batas transaksi", "uji coba", "trial", "masa tenggang", "muat ulang status", "berlangganan pro", "perpanjang pro", "sisa hari"],
   },
 
   // ───────────────────────────── MASALAH UMUM ─────────────────────────────
@@ -3683,7 +4078,7 @@ export const GUIDES: GuideItem[] = [
     description: "Jawaban cepat untuk kendala yang sering terjadi di kasir.",
     audience: ["Pemilik", "Kasir", "Dapur"],
     readMinutes: 5,
-    lastUpdated: UPDATED_NEW,
+    lastUpdated: UPDATED_OCT23,
     overview: "Cari masalahmu di bawah. Bila belum terjawab, buka “Bantuan & Panduan” di aplikasi (menu Lainnya): panduan singkatnya dikelompokkan per topik, mis. “Transaksi & Pembayaran”, “Pesanan & Dapur”, dan “Akun & Langganan”, dan dari sana Anda bisa menghubungi tim Sissi.",
     steps: [
       {
@@ -3696,7 +4091,9 @@ export const GUIDES: GuideItem[] = [
           "Tombol “Simpan” tidak ada → fitur pesanan berjalan tidak aktif di outlet.",
           "QRIS tidak muncul di cara bayar → pemilik belum mengaktifkan QRIS di Pengaturan › “Metode pembayaran”.",
           "Muncul “Batas Gratis bulan ini tercapai” → paket Gratis sudah memakai 50 transaksi bulan ini. Pesanan yang berjalan tetap bisa dibayar; pemilik perlu berlangganan Pro untuk transaksi baru.",
-          "Muncul layar “Fitur Pro” → fitur itu termasuk paket Pro. Data lama tetap aman; minta pemilik memperpanjang Pro di Pengaturan › “Langganan”.",
+          "Muncul layar “Fitur Pro” → fitur itu termasuk paket Pro. Data lama tetap aman; minta pemilik memperpanjang Pro lewat kartu “Langganan” di puncak Pengaturan.",
+          "Tombol tunai bertuliskan “Pilih uang diterima dulu” → pilih “Uang pas”, nominal saran, atau “Nominal lain” dulu.",
+          "Tombol − di item berubah jadi ikon hapus merah → jumlah item tinggal 1; mengetuknya menghapus item dari pesanan.",
           "“Pilih meja” tidak muncul → jenis pesanan bukan “Makan di tempat”.",
           "Pesanan QR tidak masuk → pastikan perangkat online dan izin notifikasi Sissi diberikan.",
         ],
@@ -3725,10 +4122,13 @@ export const GUIDES: GuideItem[] = [
         id: "perangkat",
         title: "Printer dan perangkat",
         points: [
+          "Pengaturan printer ada di mana? → Pengaturan › “Printer & laci uang” (grup “Perangkat”), bukan lagi di “Perangkat ini”.",
+          "Ikon printer di kepala Kasir berwarna merah atau abu → ketuk ikonnya, lalu “Cek ulang” di lembar “Status printer”. Printer Bluetooth murah kadang butuh beberapa detik untuk siap setelah dinyalakan. Ikuti “Coba langkah ini”, atau ketuk “Buka pengaturan printer”.",
           "Printer Bluetooth tidak ditemukan → nyalakan printer, dekatkan, pastikan tidak tersambung ke HP lain, lalu “Cari lagi”. Beri izin Perangkat sekitar bila diminta.",
           "Struk tidak tercetak → cek ada printer yang dicentang “Struk kasir”. Untuk printer jaringan, cek alamat IP dan Wi-Fi yang sama.",
-          "Tulisan terakhir struk ikut tersobek, atau kertas terbuang banyak → atur “Sisa kertas di akhir” dan “Punya pemotong kertas otomatis” di pengaturan printer.",
-          "Laci tidak terbuka → laci hanya terbuka untuk pembayaran tunai dan harus tersambung ke printer struk. Coba “Tes buka laci”.",
+          "Tiket dapur tidak tercetak → di layar “Pembayaran berhasil” ketuk “Cetak ulang tiket dapur”, atau buka Riwayat › transaksinya › “Lainnya” › “Cetak tiket dapur”.",
+          "Tulisan terakhir struk ikut tersobek, atau kertas terbuang banyak → buka “Penyesuaian lanjutan” di lembar printer, lalu atur “Sisa kertas setelah struk” dan “Punya pemotong kertas otomatis”.",
+          "Laci tidak terbuka → laci hanya terbuka untuk pembayaran tunai dan harus dicolok ke port laci printer “Struk kasir” (printer portabel 58 mm umumnya tidak punya port laci). Coba “Tes buka laci” di “Printer & laci uang”; tombol ini baru muncul bila ada printer struk.",
           "Layar dapur tidak tampil penuh → pastikan fitur “Layar dapur” aktif dan yang membuka adalah pemilik atau karyawan berperan Dapur.",
           "Notifikasi pemilik tidak muncul → izinkan notifikasi Android untuk Sissi, lalu nyalakan di Pengaturan › “Notifikasi”.",
         ],
@@ -3745,7 +4145,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["bekerja-offline", "menyambungkan-printer-thermal-bluetooth", "langganan-gratis-dan-pro"],
-    keywords: ["masalah", "error", "tidak bisa", "troubleshooting", "bantuan", "faq", "kendala"],
+    keywords: ["masalah", "error", "tidak bisa", "troubleshooting", "bantuan", "faq", "kendala", "printer merah", "status printer", "laci tidak terbuka", "tiket dapur tidak tercetak"],
   },
 ];
 
