@@ -24,7 +24,7 @@ import { ownerApi } from "@/lib/owner/api";
 import { addDays } from "@/lib/owner/period";
 import type { OwnerDevice, Summary, Totals } from "@/lib/owner/types";
 import { zonedHour, zonedToday, zoneLabel } from "@/lib/owner/tz";
-import { DEVICE_MODE_LABELS, hourLabel, labelOf, WEEKDAYS } from "./labels";
+import { hourLabel, WEEKDAYS } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { RecentSalesList } from "./parts";
 import { Delta, formatDayLong, formatTime, growthPercent, KpiSkeleton, LockedCard, SyncNote } from "./ui";
@@ -339,10 +339,12 @@ function Devices({ devices, now }: { devices: OwnerDevice[]; now: number }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-medium">{d.name}</span>
+                  {/* Mode perangkat tidak dipakai app sejak 2026-10-27 (tampilan
+                      mengikuti peran yang membuka kunci) — tidak ditampilkan. */}
                   <span className="block truncate text-[12.5px] text-text-muted">
-                    {labelOf(DEVICE_MODE_LABELS, d.mode)}
-                    {d.outlet_name ? ` · ${d.outlet_name}` : ""}
-                    {d.app_version ? ` · v${d.app_version}` : ""}
+                    {[d.outlet_name, d.app_version ? `v${d.app_version}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                 </span>
                 <span className={`text-right text-[12.5px] ${old ? "font-semibold text-warning" : "text-text-body"}`}>
