@@ -247,7 +247,7 @@ export const GUIDES: GuideItem[] = [
           "Bila email itu belum terdaftar, muncul layar “Lengkapi pendaftaran”. Nama pemilik sudah terisi dari Google; isi “Nama usaha” dan “Jenis usaha”, centang persetujuan, lalu ketuk “Buat Akun”.",
         ],
         points: [
-          "Daftar lewat Google tidak memakai kata sandi dan tidak perlu kode verifikasi email. Bila ingin juga bisa masuk dengan kata sandi, buat kata sandi lewat “Lupa kata sandi?”.",
+          "Daftar lewat Google tidak memakai kata sandi dan tidak perlu kode verifikasi email. Bila ingin juga bisa masuk dengan kata sandi, buka Pengaturan › Akun & keamanan › Kata sandi › “Atur”.",
           "Akun pemilik yang dulu daftar dengan email bisa juga masuk lewat Google dengan email yang sama.",
           "“Lanjut dengan Google” hanya untuk pemilik. Karyawan tetap memakai PIN.",
         ],
@@ -4079,7 +4079,7 @@ export const GUIDES: GuideItem[] = [
           "Ketuk “Simpan kata sandi”. Muncul “Kata sandi berhasil disimpan.”",
         ],
         points: [
-          "Daftar lewat Google dan belum pernah membuat kata sandi? Kosongkan “Kata sandi saat ini” untuk mengatur kata sandi.",
+          "Daftar lewat Google dan belum punya kata sandi? Tombolnya bertulisan “Atur” dan lembarnya “Atur kata sandi”, tanpa kolom kata sandi lama. Sudah punya kata sandi tapi lupa? Keluar, lalu pakai “Lupa kata sandi” di layar masuk.",
           "Lupa kata sandi saat ini? Gunakan “Lupa kata sandi?” di layar masuk; kode dikirim ke email akun.",
           "Bila muncul “Terlalu banyak percobaan”, tunggu sekitar 15 menit, lalu coba lagi.",
           "Kata sandi ditolak? Pesan penyebabnya tampil langsung di bawah kolom yang perlu diperbaiki.",
