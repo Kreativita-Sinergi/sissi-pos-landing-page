@@ -120,6 +120,7 @@ const UPDATED = "12 Oktober 2026";
 const UPDATED_NEW = "13 Oktober 2026";
 const UPDATED_OCT21 = "21 Oktober 2026";
 const UPDATED_OCT23 = "23 Oktober 2026";
+const UPDATED_OCT28 = "28 Oktober 2026";
 
 // Semua gambar panduan memakai tampilan tablet lanskap 1280×800 (keputusan pemilik).
 const TABLET = { device: "tablet" as const, width: 1280, height: 800 };
@@ -360,6 +361,91 @@ export const GUIDES: GuideItem[] = [
     ],
     relatedSlugs: ["mulai-dalam-5-menit", "layar-dapur", "menyambungkan-printer-thermal-bluetooth", "pesan-dan-bayar-mandiri-qr"],
     keywords: ["outlet", "cabang", "perangkat", "kitchen display", "kds", "self order", "pesan mandiri", "kasir utama"],
+  },
+  {
+    slug: "tambah-dan-kelola-outlet",
+    category: "mulai",
+    title: "Menambah & mengelola outlet (cabang)",
+    description: "Tambah outlet baru dari menu akun, salin pengaturan dari outlet lain, ubah atau hapus outlet, kuota outlet, dan awalan nomor struk per outlet.",
+    audience: ["Pemilik"],
+    readMinutes: 5,
+    lastUpdated: UPDATED_OCT28,
+    overview:
+      "Satu usaha bisa punya beberapa outlet (cabang). Produk, pelanggan, dan karyawan dipakai bersama; pengaturan seperti pajak, pembayaran, dan struk diatur per outlet. Outlet baru langsung bisa dipakai, juga saat offline.",
+    steps: [
+      {
+        id: "tambah-outlet",
+        title: "Tambah outlet",
+        steps: [
+          "Buka menu akun “Akun & outlet” (tablet: ketuk avatar di kanan atas; HP: “Lainnya” lalu ketuk nama kamu).",
+          "Di bawah daftar “Outlet aktif”, ketuk “Tambah outlet”.",
+          "Isi “Nama outlet” dan “Alamat (opsional)”.",
+          "Di “Pengaturan awal”, pilih “Salin dari outlet” lalu tentukan outlet sumber di “Salin pengaturan dari”, atau pilih “Mulai dari awal”.",
+          "Ketuk “Buat outlet”. Aplikasi menawarkan pindah ke outlet baru; pilih “Pindah outlet” bila perangkat ini akan dipakai di sana.",
+        ],
+        callout: {
+          type: "info",
+          text: "Yang disalin: pajak, biaya layanan, pembulatan, struk, transaksi, dan fitur. QRIS, rekening transfer, lokasi absen, dan awalan nomor struk tidak ikut — atur di Pengaturan setelah pindah ke outlet baru.",
+        },
+        image: {
+          ...TABLET,
+          src: "/panduan/outlet-tambah-tablet.png",
+          alt: "Lembar Tambah outlet dengan nama, alamat, dan pilihan Pengaturan awal",
+          caption: "Tambah outlet: pilih salin pengaturan dari outlet lain atau mulai dari awal.",
+        },
+      },
+      {
+        id: "kelola-outlet",
+        title: "Ubah, tutup, atau hapus outlet",
+        steps: [
+          "Buka Pengaturan › “Outlet” (grup “Toko”). Di sini ada “Daftar outlet” dan tombol “Tambah outlet”.",
+          "Ketuk nama outlet untuk membuka “Ubah outlet”: ganti nama dan alamat, atau matikan “Outlet buka” untuk menandai outlet tutup.",
+          "Untuk menghapus, ketuk “Hapus outlet” lalu konfirmasi. Transaksi lama outlet itu tetap ada di laporan.",
+        ],
+        points: [
+          "Outlet tidak bisa dihapus bila itu satu-satunya outlet, sedang dipakai perangkat ini (pindah outlet dulu), atau masih ada perangkat kasir lain yang terdaftar di sana.",
+          "Outlet yang ditandai tutup tetap dihitung kuota. Hapus outlet untuk membebaskan kuota.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/outlet-pengaturan-tablet.png",
+          alt: "Pengaturan Outlet berisi kuota dan daftar outlet",
+          caption: "Pengaturan › Outlet: daftar outlet dan tombol Tambah outlet.",
+        },
+      },
+      {
+        id: "kuota-outlet",
+        title: "Kuota outlet",
+        points: [
+          "Jumlah outlet dibatasi kuota paket (bawaan 1 outlet, untuk Gratis maupun Pro). Pemakaian tampil di Pengaturan › “Outlet” › “Kuota outlet”.",
+          "Bila kuota penuh, “Tambah outlet” menampilkan “Kuota outlet penuh”. Ketuk “Hubungi Sissi” untuk menambah kuota.",
+          "Bila jumlah outlet melebihi kuota (mis. kuota berkurang), hanya outlet tertua yang bisa memulai transaksi baru. Outlet lain bertanda “Baca-saja”: datanya tetap bisa dilihat dan pesanan yang sudah berjalan tetap bisa dibayar.",
+        ],
+      },
+      {
+        id: "nomor-struk-per-outlet",
+        title: "Awalan nomor struk per outlet",
+        description:
+          "Agar struk tiap cabang mudah dibedakan, beri awalan nomor struk per outlet, mis. KMG untuk Kemang.",
+        steps: [
+          "Pindah ke outlet yang ingin diatur, lalu buka Pengaturan › “Struk”.",
+          "Di “Isi struk”, isi “Awalan nomor struk” (maksimal 6 huruf atau angka). Contoh nomor tampil di bawahnya, mis. KMG-261028-A1B2-001.",
+          "Simpan. Transaksi baru di outlet itu memakai awalan tersebut; transaksi lama tidak berubah.",
+        ],
+        callout: {
+          type: "info",
+          text: "Kosong = awalan bawaan “INV”. Bagian tengah nomor (mis. A1B2) menandai perangkat, sehingga dua kasir yang sedang offline tidak pernah menghasilkan nomor yang sama.",
+        },
+        image: {
+          ...TABLET,
+          src: "/panduan/outlet-awalan-struk-tablet.png",
+          alt: "Isian Awalan nomor struk di Pengaturan Struk dengan contoh nomor",
+          caption: "Awalan KMG menghasilkan nomor seperti KMG-261028-A1B2-001.",
+        },
+      },
+    ],
+    relatedSlugs: ["setup-outlet-dan-perangkat", "harga-per-outlet", "langganan-gratis-dan-pro"],
+    keywords: ["cabang", "outlet baru", "tambah cabang", "multi outlet", "kuota outlet", "hapus outlet", "nomor struk", "nomor invoice", "awalan struk"],
   },
   {
     slug: "mengenal-menu-aplikasi",
@@ -1158,6 +1244,98 @@ export const GUIDES: GuideItem[] = [
     keywords: ["varian", "ukuran", "size", "rasa", "warna", "suhu", "kombinasi", "isi massal", "bulk"],
   },
   {
+    slug: "harga-per-outlet",
+    category: "produk",
+    title: "Harga & menu berbeda per outlet",
+    description: "Atur harga jual yang berbeda di tiap outlet, atau sembunyikan menu di outlet tertentu.",
+    audience: ["Pemilik"],
+    readMinutes: 3,
+    lastUpdated: UPDATED_OCT28,
+    overview:
+      "Produk dibuat sekali untuk semua outlet dengan harga pusat. Bila satu cabang menjual dengan harga lain, atau tidak menjual menu tertentu, atur di “Harga per outlet”. Kasir di outlet itu langsung memakai harga dan daftar menu outlet tersebut.",
+    prerequisites: ["Usaha punya lebih dari satu outlet.", "Produk sudah disimpan."],
+    steps: [
+      {
+        id: "atur-harga-outlet",
+        title: "Atur harga per outlet",
+        steps: [
+          "Buka “Produk”, lalu ketuk produk yang ingin diatur.",
+          "Buka bagian “Pengaturan jual” (produk bervarian: “Berlaku untuk semua varian”), lalu ketuk “Harga per outlet”.",
+          "Untuk tiap outlet, isi “Harga di outlet ini”. Kosongkan untuk memakai harga pusat (tertulis di petunjuk kolom).",
+          "Produk bervarian: harga diisi per varian, mis. “Harga Large”.",
+          "Ketuk “Simpan”. Baris di form produk menunjukkan ringkasannya, mis. “Berbeda di 1 outlet”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/harga-per-outlet-tablet.png",
+          alt: "Lembar Harga per outlet untuk Latte dengan harga per varian",
+          caption: "Harga per outlet: kosongkan untuk memakai harga pusat.",
+        },
+      },
+      {
+        id: "sembunyikan-menu",
+        title: "Sembunyikan menu di outlet tertentu",
+        steps: [
+          "Di lembar “Harga per outlet”, matikan “Dijual di outlet ini” pada outlet yang tidak menjual produk itu.",
+          "Untuk varian tertentu saja, matikan sakelar di baris varian (“Varian dijual di outlet ini”).",
+        ],
+        points: [
+          "Menu yang disembunyikan tidak tampil di Kasir outlet itu dan tidak bisa ditambahkan lewat pencarian atau pindai barcode (“… tidak dijual di outlet ini”).",
+          "Menu Pesan & Bayar Mandiri (QR) outlet itu juga mengikuti harga dan ketersediaan outlet.",
+          "Daftar produk dan laporan tetap menampilkan harga pusat; harga yang benar-benar dibayar tercatat di tiap transaksi.",
+        ],
+      },
+    ],
+    relatedSlugs: ["menambah-produk", "produk-dengan-varian", "tambah-dan-kelola-outlet"],
+    keywords: ["harga cabang", "harga berbeda", "harga outlet", "menu cabang", "sembunyikan menu", "tidak dijual"],
+  },
+  {
+    slug: "paket-menu",
+    category: "produk",
+    title: "Paket menu (bundling)",
+    description: "Jual beberapa menu sebagai satu paket dengan harga paket; stok, modal, dan tiket dapur memakai isinya.",
+    audience: ["Pemilik", "Kasir", "Dapur"],
+    readMinutes: 3,
+    lastUpdated: UPDATED_OCT28,
+    overview:
+      "Paket adalah produk biasa yang punya isi, mis. “Paket Hemat” = 1 nasi goreng + 2 es teh. Kasir menjualnya sebagai satu baris seharga paket. Stok dan bahan baku dipotong dari isinya, modal paket dihitung dari modal isinya, dan dapur melihat isi paket di tiketnya.",
+    steps: [
+      {
+        id: "buat-paket",
+        title: "Buat paket",
+        steps: [
+          "Buat produk baru (mis. “Paket Hemat”) dengan harga paket, atau buka produk yang sudah ada. Paket hanya untuk produk tanpa varian.",
+          "Buka bagian “Isi paket”, lalu ketuk “Tambah isi”.",
+          "Di “Pilih isi paket”, pilih produk. Produk bervarian dipilih per varian, mis. “Latte · Large”.",
+          "Atur jumlah tiap isi dengan tombol − / +, atau hapus isi dengan ikon tempat sampah.",
+          "Simpan. Ringkasan bagian menjadi mis. “Paket · 3 isi”.",
+        ],
+        callout: {
+          type: "info",
+          text: "Paket tidak bisa berisi paket lain atau dirinya sendiri, dan produk yang sudah menjadi isi paket tidak bisa dijadikan paket.",
+        },
+        image: {
+          ...TABLET,
+          src: "/panduan/paket-menu-tablet.png",
+          alt: "Bagian Isi paket di form produk berisi Nasi Goreng dan Es Teh",
+          caption: "Isi paket: atur jumlah tiap isi dengan tombol − / +.",
+        },
+      },
+      {
+        id: "jual-paket",
+        title: "Saat paket dijual",
+        points: [
+          "Stok habis tidak bisa dijual: jumlah paket dibatasi isi yang stoknya paling sedikit.",
+          "Stok dan bahan baku isi dipotong saat dibayar, dan kembali bila transaksi dibatalkan atau di-refund.",
+          "Tiket dapur mencantumkan isinya di bawah nama paket, mis. “1× Nasi Goreng” dan “2× Es Teh”.",
+          "Paket belum tersedia di Pesan & Bayar Mandiri (QR); menu QR tidak menampilkan paket.",
+        ],
+      },
+    ],
+    relatedSlugs: ["menambah-produk", "hpp-resep-dan-bahan-baku", "layar-dapur"],
+    keywords: ["paket", "bundling", "combo", "paket hemat", "isi paket", "menu paket"],
+  },
+  {
     slug: "hpp-resep-dan-bahan-baku",
     category: "produk",
     title: "Harga modal (HPP), resep & bahan baku",
@@ -1464,10 +1642,10 @@ export const GUIDES: GuideItem[] = [
     slug: "diskon-dan-promo",
     category: "produk",
     title: "Membuat diskon",
-    description: "Diskon persen atau nominal untuk nota, kategori, atau produk, plus diskon per baris langsung di kasir.",
+    description: "Diskon persen atau nominal untuk nota, kategori, atau produk, promo berjadwal (happy hour), kode voucher, plus diskon per baris langsung di kasir.",
     audience: ["Pemilik", "Kasir"],
-    readMinutes: 5,
-    lastUpdated: UPDATED_OCT23,
+    readMinutes: 6,
+    lastUpdated: UPDATED_OCT28,
     overview:
       "Ada tiga cara memberi potongan: diskon yang dibuat pemilik (promo), diskon per baris untuk satu item di pesanan, dan diskon manual per nota yang diisi kasir saat pembayaran.",
     steps: [
@@ -1484,6 +1662,46 @@ export const GUIDES: GuideItem[] = [
         callout: {
           type: "info",
           text: "Hanya satu diskon otomatis per nota: yang minimum belanjanya tertinggi dan terpenuhi.",
+        },
+      },
+      {
+        id: "jadwal-promo",
+        title: "Promo berjadwal (hari & jam tertentu)",
+        description: "Mis. diskon 20% setiap Jumat, atau happy hour pukul 15.00–17.00.",
+        steps: [
+          "Di form diskon, pilih hari di “Hari berlaku” (Sen–Min). “Setiap hari” = tanpa batas hari.",
+          "Untuk jam tertentu, nyalakan “Jam tertentu”, lalu isi “Jam mulai” dan “Jam selesai” (mis. 15:00 dan 17:00).",
+          "Simpan. Di luar jadwal, promo tidak dipasang otomatis dan tidak bisa dipilih kasir.",
+        ],
+        points: [
+          "Jam selesai lebih kecil dari jam mulai berarti lewat tengah malam, mis. 22:00–02:00. Jam setelah tengah malam dihitung milik hari mulainya (Jumat 22:00–02:00 juga berlaku Sabtu pukul 01:00).",
+          "Jadwal dinilai dengan jam perangkat kasir.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/diskon-berjadwal-tablet.png",
+          alt: "Form diskon dengan hari Senin sampai Jumat dan jam 15:00–17:00",
+          caption: "Happy hour hari kerja pukul 15.00–17.00.",
+        },
+      },
+      {
+        id: "kode-voucher",
+        title: "Kode voucher",
+        steps: [
+          "Di form diskon, isi “Kode voucher (opsional)”, mis. HEMAT10 (3–20 huruf, angka, atau tanda hubung).",
+          "Diskon berkode tidak bisa “Pakai otomatis” dan tidak tampil di daftar promo kasir.",
+          "Saat bayar, kasir membuka “Diskon, pajak & catatan”, mengisi “Kode voucher”, lalu ketuk “Pakai voucher”. Huruf besar/kecil tidak berpengaruh.",
+        ],
+        points: [
+          "Kode salah: “Kode voucher tidak dikenal”. Di luar jadwal/periode: “Voucher ini tidak berlaku sekarang”.",
+          "Jadwal dan minimum belanja voucher tetap berlaku.",
+          "Belum ada batas jumlah pemakaian voucher; nonaktifkan diskonnya bila kuota promo sudah habis.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/kode-voucher-tablet.png",
+          alt: "Lembar Diskon, pajak & catatan dengan voucher HEMAT10 terpasang",
+          caption: "Kode voucher dimasukkan kasir, lalu promo muncul di bagian Promo.",
         },
       },
       {
@@ -1539,7 +1757,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["mencatat-transaksi-di-kasir", "menerima-pembayaran-qris-dan-tunai", "menambah-produk"],
-    keywords: ["diskon", "promo", "potongan", "voucher", "happy hour", "diskon item", "diskon per item", "diskon baris", "gratis"],
+    keywords: ["diskon", "promo", "potongan", "voucher", "kode voucher", "kupon", "happy hour", "jam promo", "promo hari", "diskon item", "diskon per item", "diskon baris", "gratis"],
   },
 
   // ───────────────────────────── JUALAN ─────────────────────────────
@@ -3978,6 +4196,14 @@ export const GUIDES: GuideItem[] = [
           "Mulai transaksi ke-40, Kasir menampilkan “Sisa … transaksi Gratis bulan ini”.",
           "Saat batas tercapai, transaksi baru tidak bisa dimulai dan muncul “Batas Gratis bulan ini tercapai”. Pemilik bisa langsung ketuk “Upgrade ke Pro”.",
           "Pesanan yang sudah berjalan tetap bisa dibayar. Pelunasan kasbon, refund, pembatalan transaksi, tutup kasir, dan laporan juga tetap bisa.",
+        ],
+      },
+      {
+        id: "kuota-outlet",
+        title: "Kuota outlet",
+        points: [
+          "Kedua paket mencakup 1 outlet. Tambahan outlet diatur lewat Sissi: ketuk “Hubungi Sissi” saat muncul “Kuota outlet penuh”.",
+          "Bila outlet melebihi kuota, hanya outlet tertua yang bisa memulai transaksi baru; outlet lain “Baca-saja”. Lihat panduan “Menambah & mengelola outlet (cabang)”.",
         ],
       },
       {
