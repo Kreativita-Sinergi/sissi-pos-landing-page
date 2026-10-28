@@ -2872,7 +2872,7 @@ export const GUIDES: GuideItem[] = [
         id: "tutup-kasir",
         title: "Tutup kasir",
         steps: [
-          "Ketuk “Tutup Kasir”.",
+          "Di Beranda, ketuk “Shift & tutup kasir” di kartu shift (atau “Shift · nama” di Kasir), lalu “Tutup Kasir”.",
           "Langkah 1: hitung semua uang di laci, lalu ketik totalnya di papan angka. Di HP ketuk “Lanjut”.",
           "Langkah 2: periksa “Ringkasan shift”. Sebelum ada uang dihitung, tertulis “Hitung uang di laci dulu — selisih tampil setelah uang dihitung.” Setelah dihitung, selisih ditulis dengan kata: “Pas”, “Kurang Rp…”, atau “Lebih Rp…”. Bila ada selisih, isi “Alasan selisih”.",
           "Konfirmasi “Tutup kasir sekarang?”. Shift yang sudah ditutup tidak bisa dibuka lagi.",
@@ -3567,7 +3567,7 @@ export const GUIDES: GuideItem[] = [
         ],
         points: [
           "Pemilik juga bisa “Atur PIN saya”. PIN ini disebut “PIN pemilik” dan dipakai untuk menyetujui refund, pembatalan transaksi, dan aksi kasir lainnya.",
-          "Bila masih ada karyawan aktif tanpa PIN, Beranda menampilkan catatan kuning yang menyebut namanya, mis. “Rani belum punya PIN…”, dengan tombol “Atur PIN” dan “Tutup”.",
+          "Bila masih ada karyawan aktif tanpa PIN, Beranda menampilkan catatan kuning yang menyebut namanya, mis. “Rani belum punya PIN…”, dengan tombol “Atur PIN” dan tautan “Ingatkan nanti” (catatan muncul lagi 7 hari kemudian). Catatan ini hanya tampil untuk pemilik.",
         ],
         image: {
           ...TABLET,
