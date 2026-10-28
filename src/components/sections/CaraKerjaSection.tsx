@@ -29,9 +29,9 @@ const SCREEN_CARDS = [
   {
     title: "Tutup kasir",
     description:
-      "Hitung uang di laci per pecahan. Sissi membandingkannya dengan catatan shift dan menampilkan selisihnya.",
+      "Hitung uang di laci, ketik totalnya. Sissi membandingkannya dengan catatan shift dan menampilkan selisihnya.",
     image: "/images/app/tutup-kasir-tablet.webp",
-    alt: "Layar Tutup Kasir Sissi: hitung uang fisik per pecahan dan ringkasan shift.",
+    alt: "Layar Tutup Kasir Sissi: hitung uang fisik dan ringkasan shift.",
   },
 ];
 

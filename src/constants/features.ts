@@ -44,9 +44,9 @@ export const FEATURE_TABS: FeatureTab[] = [
     id: "shift",
     name: "Shift & kas",
     summary:
-      "Buka kasir dengan modal awal, catat kas masuk dan keluar, lalu tutup kasir dengan hitungan per pecahan. Selisihnya langsung terlihat.",
+      "Buka kasir dengan modal awal, catat kas masuk dan keluar, lalu tutup kasir dengan mengetik total uang fisik. Selisihnya langsung terlihat.",
     imageSrc: "/images/app/tutup-kasir-tablet.webp",
-    imageAlt: "Layar Tutup Kasir Sissi dengan hitungan uang per pecahan.",
+    imageAlt: "Layar Tutup Kasir Sissi dengan hitungan uang fisik.",
   },
   {
     id: "laporan",

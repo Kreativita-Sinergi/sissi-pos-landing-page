@@ -1898,6 +1898,7 @@ export const GUIDES: GuideItem[] = [
           "Ketuk pesanan untuk membuka rinciannya. Bilah bawah berisi tombol ⋯, “Ubah”, dan “Bayar Rp …”. “Terima DP”, “Pisah pesanan”, dan “Batalkan pesanan” ada di menu ⋯.",
           "Ketuk “Ubah” (atau menu ⋯ di kartu › “Ubah”). Pesanan terbuka di Kasir dengan judul “Ubah pesanan …”.",
           "Tambah atau kurangi item, lalu ketuk “Simpan perubahan” dan konfirmasi “Simpan perubahan pesanan?”. Item tambahan dikirim ke dapur dengan tanda TAMBAHAN.",
+          "Tidak jadi mengubah? Ketuk “Batal ubah” › “Buang perubahan”; pesanan kembali seperti semula.",
           "Untuk menagih, ketuk “Bayar Rp …” di rincian atau “Bayar” di kartu pesanan.",
         ],
         callout: {
@@ -2872,18 +2873,18 @@ export const GUIDES: GuideItem[] = [
         title: "Tutup kasir",
         steps: [
           "Ketuk “Tutup Kasir”.",
-          "Langkah 1: hitung uang fisik. Pilih “Per pecahan” (isi jumlah lembar per pecahan) atau “Isi total”, lalu “Lanjut”.",
+          "Langkah 1: hitung semua uang di laci, lalu ketik totalnya di papan angka. Di HP ketuk “Lanjut”.",
           "Langkah 2: periksa “Ringkasan shift”. Sebelum ada uang dihitung, tertulis “Hitung uang di laci dulu — selisih tampil setelah uang dihitung.” Setelah dihitung, selisih ditulis dengan kata: “Pas”, “Kurang Rp…”, atau “Lebih Rp…”. Bila ada selisih, isi “Alasan selisih”.",
           "Konfirmasi “Tutup kasir sekarang?”. Shift yang sudah ditutup tidak bisa dibuka lagi.",
         ],
         devices: {
-          hp: "Selama tutup kasir, menu bawah disembunyikan agar papan angka punya ruang. Baris pecahan yang sedang diisi digulir otomatis ke atas papan angka; tekan Enter untuk pindah ke pecahan berikutnya.",
+          hp: "Tutup kasir dibagi dua langkah: ketik total uang fisik, lalu periksa ringkasan dan tutup.",
         },
         image: {
           ...TABLET,
           src: "/panduan/tutup-kasir-tablet.png",
-          alt: "Layar Tutup Kasir: hitung uang fisik per pecahan dan ringkasan shift",
-          caption: "Hitung uang fisik per pecahan.",
+          alt: "Layar Tutup Kasir: total uang fisik dan ringkasan shift",
+          caption: "Ketik total uang fisik di laci.",
         },
       },
       {
@@ -3520,7 +3521,7 @@ export const GUIDES: GuideItem[] = [
         id: "tambah",
         title: "Tambah karyawan",
         steps: [
-          "Buka “Tim” › “Karyawan” › “Tambah karyawan” (di HP tombolnya “+ Karyawan”).",
+          "Buka “Tim” › “Karyawan” › “Tambah karyawan” (di HP tombolnya “+ Tambah”).",
           "Isi “Nama karyawan”; “No. HP (opsional)” dan “Email (opsional)” boleh dikosongkan. No. HP wajib bila karyawan akan diundang ke HP pribadinya.",
           "Pilih “Akses di aplikasi” (lihat di bawah).",
           "Bila perlu, pilih “Jabatan (label saja, opsional)”, mis. barista atau pelayan. Jabatan hanya label dan tidak mengubah akses.",

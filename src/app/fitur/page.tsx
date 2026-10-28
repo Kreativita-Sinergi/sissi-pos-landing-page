@@ -160,11 +160,11 @@ const FEATURE_BLOCKS: FeatureBlock[] = [
     label: "Shift & kas",
     title: "Uang di laci cocok dengan catatan.",
     image: "/images/app/tutup-kasir-tablet.webp",
-    imageAlt: "Layar Tutup Kasir Sissi dengan hitungan per pecahan dan ringkasan shift.",
+    imageAlt: "Layar Tutup Kasir Sissi dengan hitungan uang fisik dan ringkasan shift.",
     items: [
       {
         title: "Buka & tutup kasir",
-        description: "Modal awal per perangkat, hitung akhir per pecahan atau total.",
+        description: "Modal awal per perangkat, hitung akhir cukup ketik total.",
       },
       {
         title: "Kas masuk & keluar",
