@@ -2876,6 +2876,7 @@ export const GUIDES: GuideItem[] = [
           "Langkah 1: hitung semua uang di laci, lalu ketik totalnya di papan angka. Di HP ketuk “Lanjut”.",
           "Langkah 2: periksa “Ringkasan shift”. Sebelum ada uang dihitung, tertulis “Hitung uang di laci dulu — selisih tampil setelah uang dihitung.” Setelah dihitung, selisih ditulis dengan kata: “Pas”, “Kurang Rp…”, atau “Lebih Rp…”. Bila ada selisih, isi “Alasan selisih”.",
           "Konfirmasi “Tutup kasir sekarang?”. Shift yang sudah ditutup tidak bisa dibuka lagi.",
+          "Shift tertinggal terbuka di HP yang dipasang ulang atau tidak dipakai lagi? Pemilik bisa menutupnya di Riwayat Tutup Kasir › “Tutup” (uang fisik dicatat sama dengan perkiraan sistem; koreksi bila berbeda).",
         ],
         devices: {
           hp: "Tutup kasir dibagi dua langkah: ketik total uang fisik, lalu periksa ringkasan dan tutup.",
