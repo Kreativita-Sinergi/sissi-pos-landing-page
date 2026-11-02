@@ -24,8 +24,8 @@ export const APK_LATEST_URL = `${APK_BASE_URL}/sissi-pos-latest.apk`;
 export const APK_LATEST_JSON_URL = `${APK_BASE_URL}/latest.json`;
 
 /**
- * Cadangan APK di folder Google Drive bila server unduhan bermasalah. Folder (bukan berkas) agar
- * tautan tetap; tiap rilis cukup unggah APK baru ke folder ini dan hapus yang lama.
+ * Cadangan APK di folder Google Drive bila server unduhan bermasalah. Folder "sissi-pos-apk" diisi OTOMATIS oleh
+ * server (sissi-pos-service deploy/sync-apk-drive.sh) tiap rilis: hanya satu berkas `sissi-pos.apk` (terbaru).
+ * Folder (bukan berkas) agar tautan tetap walau berkasnya diganti.
  */
-export const APK_MIRROR_URL =
-  "https://drive.google.com/drive/folders/1iJTowvSBdAr79D5UAOZCWxM5YR_CEK7B?usp=drive_link";
+export const APK_MIRROR_URL = "https://drive.google.com/drive/folders/1VR-GUWtYGdlssAf2MRJZmw2314qQkh3F";

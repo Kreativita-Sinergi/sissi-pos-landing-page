@@ -144,8 +144,8 @@ export function ApkRelease({ children }: { children: React.ReactNode }) {
                 <p className="mt-4 text-[14px] text-text-body">
                   Server unduhan kami sedang bermasalah. Untuk sementara, unduh
                   dari folder Google Drive: buka foldernya, pilih berkas{" "}
-                  <span className="font-mono text-[13px]">.apk</span> dengan
-                  versi terbaru, lalu ketuk Unduh.
+                  <span className="font-mono text-[13px]">sissi-pos.apk</span>,
+                  lalu ketuk Unduh.
                 </p>
               </>
             )}
