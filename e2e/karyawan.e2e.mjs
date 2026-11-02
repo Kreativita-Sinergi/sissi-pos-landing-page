@@ -134,6 +134,22 @@ test("aturan Tolak + lokasi jauh → OUTSIDE_AREA dengan jarak", async () => {
   await page.close();
 });
 
+test("aturan Boleh + lokasi jauh → dialog 'tetap absen?' → tercatat di luar area", async () => {
+  const page = await fresh();
+  await page.setGeolocation(FAR);
+  await login(page, "boleh@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu di luar area outlet");
+  assert(/batas 100/.test(await text(page)), "batas radius tidak tampil di dialog");
+  await shot(page, "absen-boleh-konfirmasi-360");
+  await noOverflow(page, "dialog konfirmasi 360");
+  await clickButton(page, "Tetap absen masuk");
+  await waitText(page, "Absen masuk tercatat");
+  await waitText(page, "di luar area");
+  await page.close();
+});
+
 test("paket Gratis → terkunci, tombol mati", async () => {
   const page = await fresh();
   await login(page, "gratis@contoh.id");
