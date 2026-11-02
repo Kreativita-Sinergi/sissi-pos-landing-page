@@ -56,7 +56,8 @@ export type StaffToday = {
   rules: {
     work_start: string;
     work_end: string;
-    late_tolerance_min: number;
+    /** `null` (sejak 2026-11-02) = telat tidak dihitung. */
+    late_tolerance_min: number | null;
     off_day: boolean;
     shift?: { name: string; start: string; end: string } | null;
   };

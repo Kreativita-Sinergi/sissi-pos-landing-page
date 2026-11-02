@@ -276,7 +276,8 @@ export type Loyalty = {
 export type AttendanceRules = {
   work_start: string;
   work_end: string;
-  late_tolerance_min: number;
+  /** `null` (sejak 2026-11-02) = telat tidak dihitung — absen masuk selalu tepat waktu. */
+  late_tolerance_min: number | null;
   /** 1 = Senin … 7 = Minggu. */
   off_days: number[];
 };
@@ -313,11 +314,40 @@ export function readAttendance(settings: unknown): AttendanceRules {
   return {
     work_start: isHHMM(ws) ? ws : "08:00",
     work_end: isHHMM(we) ? we : "17:00",
-    late_tolerance_min: int(s.late_tolerance_min, 10, 0, 1440),
+    // Kunci hilang/rusak → bawaan 10; `null` eksplisit = pilihan pemilik "telat tidak dihitung" (dipertahankan).
+    late_tolerance_min: s.late_tolerance_min === null ? null : int(s.late_tolerance_min, 10, 0, 1440),
     off_days: Array.isArray(s.off_days)
       ? [...new Set(s.off_days.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7))].sort()
       : [7],
   };
+}
+
+/** Templat shift (`shift_rules.templates`) yang jamnya sah. */
+export type ShiftTemplateLite = { id: string; name: string; start: string; end: string };
+/**
+ * Shift tetap mingguan (`shift_rules.patterns`, 2026-11-02): `{ "<employee_id>": { "1": ["<template_id>", …], … } }`
+ * (kunci hari ISO). Web hanya membaca — bagian `shift_rules` tidak pernah ditulis web.
+ */
+export type ShiftPatterns = { templates: ShiftTemplateLite[]; patterns: Record<string, Record<string, string[]>> };
+
+export function readShiftPatterns(settings: unknown): ShiftPatterns {
+  const s = obj(obj(settings).shift_rules);
+  const templates = (Array.isArray(s.templates) ? s.templates : []).filter(isObj).flatMap((t) => {
+    const start = str(t.start);
+    const end = str(t.end);
+    const id = str(t.id);
+    return id && isHHMM(start) && isHHMM(end) ? [{ id, name: str(t.name), start, end }] : [];
+  });
+  const patterns: Record<string, Record<string, string[]>> = {};
+  for (const [emp, days] of Object.entries(obj(s.patterns))) {
+    if (!isObj(days)) continue;
+    const week: Record<string, string[]> = {};
+    for (const [d, ids] of Object.entries(days)) {
+      if (Array.isArray(ids)) week[d] = ids.filter((x): x is string => typeof x === "string");
+    }
+    patterns[emp] = week;
+  }
+  return { templates, patterns };
 }
 
 // ——— Zona waktu usaha ———

@@ -9,6 +9,7 @@ import { Segmented } from "@/components/owner/editing";
 import { Select } from "@/components/owner/Select";
 import {
   clockLabel,
+  dayPlan,
   evaluateClockIn,
   manualMinDay,
   parseClockMinutes,
@@ -140,7 +141,7 @@ function ManualForm({
   const present = f.choice === "present";
   const inMin = parseClockMinutes(f.inText);
   const outMin = parseClockMinutes(f.outText);
-  const verdict = present && inMin !== null ? evaluateClockIn(ctx.data.rules, date, inMin) : null;
+  const verdict = present && inMin !== null ? evaluateClockIn(ctx.data.rules, date, inMin, dayPlan(ctx.data.rules, date, ctx.data.shifts, employeeId)) : null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -132,10 +132,13 @@ export function NumberInput({
   describedBy,
   className = "",
   placeholder,
+  onEmpty,
 }: {
   id: string;
   value: number;
   onChange: (v: number) => void;
+  /** Bila diisi: kotak dikosongkan memanggil ini (bukan `onChange(NaN)`), mis. "kosong = tidak dihitung". */
+  onEmpty?: () => void;
   kind?: "int" | "percent";
   suffix?: string;
   prefix?: string;
@@ -172,6 +175,7 @@ export function NumberInput({
         aria-describedby={describedBy}
         onChange={(e) => {
           setText(e.target.value);
+          if (onEmpty && !e.target.value.trim()) return onEmpty();
           const n = parse(e.target.value);
           onChange(n === null ? NaN : n);
         }}

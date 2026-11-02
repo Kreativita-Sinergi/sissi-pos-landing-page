@@ -297,9 +297,9 @@ export function ClockView() {
             </>
           )}
         </dl>
-        {!today.rules.off_day && today.rules.late_tolerance_min > 0 && (
+        {!today.rules.off_day && today.rules.late_tolerance_min !== 0 && (
           <p className="border-t border-border-subtle px-4 py-2 text-center text-[12.5px] text-text-muted">
-            Toleransi terlambat {today.rules.late_tolerance_min} menit
+            {today.rules.late_tolerance_min === null ? "Telat tidak dihitung" : `Toleransi terlambat ${today.rules.late_tolerance_min} menit`}
           </p>
         )}
       </section>

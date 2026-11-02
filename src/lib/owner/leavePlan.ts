@@ -55,14 +55,17 @@ export function planLeaveApproval(
 type AttendanceLite = { id: string; employee_id: string; date: string; clock_in_at: string | null; outlet_id: string; updated_at: string };
 type LeaveLite = { id: string; employee_id: string; outlet_id: string | null; kind: LeaveKind; date_from: string; date_to: string };
 
-/** Rencana untuk pengajuan `r` dari absen yang ada & hari libur mingguan (`off_days`, 1 = Senin … 7 = Minggu). */
-export function planFor(r: LeaveLite, attendances: AttendanceLite[], offDays: number[]): LeaveApproval {
+/**
+ * Rencana untuk pengajuan `r` dari absen yang ada & hari libur: daftar hari libur mingguan (`off_days`, 1 = Senin …
+ * 7 = Minggu) atau fungsi libur per tanggal (aturan efektif karyawan, mis. shift tetap).
+ */
+export function planFor(r: LeaveLite, attendances: AttendanceLite[], offDays: number[] | ((day: string) => boolean)): LeaveApproval {
   const clocked = new Set(
     attendances.filter((a) => a.employee_id === r.employee_id && a.clock_in_at && a.date >= r.date_from && a.date <= r.date_to).map((a) => a.date)
   );
   return planLeaveApproval(
     leaveDays(r.date_from, r.date_to),
-    (d) => offDays.includes(weekdayOf(d)),
+    typeof offDays === "function" ? offDays : (d) => offDays.includes(weekdayOf(d)),
     (d) => clocked.has(d)
   );
 }

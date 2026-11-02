@@ -917,7 +917,8 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
   const set = <K extends keyof AttendanceRules>(k: K, v: AttendanceRules[K]) => setDraft({ ...draft, [k]: v });
   const startErr = !isHHMM(draft.work_start) ? "Jam tidak sah." : undefined;
   const endErr = !isHHMM(draft.work_end) ? "Jam tidak sah." : undefined;
-  const tolErr = !Number.isFinite(draft.late_tolerance_min) || draft.late_tolerance_min > 240 ? "0–240 menit." : undefined;
+  const tol = draft.late_tolerance_min;
+  const tolErr = tol !== null && (!Number.isFinite(tol) || tol > 240) ? "0–240 menit, atau kosongkan." : undefined;
   return (
     <EditSection
       id="absensi"
@@ -946,8 +947,16 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
         <Field id={`${uid}-end`} label="Jam pulang" error={endErr} hint="Menit setelah jam ini = lembur.">
           <input id={`${uid}-end`} type="time" className={`${inputClass} tabular-nums`} value={draft.work_end} aria-invalid={!!endErr || undefined} onChange={(e) => set("work_end", e.target.value)} />
         </Field>
-        <Field id={`${uid}-tol`} label="Toleransi terlambat" error={tolErr}>
-          <NumberInput id={`${uid}-tol`} value={draft.late_tolerance_min} suffix="mnt" invalid={!!tolErr} onChange={(v) => set("late_tolerance_min", v)} />
+        <Field id={`${uid}-tol`} label="Toleransi terlambat" error={tolErr} hint={tol === null ? "Kosong = telat tidak dihitung (absen masuk selalu tepat waktu)." : "Kosongkan bila telat tidak dihitung."}>
+          <NumberInput
+            id={`${uid}-tol`}
+            value={tol ?? NaN}
+            suffix="mnt"
+            placeholder="Tidak dihitung"
+            invalid={!!tolErr}
+            onChange={(v) => set("late_tolerance_min", v)}
+            onEmpty={() => set("late_tolerance_min", null)}
+          />
         </Field>
       </div>
       <div>

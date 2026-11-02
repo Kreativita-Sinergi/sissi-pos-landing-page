@@ -61,7 +61,7 @@ function PayrollForm({
   );
   const [error, setError] = useState<string | null>(null);
   const month = zonedToday().slice(0, 7);
-  const recap = recapFor(employee, month, ctx.data.attendances, ctx.data.rules);
+  const recap = recapFor(employee, month, ctx.data);
   const estimate = computePayslip(c, recap).net;
   const paid = c.type !== "none";
   const set = (k: keyof PayrollConfig) => (v: number | null) => setC((p) => ({ ...p, [k]: v ?? 0 }));

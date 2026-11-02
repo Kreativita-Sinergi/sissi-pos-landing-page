@@ -88,8 +88,9 @@ export function AttendanceTab({
       )}
       <p className="mt-3 flex items-start gap-1.5 text-[12.5px] text-text-muted">
         <Info size={14} aria-hidden className="mt-0.5 shrink-0" />
-        Jam kerja {rules.work_start}–{rules.work_end}, toleransi {rules.late_tolerance_min} menit
-        {rules.off_days.length ? `, libur ${rules.off_days.map((d) => WEEKDAYS[d - 1]).join(", ")}` : ""}. Karyawan absen masuk & pulang dengan PIN
+        Jam kerja {rules.work_start}–{rules.work_end}, {rules.late_tolerance_min === null ? "telat tidak dihitung" : `toleransi ${rules.late_tolerance_min} menit`}
+        {rules.off_days.length ? `, libur ${rules.off_days.map((d) => WEEKDAYS[d - 1]).join(", ")}` : ""}
+        {Object.keys(ctx.data.shifts.patterns).length ? " (karyawan dengan shift tetap mengikuti shiftnya)" : ""}. Karyawan absen masuk & pulang dengan PIN
         di perangkat toko, dari aplikasi Sissi di HP pribadi, atau lewat website (kasir.sissi.id/karyawan); koreksi dari
         sini tercatat sebagai input manual pemilik.
       </p>
@@ -203,7 +204,7 @@ function History({
     .filter((e) => e.is_active || withRows.has(e.id))
     .sort((a, b) => a.name.localeCompare(b.name, "id-ID", { sensitivity: "base" }));
   const shown = employeeFilter ? people.filter((e) => e.id === employeeFilter) : people;
-  const recaps = shown.map((e) => ({ e, r: recapFor(e, month, ctx.data.attendances, ctx.data.rules, today) }));
+  const recaps = shown.map((e) => ({ e, r: recapFor(e, month, ctx.data, today) }));
   const days = recaps[0]?.r.days.map((d) => d.day) ?? [];
 
   const minDay = manualMinDay(today);

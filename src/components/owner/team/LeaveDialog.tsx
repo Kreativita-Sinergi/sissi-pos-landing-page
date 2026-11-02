@@ -7,7 +7,7 @@ import { useToast } from "@/components/admin/toast";
 import { btn, errorMessage, Field, formatDateTime, inputClass, Notice, Spinner } from "@/components/admin/ui";
 import { approveLeave, rejectLeave } from "@/lib/owner/leave";
 import { LEAVE_NOTE_MAX, leaveDayList, planFor, type LeaveRequest } from "@/lib/owner/leavePlan";
-import { ROLE_LABEL } from "@/lib/owner/team";
+import { dayPlan, ROLE_LABEL } from "@/lib/owner/team";
 import { LEAVE_KIND_LABEL, LeaveStatusBadge, leaveRangeText } from "./LeaveTab";
 import type { TeamCtx } from "./shared";
 
@@ -84,7 +84,10 @@ function LeaveBody({
   const employee = ctx.data.employees.find((e) => e.id === r.employee_id) ?? null;
   const decider = r.decided_by ? (ctx.data.employees.find((e) => e.id === r.decided_by)?.name ?? "Pemilik") : null;
   const outlet = r.outlet_id ? ctx.data.outlets.find((o) => o.id === r.outlet_id)?.name : null;
-  const plan = useMemo(() => planFor(r, ctx.data.attendances, ctx.data.rules.off_days), [r, ctx.data.attendances, ctx.data.rules.off_days]);
+  const plan = useMemo(
+    () => planFor(r, ctx.data.attendances, (d) => dayPlan(ctx.data.rules, d, ctx.data.shifts, r.employee_id).off),
+    [r, ctx.data.attendances, ctx.data.rules, ctx.data.shifts]
+  );
   const kind = LEAVE_KIND_LABEL[r.kind];
   const tooLong = note.trim().length > LEAVE_NOTE_MAX;
 

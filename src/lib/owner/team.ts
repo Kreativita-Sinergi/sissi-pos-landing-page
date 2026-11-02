@@ -15,7 +15,7 @@
 
 import { pullAll, pushChanges } from "./api";
 import { toLeave, type LeaveRequest } from "./leavePlan";
-import { readAttendance, type AttendanceRules } from "./settings";
+import { readAttendance, readShiftPatterns, type AttendanceRules, type ShiftPatterns } from "./settings";
 import type { AttendanceVia } from "../attendanceVia";
 import type { ChangeResult, SyncRecord, WritableEntity } from "./types";
 import { zonedDay, zonedHHMM, zoneOffsetMs, zonedToday } from "./tz";
@@ -121,6 +121,8 @@ export type TeamData = {
   /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
   leaves: LeaveRequest[];
   rules: AttendanceRules;
+  /** Shift tetap mingguan per karyawan (`shift_rules.patterns`); `shift_assignments` tidak ditarik web. */
+  shifts: ShiftPatterns;
   outlets: OutletLite[];
 };
 
@@ -210,6 +212,7 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     payslips: slips.map(toPayslip),
     leaves: leaves.map(toLeave),
     rules: readAttendance(settings[0]?.settings),
+    shifts: readShiftPatterns(settings[0]?.settings),
     outlets: outlets.map(toOutlet),
   };
 }
@@ -301,15 +304,56 @@ export function clockLabel(at: string | null | undefined): string {
 
 const startMinute = (r: AttendanceRules) => parseClockMinutes(r.work_start) ?? 8 * 60;
 const endMinute = (r: AttendanceRules) => parseClockMinutes(r.work_end) ?? 17 * 60;
-const isOffDay = (r: AttendanceRules, day: string) => r.off_days.includes(isoWeekday(day));
 
 /**
- * Absen masuk pada menit lokal `minute` hari `day`: terlambat bila lewat jam mulai + toleransi; menit telat dihitung
- * dari jam mulai. Hari libur tidak pernah terlambat. Cermin `evaluateClockIn`.
+ * Rencana kerja efektif satu tanggal: `start`/`end` = menit lokal sejak tengah malam `day` (`end` bisa > 1440 bila
+ * selesai esok hari).
  */
-export function evaluateClockIn(rules: AttendanceRules, day: string, minute: number): { status: "ontime" | "late"; late_minutes: number } {
-  if (isOffDay(rules, day)) return { status: "ontime", late_minutes: 0 };
-  const late = minute - startMinute(rules);
+export type DayPlan = { off: boolean; start: number; end: number; source: "pattern" | "global" };
+
+/** Selesai ≤ mulai = lewat tengah malam (selesai esok hari) — `workEndOn` app. */
+const spanEnd = (start: number, end: number) => (end <= start ? end + 1440 : end);
+
+/**
+ * Aturan efektif karyawan `employeeId` pada `day` (api.md "Aturan efektif per karyawan per tanggal") tanpa
+ * `shift_assignments` (web tidak menariknya): shift tetap `shift_rules.patterns` hari ISO itu > Jam kerja global.
+ * Hari tanpa shift di shift tetap = libur; semua id templat hari itu hilang → Jam kerja global; beberapa shift sehari =
+ * satu rentang dari mulai paling awal sampai selesai paling akhir. Cermin `ShiftSchedule.patternPlan`.
+ */
+export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftPatterns | null, employeeId?: string | null): DayPlan {
+  const weekday = isoWeekday(day);
+  const p = employeeId && shifts ? shifts.patterns[employeeId] : undefined;
+  if (p) {
+    const ids = p[String(weekday)] ?? [];
+    if (ids.length === 0) return { off: true, start: startMinute(rules), end: spanEnd(startMinute(rules), endMinute(rules)), source: "pattern" };
+    const byId = new Map(shifts!.templates.map((t) => [t.id, t]));
+    const spans = ids.flatMap((id) => {
+      const t = byId.get(id);
+      const s = t ? parseClockMinutes(t.start) : null;
+      const e = t ? parseClockMinutes(t.end) : null;
+      return s !== null && e !== null ? [{ s, e: spanEnd(s, e) }] : [];
+    });
+    if (spans.length > 0) {
+      return { off: false, start: Math.min(...spans.map((x) => x.s)), end: Math.max(...spans.map((x) => x.e)), source: "pattern" };
+    }
+  }
+  const start = startMinute(rules);
+  return { off: rules.off_days.includes(weekday), start, end: spanEnd(start, endMinute(rules)), source: "global" };
+}
+
+/**
+ * Absen masuk pada menit lokal `minute` hari `day`: terlambat bila lewat jam mulai efektif + toleransi; menit telat
+ * dihitung dari jam mulai. Hari libur tidak pernah terlambat; toleransi `null` = telat tidak dihitung. Cermin
+ * `evaluateClockIn`. `plan` bawaan = Jam kerja global.
+ */
+export function evaluateClockIn(
+  rules: AttendanceRules,
+  day: string,
+  minute: number,
+  plan: DayPlan = dayPlan(rules, day)
+): { status: "ontime" | "late"; late_minutes: number } {
+  if (plan.off || rules.late_tolerance_min === null) return { status: "ontime", late_minutes: 0 };
+  const late = minute - plan.start;
   if (late > rules.late_tolerance_min) return { status: "late", late_minutes: Math.min(late, 1440) };
   return { status: "ontime", late_minutes: 0 };
 }
@@ -331,7 +375,14 @@ export const recapPresent = (r: Recap) => recapCount(r, "ontime") + recapCount(r
  * setelah hari ini / sebelum karyawan ada (`since`), hari ini belum berakhir = belum tiba, selain itu alpa. Hari libur
  * yang tetap masuk dihitung hadir. Cermin `AttendanceRecap.compute`.
  */
-export function computeRecap(days: string[], rows: Attendance[], rules: AttendanceRules, today: string, since: string | null): Recap {
+export function computeRecap(
+  days: string[],
+  rows: Attendance[],
+  rules: AttendanceRules,
+  today: string,
+  since: string | null,
+  planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day)
+): Recap {
   const byDate = new Map(rows.map((r) => [r.date, r]));
   const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, overtime_minutes: 0 };
   for (const day of days) {
@@ -339,7 +390,7 @@ export function computeRecap(days: string[], rows: Attendance[], rules: Attendan
     if (!row) {
       let kind: DayKind;
       if (day > today || (since !== null && day < since)) kind = "upcoming";
-      else if (isOffDay(rules, day)) kind = "off";
+      else if (planOf(day).off) kind = "off";
       else if (day === today) kind = "upcoming";
       else kind = "absent";
       out.days.push({ day, kind, row: null });
@@ -353,7 +404,7 @@ export function computeRecap(days: string[], rows: Attendance[], rules: Attendan
     const outAt = row.clock_out_at ? Date.parse(row.clock_out_at) : NaN;
     if (Number.isNaN(inAt) || Number.isNaN(outAt) || outAt < inAt) continue;
     out.worked_minutes += Math.floor((outAt - inAt) / 60_000);
-    const end = zonedAt(day, endMinute(rules));
+    const end = zonedAt(day, planOf(day).end);
     if (outAt > end) {
       const from = inAt > end ? inAt : end;
       out.overtime_minutes += Math.floor((outAt - from) / 60_000);
@@ -774,15 +825,21 @@ export type PayrollRow = {
   changedAfterIssue: boolean;
 };
 
-/** Rekap satu karyawan untuk bulan `month` (`recapFor`). */
-export function recapFor(e: Employee, month: string, rows: Attendance[], rules: AttendanceRules, today = zonedToday()): Recap {
+/** Rekap satu karyawan untuk bulan `month` (`recapFor`), memakai aturan efektifnya (shift tetap > Jam kerja). */
+export function recapFor(
+  e: Employee,
+  month: string,
+  data: Pick<TeamData, "attendances" | "rules" | "shifts">,
+  today = zonedToday()
+): Recap {
   const m = monthOf(month);
   return computeRecap(
     daysBetween(m.start, m.end),
-    rows.filter((r) => r.employee_id === e.id && r.date >= m.start && r.date <= m.end),
-    rules,
+    data.attendances.filter((r) => r.employee_id === e.id && r.date >= m.start && r.date <= m.end),
+    data.rules,
     today,
-    zonedDay(e.created_at) || null
+    zonedDay(e.created_at) || null,
+    (day) => dayPlan(data.rules, day, data.shifts, e.id)
   );
 }
 
@@ -795,7 +852,7 @@ export function payrollRows(data: TeamData, month: string, today = zonedToday())
     .filter((e) => (e.is_active || slips.has(e.id)) && (e.role !== "owner" || e.payroll !== null || slips.has(e.id)))
     .map((e) => {
       const config = e.payroll;
-      const recap = recapFor(e, month, data.attendances, data.rules, today);
+      const recap = recapFor(e, month, data, today);
       const draft = config ? computePayslip(config, recap) : EMPTY_DRAFT;
       const slip = slips.get(e.id) ?? null;
       const configured = isPaid(config);
