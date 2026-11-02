@@ -5,10 +5,11 @@ import Link from "next/link";
 import { CalendarDays, Check, Lock, LogIn, LogOut, MapPin, MapPinOff, RotateCw } from "lucide-react";
 import { Badge, focusRing, Notice, Spinner } from "@/components/admin/ui";
 import { Select } from "@/components/owner/Select";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { missingLocation, viaLabel } from "@/lib/attendanceVia";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
 import { clockOffset, formatDateLong, formatTime, nextStep, STATUS_LABEL, zonedClock, zonedDate } from "@/lib/staff/clock";
-import { clockErrorMessage, formatDistance, isNetworkError, type StaffMessage } from "@/lib/staff/errors";
+import { clockErrorMessage, detailNumber, formatDistance, isNetworkError, type StaffMessage } from "@/lib/staff/errors";
 import { GEO_FAILURE_TEXT, locate, type GeoFailure } from "@/lib/staff/geo";
 import type { ClockInput, StaffAttendance, StaffGeo, StaffToday } from "@/lib/staff/types";
 import { useStaff } from "./StaffShell";
@@ -43,6 +44,8 @@ export function ClockView() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const pending = useRef<Pending | null>(null);
+  /** 409 OUTSIDE_AREA_CONFIRM menunggu jawaban karyawan. */
+  const [outsideAsk, setOutsideAsk] = useState<{ p: Pending; distance: number | null; radius: number | null } | null>(null);
   const reqId = useRef(0);
   /** Outlet pilihan karyawan (undefined = bawaan server). */
   const outletRef = useRef<string | undefined>(undefined);
@@ -151,6 +154,12 @@ export function ClockView() {
         return;
       }
       pending.current = null;
+      if (err instanceof StaffApiError && err.code === "OUTSIDE_AREA_CONFIRM") {
+        // Aturan "Boleh, dengan tanda": tanya dulu (cermin dialog app), kirim ulang dengan confirm_outside.
+        setOutsideAsk({ p, distance: detailNumber(err, "distance_m"), radius: detailNumber(err, "radius_m") });
+        setPhase("idle");
+        return;
+      }
       const m = clockErrorMessage(err, { action: p.body.action, sentGeo: !!p.body.geo });
       setFeedback(m);
       setPhase("idle");
@@ -163,6 +172,16 @@ export function ClockView() {
         }
       }
     }
+  }
+
+  function confirmOutside() {
+    const ask = outsideAsk;
+    if (!ask) return;
+    setOutsideAsk(null);
+    // Body berbeda (confirm_outside) → Idempotency-Key baru (kontrak).
+    const p: Pending = { key: newKey(), body: { ...ask.p.body, confirm_outside: true }, failure: ask.p.failure };
+    pending.current = p;
+    void send(p, true);
   }
 
   async function clock(action: "in" | "out") {
@@ -386,6 +405,21 @@ export function ClockView() {
       <Link href="/karyawan/riwayat" className={`inline-flex min-h-11 items-center gap-2 self-start rounded-[10px] text-[14px] font-semibold text-brand-ink hover:underline ${focusRing}`}>
         <CalendarDays size={16} aria-hidden /> Lihat riwayat kehadiran
       </Link>
+
+      <ConfirmDialog
+        open={!!outsideAsk}
+        title="Kamu di luar area outlet"
+        confirmLabel={outsideAsk?.p.body.action === "out" ? "Tetap absen pulang" : "Tetap absen masuk"}
+        onConfirm={confirmOutside}
+        onClose={() => setOutsideAsk(null)}
+      >
+        <p>
+          {outsideAsk?.distance != null ? `Lokasimu sekitar ${formatDistance(outsideAsk.distance)} dari ` : "Lokasimu di luar area "}
+          <span className="font-semibold text-text-heading">{outletName ?? "outlet"}</span>
+          {outsideAsk?.radius != null ? ` (batas ${outsideAsk.radius}\u00a0m).` : "."} Tetap absen?
+        </p>
+        <p className="mt-2">Absen tercatat dengan tanda &ldquo;di luar area&rdquo; dan pemilik bisa melihatnya.</p>
+      </ConfirmDialog>
     </div>
   );
 }

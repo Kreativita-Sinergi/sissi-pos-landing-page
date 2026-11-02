@@ -60,7 +60,13 @@ export type StaffToday = {
 
 export type ClockGeoInput = { lat: number; lng: number; accuracy_m: number };
 
-export type ClockInput = { outlet_id: string; action: "in" | "out"; geo: ClockGeoInput | null };
+export type ClockInput = {
+  outlet_id: string;
+  action: "in" | "out";
+  geo: ClockGeoInput | null;
+  /** Karyawan sudah menyetujui "di luar area, tetap absen?" (jawaban atas 409 OUTSIDE_AREA_CONFIRM). */
+  confirm_outside?: boolean;
+};
 
 export type StaffHistorySummary = {
   present: number;

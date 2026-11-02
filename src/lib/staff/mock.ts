@@ -254,6 +254,12 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           geo ? [{ field: "distance_m", message: String(geo.distance_m) }] : [{ field: "geo", message: "Wajib diisi" }]
         );
 
+      if (o.enabled && o.outside === "flag" && geo?.outside_area && !body.confirm_outside)
+        throw staffError(`Kamu di luar area outlet (${geo.distance_m} m, batas 100 m). Tetap absen?`, 409, "OUTSIDE_AREA_CONFIRM", [
+          { field: "distance_m", message: String(geo.distance_m) },
+          { field: "radius_m", message: "100" },
+        ]);
+
       let out: StaffAttendance;
       if (body.action === "in") {
         if (a && a.date === date && (a.status === "permit" || a.status === "sick" || a.status === "leave" || a.status === "absent") && !a.clock_in_at)

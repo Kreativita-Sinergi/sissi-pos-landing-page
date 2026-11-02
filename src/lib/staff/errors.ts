@@ -98,6 +98,12 @@ export function acceptErrorMessage(err: unknown): StaffMessage {
   }
 }
 
+/** Angka dari `details[{field,message}]` (mis. `distance_m`, `radius_m`); `null` bila tidak ada/rusak. */
+export function detailNumber(err: unknown, field: string): number | null {
+  const raw = asErr(err)?.details?.find((x) => x.field === field)?.message;
+  return raw !== undefined && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
+}
+
 /** Absen masuk/pulang. `sentGeo` = apakah lokasi ikut terkirim (membedakan pesan OUTSIDE_AREA). */
 export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sentGeo: boolean }): StaffMessage {
   const e = asErr(err);

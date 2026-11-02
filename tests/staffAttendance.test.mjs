@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { missingLocation, viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
-const { acceptErrorMessage, clockErrorMessage, formatDistance, isNetworkError, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
+const { acceptErrorMessage, clockErrorMessage, detailNumber, formatDistance, isNetworkError, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
 const { clockOffset, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
 
 const IN = "2026-11-02T01:05:00Z";
@@ -60,6 +60,14 @@ test("OUTSIDE_AREA menampilkan jarak bila ada; tanpa lokasi → minta izin lokas
   // Server menerima geo tetapi menandai field geo (mis. outlet tanpa lokasi) → tetap pesan lokasi.
   assert.equal(clockErrorMessage({ code: "OUTSIDE_AREA", details: [{ field: "geo", message: "x" }] }, { action: "out", sentGeo: true }).title, "Lokasi dibutuhkan");
   assert.equal(formatDistance(230), "230 m");
+});
+
+test("OUTSIDE_AREA_CONFIRM membawa jarak & batas untuk dialog", () => {
+  const err = { code: "OUTSIDE_AREA_CONFIRM", details: [{ field: "distance_m", message: "340" }, { field: "radius_m", message: "100" }] };
+  assert.equal(detailNumber(err, "distance_m"), 340);
+  assert.equal(detailNumber(err, "radius_m"), 100);
+  assert.equal(detailNumber({ code: "OUTSIDE_AREA_CONFIRM", details: [] }, "distance_m"), null);
+  assert.equal(detailNumber({ code: "X", details: [{ field: "distance_m", message: "abc" }] }, "distance_m"), null);
 });
 
 test("kode galat absen → pesan Bahasa Indonesia", () => {
