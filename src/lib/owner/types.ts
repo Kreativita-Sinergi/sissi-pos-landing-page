@@ -422,7 +422,8 @@ export type DataEntity =
   | "purchase_orders"
   | "stock_transfers"
   | "payslips"
-  | "leave_requests";
+  | "leave_requests"
+  | "shift_assignments";
 
 /**
  * Entitas yang bisa diubah web (`POST /owner/changes`). `outlets`: tambah (dalam kuota), ubah, hapus; metode bayar

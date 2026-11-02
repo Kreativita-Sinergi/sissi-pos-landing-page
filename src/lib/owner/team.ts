@@ -1,5 +1,5 @@
 // Tim di dasbor pemilik: karyawan + PIN, gaji (payroll), kehadiran (koreksi manual), slip gaji.
-// Data dibaca lewat GET /owner/data/{employees,attendances,payslips,business_settings} dan ditulis lewat
+// Data dibaca lewat GET /owner/data/{employees,attendances,payslips,business_settings,shift_assignments} dan ditulis lewat
 // POST /owner/changes — mesin sync yang sama dengan aplikasi (api.md "Dasbor pemilik › Kelola data › Tahap lanjut").
 //
 // Rumus rekap & gaji di file ini SALINAN langsung logika aplikasi (Dart → TS) agar angka web = angka app:
@@ -121,12 +121,35 @@ export type TeamData = {
   /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
   leaves: LeaveRequest[];
   rules: AttendanceRules;
-  /** Shift tetap mingguan per karyawan (`shift_patterns`); `shift_assignments` tidak ditarik web. */
-  shifts: ShiftPatterns;
+  /** Shift tetap mingguan (`shift_patterns`) + jadwal per tanggal (`shift_assignments`, hanya dibaca web). */
+  shifts: ShiftSchedule;
   outlets: OutletLite[];
 };
 
 export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_requests";
+
+/**
+ * Pengecualian jadwal satu karyawan pada satu tanggal (`shift_assignments`, api.md "Jadwal shift per karyawan").
+ * `default` (dikosongkan = ikut shift tetap/Jam kerja) tidak disimpan.
+ */
+export type ShiftAssignmentLite = { kind: "shift" | "off"; name: string; start: string; end: string };
+
+/** Shift tetap + jadwal per tanggal: `assignments[employee_id]["YYYY-MM-DD"]`. */
+export type ShiftSchedule = ShiftPatterns & { assignments?: Record<string, Record<string, ShiftAssignmentLite>> };
+
+/** Record `shift_assignments` → peta per karyawan per tanggal; tombstone & `default` dibuang. */
+export function toAssignments(rows: SyncRecord[]): Record<string, Record<string, ShiftAssignmentLite>> {
+  const out: Record<string, Record<string, ShiftAssignmentLite>> = {};
+  for (const r of rows) {
+    if (r.deleted_at || (r.kind !== "shift" && r.kind !== "off")) continue;
+    const emp = typeof r.employee_id === "string" ? r.employee_id : "";
+    const date = typeof r.date === "string" ? r.date.slice(0, 10) : "";
+    if (!emp || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const s = (v: unknown) => (typeof v === "string" ? v : "");
+    (out[emp] ??= {})[date] = { kind: r.kind, name: s(r.name), start: s(r.start), end: s(r.end) };
+  }
+  return out;
+}
 
 // ——— Normalisasi data tarikan ———
 
@@ -198,13 +221,14 @@ function toOutlet(r: SyncRecord): OutletLite {
 
 /** Tarik semua data tim. `staff=false` (paket Gratis) → kehadiran & slip tidak ditarik. */
 export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<TeamData> {
-  const [emp, att, slips, leaves, settings, outlets] = await Promise.all([
+  const [emp, att, slips, leaves, settings, outlets, assigns] = await Promise.all([
     pullAll("employees", signal),
     staff ? pullAll("attendances", signal) : Promise.resolve([]),
     staff ? pullAll("payslips", signal) : Promise.resolve([]),
     staff ? pullAll("leave_requests", signal) : Promise.resolve([]),
     pullAll("business_settings", signal),
     pullAll("outlets", signal),
+    staff ? pullAll("shift_assignments", signal) : Promise.resolve([]),
   ]);
   return {
     employees: emp.map(toEmployee),
@@ -212,7 +236,7 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     payslips: slips.map(toPayslip),
     leaves: leaves.map(toLeave),
     rules: readAttendance(settings[0]?.settings),
-    shifts: readShiftPatterns(settings[0]?.settings),
+    shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns) },
     outlets: outlets.map(toOutlet),
   };
 }
@@ -309,18 +333,28 @@ const endMinute = (r: AttendanceRules) => parseClockMinutes(r.work_end) ?? 17 * 
  * Rencana kerja efektif satu tanggal: `start`/`end` = menit lokal sejak tengah malam `day` (`end` bisa > 1440 bila
  * selesai esok hari).
  */
-export type DayPlan = { off: boolean; start: number; end: number; source: "pattern" | "global" };
+export type DayPlan = { off: boolean; start: number; end: number; source: "assignment" | "pattern" | "global"; name?: string };
 
 /** Selesai ≤ mulai = lewat tengah malam (selesai esok hari) — `workEndOn` app. */
 const spanEnd = (start: number, end: number) => (end <= start ? end + 1440 : end);
 
 /**
- * Aturan efektif karyawan `employeeId` pada `day` (api.md "Aturan efektif per karyawan per tanggal") tanpa
- * `shift_assignments` (web tidak menariknya): shift tetap `shift_patterns` hari ISO itu > Jam kerja global.
+ * Aturan efektif karyawan `employeeId` pada `day` (api.md "Aturan efektif per karyawan per tanggal"), urutan:
+ * (1) jadwal tanggal itu `shift_assignments`: `shift` → jam shift itu (selesai ≤ mulai = esok hari; jam tidak sah →
+ * diabaikan), `off` → libur; (2) shift tetap `shift_patterns` hari ISO itu; (3) Jam kerja global.
  * Hari tanpa shift di shift tetap = libur; semua id templat hari itu hilang → Jam kerja global; beberapa shift sehari =
- * satu rentang dari mulai paling awal sampai selesai paling akhir. Cermin `ShiftSchedule.patternPlan`.
+ * satu rentang dari mulai paling awal sampai selesai paling akhir. Cermin `ShiftSchedule.planOn`/`patternPlan`.
  */
-export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftPatterns | null, employeeId?: string | null): DayPlan {
+export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftSchedule | null, employeeId?: string | null): DayPlan {
+  const a = employeeId && shifts?.assignments ? shifts.assignments[employeeId]?.[day] : undefined;
+  if (a?.kind === "shift") {
+    const s = parseClockMinutes(a.start);
+    const e = parseClockMinutes(a.end);
+    if (s !== null && e !== null) return { off: false, start: s, end: spanEnd(s, e), source: "assignment", name: a.name };
+  }
+  if (a?.kind === "off") {
+    return { off: true, start: startMinute(rules), end: spanEnd(startMinute(rules), endMinute(rules)), source: "assignment" };
+  }
   const weekday = isoWeekday(day);
   const p = employeeId && shifts ? shifts.patterns[employeeId] : undefined;
   if (p) {
@@ -339,6 +373,22 @@ export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftPatte
   }
   const start = startMinute(rules);
   return { off: rules.off_days.includes(weekday), start, end: spanEnd(start, endMinute(rules)), source: "global" };
+}
+
+const hhmm = (min: number) => {
+  const m = ((min % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+};
+
+/**
+ * Label jadwal satu karyawan untuk daftar Tim: "Libur", "Shift Malam 22:00–06:00" (jadwal tanggal itu), atau
+ * "Shift 07:00–15:00" (shift tetap). `null` bila ikut Jam kerja global dan bukan hari libur.
+ */
+export function planLabel(plan: DayPlan): string | null {
+  if (plan.off) return plan.source === "global" ? null : "Libur";
+  if (plan.source === "global") return null;
+  const span = `${hhmm(plan.start)}–${hhmm(plan.end)}`;
+  return plan.name ? `Shift ${plan.name} ${span}` : `Shift ${span}`;
 }
 
 /**

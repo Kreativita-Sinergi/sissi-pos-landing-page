@@ -1,5 +1,6 @@
 // Tes unit aturan absensi web pemilik: telat tidak dihitung = `late_counting: false` tingkat atas (2026-11-03), simpan
-// tidak menimpa `shift_patterns`, dan aturan efektif shift tetap > Jam kerja global.
+// tidak menimpa `shift_patterns`, dan aturan efektif jadwal per tanggal (`shift_assignments`) > shift tetap > Jam kerja
+// global.
 // Kontrak: sissi-pos-service/docs/api.md "Skema pengaturan bisnis" & "Aturan efektif per karyawan per tanggal".
 // Jalankan: npm test
 import "./support/tsResolve.mjs";
@@ -7,7 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
-const { computeRecap, dayPlan, evaluateClockIn } = await import("../src/lib/owner/team.ts");
+const { computeRecap, dayPlan, evaluateClockIn, planLabel, recapFor, toAssignments } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
 const BASE = { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_days: [7] };
@@ -108,4 +109,56 @@ test("computeRecap & planFor memakai hari libur efektif", () => {
   const plan = planFor(req, [], (d) => planOf(d).off);
   assert.deepEqual(plan.offDays, ["2026-11-05", "2026-11-06", "2026-11-07"]);
   assert.deepEqual(plan.written, [SUN]);
+});
+
+// Record `shift_assignments` mentah (bentuk pull `/owner/data/shift_assignments`).
+const ASSIGN_ROWS = [
+  { id: "a1", employee_id: "e1", date: MON, kind: "off", name: "", start: "", end: "", deleted_at: null }, // shift tetap → libur
+  { id: "a2", employee_id: "e1", date: "2026-11-05", kind: "shift", name: "Malam", start: "22:00", end: "06:00", deleted_at: null },
+  { id: "a3", employee_id: "e1", date: TUE, kind: "default", name: "", start: "", end: "", deleted_at: null }, // ikut shift tetap
+  { id: "a4", employee_id: "e1", date: "2026-11-06", kind: "shift", name: "X", start: "", end: "", deleted_at: null }, // jam rusak
+  { id: "a5", employee_id: "e1", date: "2026-11-07", kind: "off", name: "", start: "", end: "", deleted_at: "2026-11-01T00:00:00Z" },
+  { id: "a6", employee_id: "e9", date: SUN, kind: "shift", name: "Pagi", start: "08:30", end: "16:00", deleted_at: null },
+];
+
+test("dayPlan: jadwal per tanggal > shift tetap > Jam kerja; default, jam rusak, & tombstone diabaikan", () => {
+  const assignments = toAssignments(ASSIGN_ROWS);
+  assert.deepEqual(Object.keys(assignments.e1).sort(), [MON, "2026-11-05", "2026-11-06"]);
+  const shifts = { ...readShiftPatterns(SETTINGS), assignments };
+  // Senin: shift tetap Pagi + Sore, tetapi dijadwalkan Libur.
+  assert.deepEqual(dayPlan(BASE, MON, shifts, "e1"), { off: true, start: 480, end: 1020, source: "assignment" });
+  // Selasa `default` → shift tetap Malam.
+  assert.equal(dayPlan(BASE, TUE, shifts, "e1").source, "pattern");
+  // Kamis: shift tetap libur, tetapi dijadwalkan Malam 22:00–06:00 (selesai esok hari).
+  assert.deepEqual(dayPlan(BASE, "2026-11-05", shifts, "e1"), { off: false, start: 1320, end: 1800, source: "assignment", name: "Malam" });
+  // Jumat: jam jadwal rusak → shift tetap (tanpa kunci = libur), seperti app.
+  assert.deepEqual(dayPlan(BASE, "2026-11-06", shifts, "e1").source, "pattern");
+  // Sabtu: tombstone → shift tetap.
+  assert.equal(dayPlan(BASE, "2026-11-07", shifts, "e1").source, "pattern");
+  // Minggu (libur global), tanpa shift tetap, tetapi dijadwalkan → kerja 08:30; telat dihitung dari 08:30.
+  const sun = dayPlan(BASE, SUN, shifts, "e9");
+  assert.deepEqual(sun, { off: false, start: 510, end: 960, source: "assignment", name: "Pagi" });
+  assert.deepEqual(evaluateClockIn(BASE, SUN, 8 * 60 + 45, sun), { status: "late", late_minutes: 15 });
+  assert.deepEqual(evaluateClockIn(BASE, MON, 12 * 60, dayPlan(BASE, MON, shifts, "e1")), { status: "ontime", late_minutes: 0 });
+  // Label Tim.
+  assert.equal(planLabel(dayPlan(BASE, MON, shifts, "e1")), "Libur");
+  assert.equal(planLabel(dayPlan(BASE, "2026-11-05", shifts, "e1")), "Shift Malam 22:00–06:00");
+  assert.equal(planLabel(dayPlan(BASE, TUE, shifts, "e1")), "Shift 22:00–06:00");
+  assert.equal(planLabel(dayPlan(BASE, MON, shifts, "e9")), null);
+  assert.equal(planLabel(dayPlan(BASE, "2026-11-07", shifts, "e9")), null);
+});
+
+test("recapFor & planFor menghormati jadwal per tanggal", () => {
+  const shifts = { ...readShiftPatterns(SETTINGS), assignments: toAssignments(ASSIGN_ROWS) };
+  const e1 = { id: "e1", created_at: "2026-10-01T00:00:00Z" };
+  const data = { attendances: [], rules: BASE, shifts };
+  const kinds = new Map(recapFor(e1, "2026-11", data, "2026-11-30").days.map((d) => [d.day, d.kind]));
+  assert.equal(kinds.get(MON), "off"); // dijadwalkan libur → bukan alpa
+  assert.equal(kinds.get("2026-11-05"), "absent"); // dijadwalkan kerja tanpa absen → alpa
+  assert.equal(kinds.get(TUE), "absent"); // default → shift tetap Malam
+  const req = { id: "l2", employee_id: "e1", outlet_id: null, kind: "leave", date_from: MON, date_to: "2026-11-05" };
+  const plan = planFor(req, [], (d) => dayPlan(BASE, d, shifts, "e1").off);
+  // Senin dijadwalkan libur → dilewati; Rabu (id shift tetap hilang → Jam kerja) & Kamis (dijadwalkan) ditulis.
+  assert.deepEqual(plan.offDays, [MON]);
+  assert.deepEqual(plan.written, [TUE, "2026-11-04", "2026-11-05"]);
 });

@@ -9,10 +9,12 @@ import { Select } from "@/components/owner/Select";
 import {
   clockLabel,
   DAY_LETTER,
+  dayPlan,
   durationLabel,
   isoWeekday,
   manualMinDay,
   monthOf,
+  planLabel,
   recapFacts,
   recapFor,
   recapPresent,
@@ -90,7 +92,9 @@ export function AttendanceTab({
         <Info size={14} aria-hidden className="mt-0.5 shrink-0" />
         Jam kerja {rules.work_start}–{rules.work_end}, {rules.late_tolerance_min === null ? "telat tidak dihitung" : `toleransi ${rules.late_tolerance_min} menit`}
         {rules.off_days.length ? `, libur ${rules.off_days.map((d) => WEEKDAYS[d - 1]).join(", ")}` : ""}
-        {Object.keys(ctx.data.shifts.patterns).length ? " (karyawan dengan shift tetap mengikuti shiftnya)" : ""}. Karyawan absen masuk & pulang dengan PIN
+        {Object.keys(ctx.data.shifts.patterns).length || Object.keys(ctx.data.shifts.assignments ?? {}).length
+          ? " (karyawan dengan jadwal shift atau shift tetap mengikuti jadwalnya)"
+          : ""}. Karyawan absen masuk & pulang dengan PIN
         di perangkat toko, dari aplikasi Sissi di HP pribadi, atau lewat website (kasir.sissi.id/karyawan); koreksi dari
         sini tercatat sebagai input manual pemilik.
       </p>
@@ -142,6 +146,7 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                     <p className="truncate text-[12.5px] text-text-muted">
                       {[
                         ROLE_LABEL[e.role],
+                        planLabel(dayPlan(rules, today, ctx.data.shifts, e.id)),
                         r?.clock_in_at ? `Masuk ${clockLabel(r.clock_in_at)}` : null,
                         r?.clock_out_at ? `Pulang ${clockLabel(r.clock_out_at)}` : null,
                         r?.status === "late" ? `Telat ${r.late_minutes} mnt` : null,
