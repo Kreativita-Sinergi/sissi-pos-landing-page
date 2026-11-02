@@ -125,7 +125,7 @@ NEXT_PUBLIC_STAFF_MOCK=1
 NEXT_PUBLIC_OWNER_MOCK=1   # opsional: data undangan contoh di /undangan/<kode>
 ```
 Skenario mode tiruan dipilih dari teks no. HP/email (boleh digabung, mis. `cabang-telat`): bawaan = belum absen,
-`telat`, `pulang` (masuk via aplikasi, pulang via website), `kemarin` (belum pulang kemarin), `izin`, `tolak` (aturan
+`telat`, `pulang` (masuk PIN, pulang via website), `kemarin` (belum pulang kemarin), `izin`, `tolak` (aturan
 lokasi Tolak → `OUTSIDE_AREA`), `gratis` (terkunci), `cabang` (2 outlet), `putus` (galat jaringan sekali → ulang dengan
 `Idempotency-Key` sama), `pemilik` (`STAFF_ONLY` → `/masuk`), `nonaktif`, `batas`. Kata sandi `salah` → galat.
 Tes e2e tiruan: `npm run e2e:karyawan` (server dev dengan `NEXT_PUBLIC_STAFF_MOCK=1` harus menyala).

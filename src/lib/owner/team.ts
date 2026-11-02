@@ -85,7 +85,7 @@ export type Attendance = SyncRecord & {
   source: "pin" | "manual" | "self";
   edited_by: string | null;
   edit_reason: string;
-  /** Jalur pengisian jam (`"app"`/`"web"`), diisi server saja; `null` = baris lama/tanpa jam → dibaca dari `source`. */
+  /** Jalur pengisian jam ini (`pin`/`app`/`web`/`manual`), diisi server saja; `null` = baris lama/tanpa jam → dari `source`. */
   clock_in_via?: AttendanceVia | null;
   clock_out_via?: AttendanceVia | null;
   /** Lokasi absen `self` (server menghitung `distance_m`/`outside_area`); `null` = tanpa lokasi. */

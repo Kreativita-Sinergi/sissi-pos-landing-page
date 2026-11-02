@@ -4,7 +4,7 @@ import "./support/tsResolve.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-const { viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
+const { missingLocation, viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
 const { acceptErrorMessage, clockErrorMessage, formatDistance, isNetworkError, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
 const { clockOffset, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
 
@@ -12,33 +12,44 @@ const IN = "2026-11-02T01:05:00Z";
 const OUT = "2026-11-02T10:02:00Z";
 const GEO = { lat: -6.2, lng: 106.8, accuracy_m: 12, distance_m: 20, outside_area: false, mocked: false };
 
-test("viaLabel mengikuti tabel kontrak", () => {
+test("viaLabel per jam mengikuti tabel kontrak; null → dari source baris", () => {
+  assert.equal(viaLabel("self", "pin"), "Perangkat toko (PIN)");
+  assert.equal(viaLabel("pin", "app"), "Aplikasi HP");
+  assert.equal(viaLabel("pin", "web"), "Website");
+  assert.equal(viaLabel("self", "manual"), "Dicatat pemilik");
   assert.equal(viaLabel("pin", null), "Perangkat toko (PIN)");
-  assert.equal(viaLabel("pin", "web"), "Perangkat toko (PIN)");
-  assert.equal(viaLabel("self", "app"), "Aplikasi HP");
   assert.equal(viaLabel("self", null), "Aplikasi HP");
-  assert.equal(viaLabel("self", "web"), "Website");
-  assert.equal(viaLabel("manual", "web"), "Dicatat pemilik");
-  assert.equal(viaLabel("manual", null), "Dicatat pemilik");
+  assert.equal(viaLabel("manual", undefined), "Dicatat pemilik");
 });
 
-test("masuk & pulang lewat jalur berbeda → keduanya ditampilkan", () => {
+test("baris source pin yang pulangnya lewat website → keduanya ditampilkan, pulang tanpa lokasi", () => {
+  const row = { source: "pin", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "pin", clock_out_via: "web", clock_in_geo: null, clock_out_geo: null };
+  assert.deepEqual(viaSummary(row), { label: "Masuk: Perangkat toko (PIN) · Pulang: Website", noLocation: true });
+  // Dengan geo saat pulang → tanpa tanda (masuk PIN memang tanpa geo).
+  assert.equal(viaSummary({ ...row, clock_out_geo: GEO }).noLocation, false);
+});
+
+test("masuk web & pulang app → keduanya; jalur sama → satu label; tanpa jam → null", () => {
   const row = { source: "self", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "web", clock_out_via: "app", clock_in_geo: GEO, clock_out_geo: GEO };
   assert.deepEqual(viaSummary(row), { label: "Masuk: Website · Pulang: Aplikasi HP", noLocation: false });
-});
-
-test("jalur sama → satu label; baris tanpa jam → null", () => {
-  assert.equal(viaText({ source: "self", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "web", clock_out_via: "web", clock_in_geo: GEO, clock_out_geo: GEO }), "Website");
+  assert.equal(viaText({ ...row, clock_out_via: "web" }), "Website");
   assert.equal(viaText({ source: "pin", clock_in_at: IN, clock_out_at: null }), "Perangkat toko (PIN)");
+  // Baris lama tanpa via, satu jalur dari source.
+  assert.equal(viaText({ source: "manual", clock_in_at: IN, clock_out_at: OUT }), "Dicatat pemilik");
   assert.equal(viaSummary({ source: "manual", clock_in_at: null, clock_out_at: null }), null);
 });
 
-test("self tanpa geo → tanda 'tanpa lokasi'; pin/manual tidak pernah", () => {
+test("'tanpa lokasi' hanya untuk jam app/web (atau self lama) dengan geo null", () => {
   assert.equal(viaText({ source: "self", clock_in_at: IN, clock_out_at: null, clock_in_via: "web", clock_in_geo: null }), "Website · tanpa lokasi");
-  // Pulang tanpa geo juga ditandai.
-  assert.equal(viaSummary({ source: "self", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "app", clock_out_via: "web", clock_in_geo: GEO, clock_out_geo: null }).noLocation, true);
-  assert.equal(viaSummary({ source: "pin", clock_in_at: IN, clock_out_at: OUT, clock_in_geo: null }).noLocation, false);
-  assert.equal(viaSummary({ source: "manual", clock_in_at: IN, clock_out_at: null }).noLocation, false);
+  assert.equal(missingLocation("self", null, null), true); // self lama
+  assert.equal(missingLocation("pin", "app", null), true);
+  assert.equal(missingLocation("self", "app", GEO), false);
+  assert.equal(missingLocation("self", "pin", null), false);
+  assert.equal(missingLocation("self", "manual", null), false);
+  assert.equal(missingLocation("pin", null, null), false);
+  assert.equal(missingLocation("manual", null, null), false);
+  // Koreksi pemilik mengganti jam masuk → manual, tanpa tanda.
+  assert.equal(viaSummary({ source: "self", clock_in_at: IN, clock_out_at: null, clock_in_via: "manual", clock_in_geo: null }).noLocation, false);
 });
 
 test("OUTSIDE_AREA menampilkan jarak bila ada; tanpa lokasi → minta izin lokasi", () => {

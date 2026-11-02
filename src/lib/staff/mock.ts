@@ -2,7 +2,7 @@
 // Skenario dipilih dari teks no. HP/email saat masuk (boleh digabung, mis. "cabang-telat"):
 //   (bawaan) belum absen · aturan lokasi "Tandai"
 //   telat     sudah absen masuk, terlambat 17 menit (via Website)
-//   pulang    sudah masuk (Aplikasi HP) & pulang (Website)
+//   pulang    sudah masuk (PIN di perangkat toko) & pulang (Website, tanpa lokasi)
 //   kemarin   absen masuk kemarin belum pulang
 //   izin      hari ini tercatat izin (absen ditutup)
 //   tolak     outlet ber-aturan "Tolak" (di luar radius / tanpa lokasi → OUTSIDE_AREA)
@@ -113,9 +113,10 @@ function fresh(identifier: string, remember: boolean): MockState {
         outlet_name: o.name,
         clock_in_at: at(today, "07:56"),
         clock_out_at: at(today, "17:04"),
-        clock_in_via: "app",
+        source: "pin",
+        clock_in_via: "pin",
         clock_out_via: "web",
-        clock_in_geo: geoAt(12),
+        clock_in_geo: null,
         clock_out_geo: null,
       })
     );
@@ -322,11 +323,12 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
             clock_out_at: outAt,
             status: late ? "late" : "ontime",
             late_minutes: late ? 10 + late : 0,
+            // 0: PIN (pulang kadang lewat website) · 1: website/aplikasi · 2: aplikasi · 3: koreksi pemilik / baris lama.
             source: kind === 0 ? "pin" : kind === 3 && seed % 2 ? "manual" : "self",
-            clock_in_via: kind === 1 ? "web" : kind === 2 ? "app" : null,
-            clock_out_via: kind === 1 ? (seed % 2 ? "app" : "web") : kind === 2 ? "app" : null,
-            clock_in_geo: kind === 1 && seed % 3 === 0 ? null : geoAt(15 + seed),
-            clock_out_geo: geoAt(20 + seed),
+            clock_in_via: kind === 0 ? "pin" : kind === 1 ? "web" : kind === 2 ? "app" : seed % 2 ? "manual" : null,
+            clock_out_via: kind === 0 ? (seed % 2 ? "web" : "pin") : kind === 1 ? (seed % 2 ? "app" : "web") : kind === 2 ? "app" : seed % 2 ? "manual" : null,
+            clock_in_geo: kind === 0 || (kind === 1 && seed % 3 === 0) ? null : geoAt(15 + seed),
+            clock_out_geo: kind === 0 && !(seed % 2) ? null : geoAt(20 + seed),
             note: seed === 9 ? "Tukar shift dengan Budi" : "",
           })
         );

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Check, Lock, LogIn, LogOut, MapPin, MapPinOff, RotateCw } from "lucide-react";
 import { Badge, focusRing, Notice, Spinner } from "@/components/admin/ui";
-import { viaLabel } from "@/lib/attendanceVia";
+import { missingLocation, viaLabel } from "@/lib/attendanceVia";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
 import { clockOffset, formatDateLong, formatTime, nextStep, STATUS_LABEL, zonedClock, zonedDate } from "@/lib/staff/clock";
 import { clockErrorMessage, formatDistance, isNetworkError, type StaffMessage } from "@/lib/staff/errors";
@@ -426,7 +426,7 @@ function ClockLine({
         <span className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
           {late > 0 && <Badge tone="warning">Telat {late} menit</Badge>}
           {source && <Badge>{viaLabel(source, via)}</Badge>}
-          {source === "self" && !geo && (
+          {source && missingLocation(source, via, geo) && (
             <Badge tone="warning">
               <MapPinOff size={12} aria-hidden /> tanpa lokasi
             </Badge>
