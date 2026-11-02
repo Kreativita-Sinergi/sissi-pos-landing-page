@@ -50,7 +50,8 @@ export type StaffToday = {
   now: string;
   /** Tanggal hari ini di zona usaha. */
   date: string;
-  outlet_id: string;
+  /** `null` bila karyawan tidak punya outlet aktif (`geo` lalu bawaan, `enabled: false`). */
+  outlet_id: string | null;
   rules: { work_start: string; work_end: string; late_tolerance_min: number; off_day: boolean };
   geo: { enabled: boolean; radius_m: number; outside: "flag" | "reject"; has_location: boolean };
   attendance: StaffAttendance | null;

@@ -39,7 +39,8 @@ export function locate(timeoutMs = TIMEOUT_MS): Promise<GeoResult> {
           geo: null,
           failure: err.code === err.PERMISSION_DENIED ? "denied" : err.code === err.TIMEOUT ? "timeout" : "unavailable",
         }),
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30_000 }
+      // maximumAge 0: setelah ditolak "di luar area" karyawan mendekat lalu mencoba lagi — jangan pakai posisi lama.
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
     );
   });
 }

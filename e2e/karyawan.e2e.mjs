@@ -153,7 +153,7 @@ test("galat jaringan sekali → diulang otomatis dengan kunci sama", async () =>
   await page.close();
 });
 
-test("sudah masuk telat + multi-outlet; riwayat 12 bulan tanpa meluber", async () => {
+test("sudah masuk telat + multi-outlet; riwayat 13 pilihan bulan tanpa meluber", async () => {
   const page = await fresh();
   await login(page, "cabang-telat@contoh.id");
   await waitText(page, "Telat 17 menit");
@@ -162,7 +162,7 @@ test("sudah masuk telat + multi-outlet; riwayat 12 bulan tanpa meluber", async (
   await page.goto(`${BASE}/karyawan/riwayat`, { waitUntil: "networkidle2" });
   await waitText(page, "Hadir");
   const n = await page.$$eval("#bulan option", (o) => o.length);
-  assert(n === 12, `pilihan bulan ${n}`);
+  assert(n === 13, `pilihan bulan ${n}`);
   await noOverflow(page, "riwayat 360");
   await shot(page, "riwayat-360");
   await page.setViewport({ width: 1280, height: 900 });

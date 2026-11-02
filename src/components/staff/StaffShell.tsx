@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { CalendarDays, Clock3, LogOut } from "lucide-react";
 import { ErrorBlock, focusRing, Spinner } from "@/components/admin/ui";
 import { setStaffUnauthorizedHandler, STAFF_MOCK, staffApi } from "@/lib/staff/api";
@@ -43,16 +43,18 @@ const NAV = [
 ];
 
 export function StaffShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<StaffSession | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
 
+  // Navigasi penuh (bukan router.replace): Next menyimpan pohon rute yang ditinggalkan beserta state-nya, sehingga
+  // setelah masuk lagi (mungkin akun lain) shell lama — sesi & tombol Keluar yang masih "memproses" — akan muncul
+  // kembali. Muat ulang dokumen membuang semua state klien sesi sebelumnya.
   const toLogin = useCallback(() => {
-    router.replace(staffLoginUrl(`${window.location.pathname}${window.location.search}`));
-  }, [router]);
+    window.location.replace(staffLoginUrl(`${window.location.pathname}${window.location.search}`));
+  }, []);
 
   useEffect(() => {
     setStaffUnauthorizedHandler(toLogin);
@@ -81,7 +83,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
     } catch {
       // Tetap keluar dari tampilan; cookie kedaluwarsa sendiri.
     }
-    router.replace("/karyawan/masuk");
+    window.location.replace("/karyawan/masuk");
   }
 
   if (!session) {

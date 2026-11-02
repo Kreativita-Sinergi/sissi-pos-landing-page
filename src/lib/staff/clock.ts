@@ -89,9 +89,9 @@ export function monthLabel(month: string): string {
 }
 
 /**
- * Pilihan bulan riwayat: bulan ini + 11 bulan sebelumnya (total 12; server menolak > 12 bulan ke belakang dengan 422).
+ * Pilihan bulan riwayat: bulan ini + 12 bulan sebelumnya (server menolak > 12 bulan ke belakang & bulan depan, 422).
  */
-export function monthOptions(current: string, count = 12): string[] {
+export function monthOptions(current: string, count = 13): string[] {
   const m = /^(\d{4})-(\d{2})$/.exec(current);
   if (!m) return [current];
   let y = Number(m[1]);

@@ -129,6 +129,10 @@ Skenario mode tiruan dipilih dari teks no. HP/email (boleh digabung, mis. `caban
 lokasi Tolak → `OUTSIDE_AREA`), `gratis` (terkunci), `cabang` (2 outlet), `putus` (galat jaringan sekali → ulang dengan
 `Idempotency-Key` sama), `pemilik` (`STAFF_ONLY` → `/masuk`), `nonaktif`, `batas`. Kata sandi `salah` → galat.
 Tes e2e tiruan: `npm run e2e:karyawan` (server dev dengan `NEXT_PUBLIC_STAFF_MOCK=1` harus menyala).
+Uji gabungan nyata (API dev + DB lokal, data devseed): `E2E_API_URL=http://localhost:8080/api/v1
+E2E_DB_URL=postgres://localhost:5432/sissi_dev npm run e2e:karyawan-api` — prasyarat di kepala `e2e/karyawan-api.e2e.mjs`
+(menyiapkan karyawan Rani & Bayu lewat SQL, lalu undangan → absen → verifikasi `/sync/pull` → aturan Tolak → baris PIN →
+dasbor Tim › Kehadiran → keluar/masuk). Tanpa kedua env itu tes dilewati.
 
 ### Linter
 ```bash

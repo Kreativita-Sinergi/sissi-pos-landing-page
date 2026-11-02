@@ -247,13 +247,18 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
         geo = { ...body.geo, distance_m: d, outside_area: d > 100, mocked: false };
       }
       if (o.enabled && o.outside === "reject" && (!geo || geo.outside_area))
-        throw staffError("Di luar area outlet", 422, "OUTSIDE_AREA", geo ? { distance_m: geo.distance_m } : {});
+        throw staffError(
+          geo ? `Kamu berada ${geo.distance_m} m dari outlet (batas 100 m). Absen hanya bisa dilakukan di lokasi outlet.` : "Lokasi wajib untuk absen di outlet ini.",
+          422,
+          "OUTSIDE_AREA",
+          geo ? [{ field: "distance_m", message: String(geo.distance_m) }] : [{ field: "geo", message: "Wajib diisi" }]
+        );
 
       let out: StaffAttendance;
       if (body.action === "in") {
         if (a && a.date === date && (a.status === "permit" || a.status === "sick" || a.status === "leave" || a.status === "absent") && !a.clock_in_at)
           throw staffError("Hari ini sudah tercatat izin/sakit/cuti/alpa", 422, "ATTENDANCE_DAY_CLOSED");
-        if (a && a.date === date && a.clock_in_at) throw staffError("Sudah absen masuk", 409, "ALREADY_CLOCKED", { attendance: a });
+        if (a && a.date === date && a.clock_in_at) throw staffError("Sudah absen masuk", 409, "ALREADY_CLOCKED");
         const { hm } = zonedClock(now, TZ);
         const [h, m] = hm.split(":").map(Number);
         const diff = h * 60 + m - 8 * 60;
@@ -276,7 +281,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
             throw staffError("Hari ini sudah tercatat izin/sakit/cuti/alpa", 422, "ATTENDANCE_DAY_CLOSED");
           throw staffError("Belum absen masuk", 422, "NOT_CLOCKED_IN");
         }
-        if (a.clock_out_at) throw staffError("Sudah absen pulang", 409, "ALREADY_CLOCKED", { attendance: a });
+        if (a.clock_out_at) throw staffError("Sudah absen pulang", 409, "ALREADY_CLOCKED");
         out = { ...a, clock_out_at: new Date(now).toISOString(), clock_out_via: "web", clock_out_geo: geo };
         s.rows = s.rows.map((r) => (r.id === a.id ? out : r));
       }
@@ -292,7 +297,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
       const [cy, cm] = today.slice(0, 7).split("-").map(Number);
       const [y, m] = month.split("-").map(Number);
       const back = (cy - y) * 12 + (cm - m);
-      if (!y || !m || back < 0 || back > 12)
+      if (!y || !m || back < 0 || back > 12) // bulan depan / > 12 bulan ke belakang
         throw staffError("Input tidak valid", 422, "VALIDATION_ERROR", [{ field: "month", message: "Maksimal 12 bulan ke belakang" }]);
       const items: StaffAttendance[] = [];
       const days = new Date(Date.UTC(y, m, 0)).getUTCDate();

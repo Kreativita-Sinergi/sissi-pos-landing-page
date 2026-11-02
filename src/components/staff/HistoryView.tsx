@@ -10,7 +10,7 @@ import { clockErrorMessage } from "@/lib/staff/errors";
 import type { StaffAttendance, StaffHistory } from "@/lib/staff/types";
 import { useStaff } from "./StaffShell";
 
-// Riwayat kehadiran (/karyawan/riwayat): pilih bulan (bulan ini + 11 sebelumnya), ringkasan, daftar per hari dengan
+// Riwayat kehadiran (/karyawan/riwayat): pilih bulan (bulan ini + 12 sebelumnya), ringkasan, daftar per hari dengan
 // label "via". Cermin Riwayat Kehadiran app. Tetap terbuka saat paket Gratis (baca saja).
 
 type Loaded = { key: string; data?: StaffHistory; error?: unknown };

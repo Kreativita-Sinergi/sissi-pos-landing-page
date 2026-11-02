@@ -1,13 +1,11 @@
 // Pemetaan galat web karyawan → pesan Bahasa Indonesia. Murni (tanpa impor runtime) agar bisa dites unit.
-// Galat dibaca secara "duck typing" (code/status/details/info/retryAfter) — cocok dengan ApiError & StaffApiError.
+// Galat dibaca secara "duck typing" (code/status/details/retryAfter) — cocok dengan ApiError & StaffApiError.
 
 export type ErrorLike = {
   code?: string;
   status?: number;
   message?: string;
   retryAfter?: number | null;
-  /** `error.details` berbentuk objek (bukan daftar field), mis. `{ distance_m }` / `{ attendance }`. */
-  info?: Record<string, unknown> | null;
   details?: { field: string; message: string }[];
 };
 
@@ -107,7 +105,7 @@ export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sen
   const verb = ctx.action === "in" ? "masuk" : "pulang";
   switch (e.code) {
     case "ALREADY_CLOCKED":
-      return { title: `Sudah absen ${verb}`, text: `Absen ${verb} hari ini sudah tercatat sebelumnya.`, tone: "info" };
+      return { title: `Sudah absen ${verb}`, text: `Absen ${verb} sudah tercatat sebelumnya (mungkin dari aplikasi atau tab lain).`, tone: "info" };
     case "NOT_CLOCKED_IN":
       return { title: "Belum absen masuk", text: "Tidak ada absen masuk yang masih terbuka. Absen masuk dulu.", tone: "warning" };
     case "ATTENDANCE_DAY_CLOSED":
@@ -117,7 +115,10 @@ export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sen
         tone: "warning",
       };
     case "OUTSIDE_AREA": {
-      const d = typeof e.info?.distance_m === "number" ? (e.info.distance_m as number) : null;
+      // Kontrak: `[{ field: "distance_m", message: "340" }]` (meter, teks angka) atau `[{ field: "geo" }]` (tanpa lokasi).
+      const raw = e.details?.find((x) => x.field === "distance_m")?.message;
+      const d = raw !== undefined && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
+      const noGeo = !ctx.sentGeo || !!e.details?.some((x) => x.field === "geo");
       if (d !== null)
         return {
           title: "Di luar area outlet",
@@ -125,10 +126,10 @@ export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sen
           tone: "danger",
         };
       return {
-        title: ctx.sentGeo ? "Lokasi tidak bisa diperiksa" : "Lokasi dibutuhkan",
-        text: ctx.sentGeo
-          ? "Outlet ini hanya menerima absen di lokasi, tetapi lokasi outlet belum bisa dicocokkan. Hubungi pemilik."
-          : "Outlet ini hanya menerima absen di lokasi. Izinkan akses lokasi untuk situs ini di pengaturan browser, lalu coba lagi.",
+        title: noGeo ? "Lokasi dibutuhkan" : "Di luar area outlet",
+        text: noGeo
+          ? "Outlet ini hanya menerima absen di lokasi. Izinkan akses lokasi untuk situs ini di pengaturan browser, lalu coba lagi."
+          : e.message || "Lokasimu di luar area outlet. Outlet ini hanya menerima absen di lokasi.",
         tone: "danger",
       };
     }

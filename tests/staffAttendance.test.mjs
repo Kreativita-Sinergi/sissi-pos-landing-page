@@ -53,10 +53,12 @@ test("'tanpa lokasi' hanya untuk jam app/web (atau self lama) dengan geo null", 
 });
 
 test("OUTSIDE_AREA menampilkan jarak bila ada; tanpa lokasi → minta izin lokasi", () => {
-  const withDist = clockErrorMessage({ code: "OUTSIDE_AREA", info: { distance_m: 1450 } }, { action: "in", sentGeo: true });
+  const withDist = clockErrorMessage({ code: "OUTSIDE_AREA", details: [{ field: "distance_m", message: "1450" }] }, { action: "in", sentGeo: true });
   assert.match(withDist.text, /1,5 km/);
-  const noGeo = clockErrorMessage({ code: "OUTSIDE_AREA", info: {} }, { action: "in", sentGeo: false });
+  const noGeo = clockErrorMessage({ code: "OUTSIDE_AREA", details: [{ field: "geo", message: "Wajib diisi" }] }, { action: "in", sentGeo: false });
   assert.match(noGeo.text, /Izinkan akses lokasi/);
+  // Server menerima geo tetapi menandai field geo (mis. outlet tanpa lokasi) → tetap pesan lokasi.
+  assert.equal(clockErrorMessage({ code: "OUTSIDE_AREA", details: [{ field: "geo", message: "x" }] }, { action: "out", sentGeo: true }).title, "Lokasi dibutuhkan");
   assert.equal(formatDistance(230), "230 m");
 });
 
@@ -96,11 +98,11 @@ test("jam server: selisih memakai titik tengah permintaan; tampil di zona usaha"
   assert.equal(formatDateLong("2026-11-02"), "Senin, 2 November 2026");
 });
 
-test("pilihan bulan: bulan ini + 11 sebelumnya, lintas tahun", () => {
+test("pilihan bulan: bulan ini + 12 sebelumnya, lintas tahun", () => {
   const m = monthOptions("2026-02");
-  assert.equal(m.length, 12);
+  assert.equal(m.length, 13);
   assert.deepEqual(m.slice(0, 3), ["2026-02", "2026-01", "2025-12"]);
-  assert.equal(m[11], "2025-03");
+  assert.equal(m[12], "2025-02");
 });
 
 test("tombol berikutnya", () => {

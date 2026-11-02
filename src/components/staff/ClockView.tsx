@@ -154,11 +154,10 @@ export function ClockView() {
       setFeedback(m);
       setPhase("idle");
       if (err instanceof StaffApiError) {
-        if (err.code === "ALREADY_CLOCKED") {
-          const current = err.info?.attendance as StaffAttendance | undefined;
-          if (current && typeof current === "object" && "id" in current) setToday((t) => (t ? { ...t, attendance: current } : t));
-          load(outletRef.current, { quiet: true });
-        } else if (err.code === "NOT_CLOCKED_IN" || err.code === "ATTENDANCE_DAY_CLOSED" || err.code === "PRO_REQUIRED") {
+        // ALREADY_CLOCKED tidak membawa baris → muat ulang GET /staff/today.
+        if (
+          err.code === "ALREADY_CLOCKED" ||
+          err.code === "NOT_CLOCKED_IN" || err.code === "ATTENDANCE_DAY_CLOSED" || err.code === "PRO_REQUIRED") {
           load(outletRef.current, { quiet: true });
         }
       }
@@ -166,14 +165,15 @@ export function ClockView() {
   }
 
   async function clock(action: "in" | "out") {
-    if (!today || phase !== "idle") return;
+    if (!today || !today.outlet_id || phase !== "idle") return;
+    const outletId = today.outlet_id;
     setFeedback(null);
     // Percobaan sebelumnya gagal jaringan → ulangi dengan Idempotency-Key & isi yang sama (bisa saja sudah tercatat).
     const prev = pending.current;
     if (prev && prev.body.action === action && prev.body.outlet_id === today.outlet_id) return send(prev, false);
     setPhase("locating");
     const loc = await locate();
-    const p: Pending = { key: newKey(), body: { outlet_id: today.outlet_id, action, geo: loc.geo }, failure: loc.failure };
+    const p: Pending = { key: newKey(), body: { outlet_id: outletId, action, geo: loc.geo }, failure: loc.failure };
     pending.current = p;
     await send(p, true);
   }
@@ -220,7 +220,7 @@ export function ClockView() {
             </label>
             <select
               id="outlet"
-              value={today.outlet_id}
+              value={today.outlet_id ?? ""}
               onChange={(e) => chooseOutlet(e.target.value)}
               disabled={busy}
               className={`min-h-11 w-full max-w-full rounded-[10px] border border-border-subtle bg-white px-3 text-[14px] font-semibold text-text-heading min-[420px]:w-[230px] ${focusRing}`}
@@ -330,6 +330,10 @@ export function ClockView() {
             <Lock size={18} aria-hidden /> Absen tidak tersedia
           </button>
         </section>
+      ) : !today.outlet_id ? (
+        <Notice tone="warning" role="status" title="Belum terdaftar di outlet">
+          <p>Akunmu belum ditempatkan di outlet aktif mana pun. Minta pemilik mengatur outlet untukmu di menu Tim.</p>
+        </Notice>
       ) : step.kind === "closed" ? (
         <Notice tone="info" title={`Hari ini tercatat ${(STATUS_LABEL[step.status] ?? step.status).toLowerCase()}`}>
           <p>Absen masuk/pulang ditutup untuk hari ini. Hubungi pemilik bila keliru.</p>
@@ -356,6 +360,17 @@ export function ClockView() {
             {busy ? <Spinner size={20} /> : step.kind === "in" ? <LogIn size={22} aria-hidden /> : <LogOut size={22} aria-hidden />}
             {phase === "locating" ? "Mencari lokasi…" : phase === "sending" ? "Mengirim…" : step.kind === "in" ? "Absen Masuk" : "Absen Pulang"}
           </button>
+          {step.kind === "out" && step.carried && (
+            // Absen kemarin masih terbuka tidak menghalangi masuk hari ini (server hanya melihat baris hari ini).
+            <button
+              type="button"
+              onClick={() => clock("in")}
+              disabled={busy}
+              className={`mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-border-subtle bg-white px-4 text-[15px] font-semibold text-text-heading hover:border-border-active disabled:opacity-60 ${focusRing}`}
+            >
+              <LogIn size={18} aria-hidden /> Lewati, absen masuk hari ini
+            </button>
+          )}
           <p id="geo-hint" className="mt-2.5 flex items-start gap-1.5 text-[12.5px] leading-relaxed text-text-muted">
             {today.geo.enabled && today.geo.outside === "reject" ? (
               <>

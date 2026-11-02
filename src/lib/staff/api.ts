@@ -29,10 +29,8 @@ export interface StaffApi {
   history(q: { month?: string }, signal?: AbortSignal): Promise<StaffHistory>;
 }
 
-/** ApiError + `info` = `error.details` berbentuk objek (mis. `{ distance_m }`, `{ attendance }`). */
-export class StaffApiError extends ApiError {
-  info: Record<string, unknown> | null = null;
-}
+/** Galat web karyawan. `details` selalu `[{ field, message }]` (mis. OUTSIDE_AREA `[{ field: "distance_m", message: "340" }]`). */
+export class StaffApiError extends ApiError {}
 
 const STAFF_BASE = `${API_BASE_URL}/staff`;
 const TIMEOUT_MS = 20_000;
@@ -41,7 +39,7 @@ type BaseResponse<T> = {
   success: boolean;
   message?: string;
   data?: T;
-  error?: { code?: string; details?: ApiFieldError[] | Record<string, unknown> };
+  error?: { code?: string; details?: ApiFieldError[] };
 };
 
 let unauthorizedHandler: (() => void) | null = null;
@@ -79,13 +77,10 @@ export function staffError(
   message: string,
   status: number,
   code: string,
-  details?: ApiFieldError[] | Record<string, unknown> | null,
+  details?: ApiFieldError[] | null,
   retryAfter: number | null = null
 ): StaffApiError {
-  const list = Array.isArray(details) ? details : [];
-  const err = new StaffApiError(message, status, code, list, retryAfter);
-  err.info = details && !Array.isArray(details) && typeof details === "object" ? details : null;
-  return err;
+  return new StaffApiError(message, status, code, Array.isArray(details) ? details : [], retryAfter);
 }
 
 async function call<T>(
