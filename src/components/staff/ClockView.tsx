@@ -280,6 +280,12 @@ export function ClockView() {
             </div>
           ) : (
             <>
+              {today.rules.shift ? (
+                <div className="col-span-2 border-b border-border-subtle px-3 py-2">
+                  <dt className="sr-only">Shift</dt>
+                  <dd className="text-[13px] font-semibold text-text-heading">Shift {today.rules.shift.name}</dd>
+                </div>
+              ) : null}
               <div className="border-r border-border-subtle px-3 py-3">
                 <dt className="text-[12px] text-text-muted">Jadwal masuk</dt>
                 <dd className="text-[17px] font-semibold text-text-heading tabular-nums">{today.rules.work_start}</dd>

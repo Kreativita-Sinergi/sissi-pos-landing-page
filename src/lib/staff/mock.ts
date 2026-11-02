@@ -219,7 +219,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
         now: new Date(now).toISOString(),
         date,
         outlet_id: o.id,
-        rules: { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_day: weekday === 0 },
+        rules: { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_day: weekday === 0, shift: null },
         geo: { enabled: o.enabled, radius_m: 100, outside: o.outside, has_location: true },
         attendance: a,
         locked: s.scenario.includes("gratis"),

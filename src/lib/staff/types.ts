@@ -52,7 +52,14 @@ export type StaffToday = {
   date: string;
   /** `null` bila karyawan tidak punya outlet aktif (`geo` lalu bawaan, `enabled: false`). */
   outlet_id: string | null;
-  rules: { work_start: string; work_end: string; late_tolerance_min: number; off_day: boolean };
+  /** Aturan efektif hari ini (jadwal shift bila ada; `shift` aditif sejak 2026-11-02, server lama tidak mengirim). */
+  rules: {
+    work_start: string;
+    work_end: string;
+    late_tolerance_min: number;
+    off_day: boolean;
+    shift?: { name: string; start: string; end: string } | null;
+  };
   geo: { enabled: boolean; radius_m: number; outside: "flag" | "reject"; has_location: boolean };
   attendance: StaffAttendance | null;
   locked: boolean;
