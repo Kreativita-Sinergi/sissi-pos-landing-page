@@ -26,6 +26,7 @@ import {
   isHHMM,
   type Loyalty,
   mergeReceipt,
+  mergeAttendance,
   mergeSection,
   paperLabel,
   mergeTaxes,
@@ -934,7 +935,7 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
       }}
       onSave={() =>
         saver.run(
-          () => saveBusiness(rec, businessId, mergeSection(settings, "attendance", { ...draft, off_days: [...draft.off_days].sort((a, b) => a - b) })),
+          () => saveBusiness(rec, businessId, mergeAttendance(settings, { ...draft, off_days: [...draft.off_days].sort((a, b) => a - b) })),
           "Aturan absensi disimpan.",
           (r) => setDraft(readAttendance(settingsOf(r as Rec)))
         )

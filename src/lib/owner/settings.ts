@@ -258,6 +258,19 @@ export function mergeTaxes(settings: unknown, taxes: Tax[]): Obj[] {
 }
 
 /** Gabungkan satu bagian objek (`receipt`, `rounding`, …) di atas yang tersimpan; kunci lain tetap utuh. */
+/**
+ * Menyimpan aturan absensi: toleransi `null` ("telat tidak dihitung") ditulis sebagai `late_counting: false` di tingkat
+ * atas, sedangkan `attendance.late_tolerance_min` tetap angka (nilai lama atau 10) agar app lama tidak rusak.
+ */
+export function mergeAttendance(settings: unknown, rules: AttendanceRules): Obj {
+  const prev = obj(obj(settings).attendance).late_tolerance_min;
+  const tolerance = rules.late_tolerance_min ?? (typeof prev === "number" && prev >= 0 ? prev : 10);
+  return {
+    ...mergeSection(settings, "attendance", { ...rules, late_tolerance_min: tolerance }),
+    late_counting: rules.late_tolerance_min !== null,
+  };
+}
+
 export function mergeSection(settings: unknown, key: string, value: Obj): Obj {
   const s = obj(settings);
   return { ...s, [key]: { ...obj(s[key]), ...value } };
@@ -308,14 +321,16 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const isHHMM = (v: string) => HHMM.test(v);
 
 export function readAttendance(settings: unknown): AttendanceRules {
-  const s = obj(obj(settings).attendance);
+  const root = obj(settings);
+  const s = obj(root.attendance);
   const ws = str(s.work_start);
   const we = str(s.work_end);
   return {
     work_start: isHHMM(ws) ? ws : "08:00",
     work_end: isHHMM(we) ? we : "17:00",
-    // Kunci hilang/rusak → bawaan 10; `null` eksplisit = pilihan pemilik "telat tidak dihitung" (dipertahankan).
-    late_tolerance_min: s.late_tolerance_min === null ? null : int(s.late_tolerance_min, 10, 0, 1440),
+    // "Telat tidak dihitung" = kunci tingkat atas `late_counting: false` (app lama menimpa `attendance` utuh, tapi
+    // mempertahankan kunci tingkat atas). `late_tolerance_min` selalu angka; null/rusak → 10.
+    late_tolerance_min: root.late_counting === false ? null : int(s.late_tolerance_min, 10, 0, 1440),
     off_days: Array.isArray(s.off_days)
       ? [...new Set(s.off_days.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7))].sort()
       : [7],
@@ -325,8 +340,8 @@ export function readAttendance(settings: unknown): AttendanceRules {
 /** Templat shift (`shift_rules.templates`) yang jamnya sah. */
 export type ShiftTemplateLite = { id: string; name: string; start: string; end: string };
 /**
- * Shift tetap mingguan (`shift_rules.patterns`, 2026-11-02): `{ "<employee_id>": { "1": ["<template_id>", …], … } }`
- * (kunci hari ISO). Web hanya membaca — bagian `shift_rules` tidak pernah ditulis web.
+ * Shift tetap mingguan (kunci tingkat atas `shift_patterns`, 2026-11-03):
+ * `{ "<employee_id>": { "1": ["<template_id>", …], … } }` (kunci hari ISO). Web hanya membaca.
  */
 export type ShiftPatterns = { templates: ShiftTemplateLite[]; patterns: Record<string, Record<string, string[]>> };
 
@@ -339,7 +354,7 @@ export function readShiftPatterns(settings: unknown): ShiftPatterns {
     return id && isHHMM(start) && isHHMM(end) ? [{ id, name: str(t.name), start, end }] : [];
   });
   const patterns: Record<string, Record<string, string[]>> = {};
-  for (const [emp, days] of Object.entries(obj(s.patterns))) {
+  for (const [emp, days] of Object.entries(obj(obj(settings).shift_patterns))) {
     if (!isObj(days)) continue;
     const week: Record<string, string[]> = {};
     for (const [d, ids] of Object.entries(days)) {

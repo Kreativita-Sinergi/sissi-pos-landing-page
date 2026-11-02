@@ -121,7 +121,7 @@ export type TeamData = {
   /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
   leaves: LeaveRequest[];
   rules: AttendanceRules;
-  /** Shift tetap mingguan per karyawan (`shift_rules.patterns`); `shift_assignments` tidak ditarik web. */
+  /** Shift tetap mingguan per karyawan (`shift_patterns`); `shift_assignments` tidak ditarik web. */
   shifts: ShiftPatterns;
   outlets: OutletLite[];
 };
@@ -316,7 +316,7 @@ const spanEnd = (start: number, end: number) => (end <= start ? end + 1440 : end
 
 /**
  * Aturan efektif karyawan `employeeId` pada `day` (api.md "Aturan efektif per karyawan per tanggal") tanpa
- * `shift_assignments` (web tidak menariknya): shift tetap `shift_rules.patterns` hari ISO itu > Jam kerja global.
+ * `shift_assignments` (web tidak menariknya): shift tetap `shift_patterns` hari ISO itu > Jam kerja global.
  * Hari tanpa shift di shift tetap = libur; semua id templat hari itu hilang → Jam kerja global; beberapa shift sehari =
  * satu rentang dari mulai paling awal sampai selesai paling akhir. Cermin `ShiftSchedule.patternPlan`.
  */

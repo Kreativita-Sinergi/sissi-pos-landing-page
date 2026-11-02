@@ -1,12 +1,12 @@
-// Tes unit aturan absensi web pemilik: toleransi telat `null` (= telat tidak dihitung, 2026-11-02), simpan tidak
-// menimpa `null` maupun `shift_rules.patterns`, dan aturan efektif shift tetap > Jam kerja global.
+// Tes unit aturan absensi web pemilik: telat tidak dihitung = `late_counting: false` tingkat atas (2026-11-03), simpan
+// tidak menimpa `shift_patterns`, dan aturan efektif shift tetap > Jam kerja global.
 // Kontrak: sissi-pos-service/docs/api.md "Skema pengaturan bisnis" & "Aturan efektif per karyawan per tanggal".
 // Jalankan: npm test
 import "./support/tsResolve.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-const { mergeSection, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
+const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
 const { computeRecap, dayPlan, evaluateClockIn } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
@@ -16,31 +16,39 @@ const MON = "2026-11-02";
 const TUE = "2026-11-03";
 const SUN = "2026-11-08";
 
-test("toleransi: kunci hilang → 10, null eksplisit → null, angka tetap", () => {
+test("toleransi: angka; null/rusak → 10; late_counting false → null (tidak dihitung)", () => {
   assert.equal(readAttendance({}).late_tolerance_min, 10);
   assert.equal(readAttendance({ attendance: {} }).late_tolerance_min, 10);
   assert.equal(readAttendance({ attendance: { late_tolerance_min: "x" } }).late_tolerance_min, 10);
-  assert.equal(readAttendance({ attendance: { late_tolerance_min: null } }).late_tolerance_min, null);
+  assert.equal(readAttendance({ attendance: { late_tolerance_min: null } }).late_tolerance_min, 10);
+  assert.equal(readAttendance({ attendance: { late_tolerance_min: 15 }, late_counting: false }).late_tolerance_min, null);
   assert.equal(readAttendance({ attendance: { late_tolerance_min: 0 } }).late_tolerance_min, 0);
   assert.equal(readAttendance({ attendance: { late_tolerance_min: 15 } }).late_tolerance_min, 15);
 });
 
-test("simpan aturan absensi mempertahankan null, shift_rules.patterns, & kunci lain", () => {
+test("simpan: tidak dihitung → late_counting false + angka tetap; shift_patterns & kunci lain dipertahankan", () => {
   const stored = {
-    attendance: { work_start: "09:00", work_end: "18:00", late_tolerance_min: null, off_days: [6, 7], extra: 1 },
-    shift_rules: { templates: [{ id: "pagi", name: "Pagi", start: "07:00", end: "15:00" }], patterns: { e1: { 1: ["pagi"] } }, max_hours: 12 },
+    attendance: { work_start: "09:00", work_end: "18:00", late_tolerance_min: 15, off_days: [6, 7], extra: 1 },
+    shift_rules: { templates: [{ id: "pagi", name: "Pagi", start: "07:00", end: "15:00" }], max_hours: 12 },
+    shift_patterns: { e1: { 1: ["pagi"] } },
+    late_counting: false,
     timezone: "Asia/Makassar",
   };
   const draft = readAttendance(stored);
-  const saved = mergeSection(stored, "attendance", { ...draft, work_end: "19:00" });
-  assert.equal(saved.attendance.late_tolerance_min, null);
-  assert.ok("late_tolerance_min" in saved.attendance);
+  assert.equal(draft.late_tolerance_min, null);
+  const saved = mergeAttendance(stored, { ...draft, work_end: "19:00" });
+  assert.equal(saved.attendance.late_tolerance_min, 15);
+  assert.equal(saved.late_counting, false);
   assert.equal(saved.attendance.extra, 1);
   assert.equal(saved.attendance.work_end, "19:00");
   assert.deepEqual(saved.shift_rules, stored.shift_rules);
+  assert.deepEqual(saved.shift_patterns, stored.shift_patterns);
   assert.equal(saved.timezone, "Asia/Makassar");
-  // Bolak-balik JSON: null tetap null (tidak berubah jadi 10).
   assert.equal(readAttendance(JSON.parse(JSON.stringify(saved))).late_tolerance_min, null);
+  // Diisi lagi → dihitung.
+  const again = mergeAttendance(saved, { ...draft, late_tolerance_min: 5 });
+  assert.equal(again.late_counting, true);
+  assert.equal(again.attendance.late_tolerance_min, 5);
 });
 
 test("evaluateClockIn: toleransi null = tidak pernah telat; angka tetap seperti biasa", () => {
@@ -61,8 +69,8 @@ const SETTINGS = {
       { id: "malam", name: "Malam", start: "22:00", end: "06:00" },
       { id: "rusak", name: "Rusak", start: "25:00", end: "06:00" },
     ],
-    patterns: { e1: { 1: ["sore", "pagi"], 2: ["malam"], 3: ["hilang"], 4: [], 7: ["pagi"] }, e2: "rusak" },
   },
+  shift_patterns: { e1: { 1: ["sore", "pagi"], 2: ["malam"], 3: ["hilang"], 4: [], 7: ["pagi"] }, e2: "rusak" },
 };
 
 test("dayPlan: shift tetap > Jam kerja global; libur, gabungan, lewat tengah malam, id hilang", () => {
