@@ -26,6 +26,9 @@ const nextConfig: NextConfig = {
       { source: "/dasbor", headers: ownerHeaders },
       { source: "/dasbor/:path*", headers: ownerHeaders },
       { source: "/masuk", headers: loginHeaders },
+      // Web karyawan (absen): sama seperti dasbor — tidak diindeks, tidak di-cache, tidak dibingkai.
+      { source: "/karyawan", headers: ownerHeaders },
+      { source: "/karyawan/:path*", headers: ownerHeaders },
       // Undangan karyawan: kode sekali pakai ada di URL → jangan diindeks/di-cache, jangan bocor lewat Referer.
       { source: "/undangan/:path*", headers: adminHeaders.map((h) => (h.key === "Referrer-Policy" ? { ...h, value: "no-referrer" } : h)) },
     ];

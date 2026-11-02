@@ -1,0 +1,113 @@
+// Tes unit web karyawan (absen): label "via" (tabel kontrak api.md "Absen karyawan lewat web"), pemetaan galat,
+// jam server, bulan riwayat, tombol berikutnya, dan pengaman `next`. Jalankan: npm test
+import "./support/tsResolve.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+const { viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
+const { acceptErrorMessage, clockErrorMessage, formatDistance, isNetworkError, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
+const { clockOffset, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
+
+const IN = "2026-11-02T01:05:00Z";
+const OUT = "2026-11-02T10:02:00Z";
+const GEO = { lat: -6.2, lng: 106.8, accuracy_m: 12, distance_m: 20, outside_area: false, mocked: false };
+
+test("viaLabel mengikuti tabel kontrak", () => {
+  assert.equal(viaLabel("pin", null), "Perangkat toko (PIN)");
+  assert.equal(viaLabel("pin", "web"), "Perangkat toko (PIN)");
+  assert.equal(viaLabel("self", "app"), "Aplikasi HP");
+  assert.equal(viaLabel("self", null), "Aplikasi HP");
+  assert.equal(viaLabel("self", "web"), "Website");
+  assert.equal(viaLabel("manual", "web"), "Dicatat pemilik");
+  assert.equal(viaLabel("manual", null), "Dicatat pemilik");
+});
+
+test("masuk & pulang lewat jalur berbeda → keduanya ditampilkan", () => {
+  const row = { source: "self", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "web", clock_out_via: "app", clock_in_geo: GEO, clock_out_geo: GEO };
+  assert.deepEqual(viaSummary(row), { label: "Masuk: Website · Pulang: Aplikasi HP", noLocation: false });
+});
+
+test("jalur sama → satu label; baris tanpa jam → null", () => {
+  assert.equal(viaText({ source: "self", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "web", clock_out_via: "web", clock_in_geo: GEO, clock_out_geo: GEO }), "Website");
+  assert.equal(viaText({ source: "pin", clock_in_at: IN, clock_out_at: null }), "Perangkat toko (PIN)");
+  assert.equal(viaSummary({ source: "manual", clock_in_at: null, clock_out_at: null }), null);
+});
+
+test("self tanpa geo → tanda 'tanpa lokasi'; pin/manual tidak pernah", () => {
+  assert.equal(viaText({ source: "self", clock_in_at: IN, clock_out_at: null, clock_in_via: "web", clock_in_geo: null }), "Website · tanpa lokasi");
+  // Pulang tanpa geo juga ditandai.
+  assert.equal(viaSummary({ source: "self", clock_in_at: IN, clock_out_at: OUT, clock_in_via: "app", clock_out_via: "web", clock_in_geo: GEO, clock_out_geo: null }).noLocation, true);
+  assert.equal(viaSummary({ source: "pin", clock_in_at: IN, clock_out_at: OUT, clock_in_geo: null }).noLocation, false);
+  assert.equal(viaSummary({ source: "manual", clock_in_at: IN, clock_out_at: null }).noLocation, false);
+});
+
+test("OUTSIDE_AREA menampilkan jarak bila ada; tanpa lokasi → minta izin lokasi", () => {
+  const withDist = clockErrorMessage({ code: "OUTSIDE_AREA", info: { distance_m: 1450 } }, { action: "in", sentGeo: true });
+  assert.match(withDist.text, /1,5 km/);
+  const noGeo = clockErrorMessage({ code: "OUTSIDE_AREA", info: {} }, { action: "in", sentGeo: false });
+  assert.match(noGeo.text, /Izinkan akses lokasi/);
+  assert.equal(formatDistance(230), "230 m");
+});
+
+test("kode galat absen → pesan Bahasa Indonesia", () => {
+  const ctx = { action: "out", sentGeo: true };
+  assert.equal(clockErrorMessage({ code: "ALREADY_CLOCKED" }, ctx).title, "Sudah absen pulang");
+  assert.equal(clockErrorMessage({ code: "ALREADY_CLOCKED" }, { action: "in", sentGeo: false }).title, "Sudah absen masuk");
+  assert.match(clockErrorMessage({ code: "NOT_CLOCKED_IN" }, ctx).text, /Absen masuk dulu/);
+  assert.match(clockErrorMessage({ code: "ATTENDANCE_DAY_CLOSED" }, ctx).text, /izin, sakit, cuti, atau alpa/);
+  assert.equal(clockErrorMessage({ code: "PRO_REQUIRED" }, ctx).title, "Fitur ini butuh Sissi Pro");
+  assert.match(clockErrorMessage({ code: "FORBIDDEN" }, ctx).text, /outlet/);
+  assert.match(clockErrorMessage({ code: "VALIDATION_ERROR", details: [{ field: "geo.lat", message: "x" }] }, ctx).text, /lokasi/);
+  assert.match(clockErrorMessage({ code: "RATE_LIMITED", retryAfter: 90 }, ctx).text, /2 menit/);
+  assert.match(clockErrorMessage({ code: "NETWORK_ERROR" }, ctx).text, /internet/);
+  assert.equal(isNetworkError({ code: "TIMEOUT" }), true);
+  assert.equal(isNetworkError({ code: "OUTSIDE_AREA" }), false);
+});
+
+test("galat login & aktivasi", () => {
+  assert.match(loginErrorMessage({ code: "INVALID_CREDENTIALS" }).text, /salah/);
+  assert.match(loginErrorMessage({ code: "EMPLOYEE_LOGIN_DISABLED" }).title, /belum diizinkan/);
+  assert.equal(loginErrorMessage({ code: "STAFF_ONLY" }).title, "Ini akun pemilik");
+  assert.equal(acceptErrorMessage({ code: "INVITE_INVALID" }).title, "Undangan tidak berlaku");
+  assert.equal(acceptErrorMessage({ code: "VALIDATION_ERROR", details: [{ field: "password", message: "Minimal 8 karakter" }] }).text, "Minimal 8 karakter");
+  assert.equal(loginErrorMessage("bukan galat").text, "Terjadi kesalahan. Coba lagi sebentar lagi.");
+});
+
+test("jam server: selisih memakai titik tengah permintaan; tampil di zona usaha", () => {
+  const t0 = Date.parse("2026-11-02T01:00:00Z");
+  // Server 90 detik lebih cepat; permintaan 400 ms.
+  assert.equal(clockOffset("2026-11-02T01:01:30.200Z", t0, t0 + 400), 90_000);
+  assert.equal(clockOffset("bukan tanggal", t0, t0), 0);
+  assert.deepEqual(zonedClock(Date.parse("2026-11-02T01:05:09Z"), "Asia/Jakarta"), { hm: "08:05", s: "09" });
+  assert.equal(formatTime(IN, "Asia/Makassar"), "09:05");
+  assert.equal(formatTime(null, "Asia/Jakarta"), "—");
+  assert.equal(zonedDate(Date.parse("2026-11-01T18:30:00Z"), "Asia/Jakarta"), "2026-11-02");
+  assert.equal(formatDateLong("2026-11-02"), "Senin, 2 November 2026");
+});
+
+test("pilihan bulan: bulan ini + 11 sebelumnya, lintas tahun", () => {
+  const m = monthOptions("2026-02");
+  assert.equal(m.length, 12);
+  assert.deepEqual(m.slice(0, 3), ["2026-02", "2026-01", "2025-12"]);
+  assert.equal(m[11], "2025-03");
+});
+
+test("tombol berikutnya", () => {
+  const date = "2026-11-02";
+  const base = { id: "a", outlet_id: "o", outlet_name: "O", status: "ontime", late_minutes: 0, source: "self", clock_in_via: null, clock_out_via: null, clock_in_geo: null, clock_out_geo: null, note: "" };
+  assert.deepEqual(nextStep({ date, attendance: null }), { kind: "in" });
+  assert.deepEqual(nextStep({ date, attendance: { ...base, date, clock_in_at: IN, clock_out_at: null } }), { kind: "out", carried: false });
+  assert.deepEqual(nextStep({ date, attendance: { ...base, date, clock_in_at: IN, clock_out_at: OUT } }), { kind: "done" });
+  assert.deepEqual(nextStep({ date, attendance: { ...base, date: "2026-11-01", clock_in_at: IN, clock_out_at: null } }), { kind: "out", carried: true });
+  assert.deepEqual(nextStep({ date, attendance: { ...base, date: "2026-11-01", clock_in_at: IN, clock_out_at: OUT } }), { kind: "in" });
+  assert.deepEqual(nextStep({ date, attendance: { ...base, date, status: "sick", clock_in_at: null, clock_out_at: null } }), { kind: "closed", status: "sick" });
+});
+
+test("next hanya di bawah /karyawan (cegah open redirect)", () => {
+  assert.equal(safeStaffNext("/karyawan/riwayat"), "/karyawan/riwayat");
+  assert.equal(safeStaffNext("//evil.com"), "/karyawan");
+  assert.equal(safeStaffNext("/dasbor"), "/karyawan");
+  assert.equal(safeStaffNext("/karyawan/masuk"), "/karyawan");
+  assert.equal(safeStaffNext("/karyawanx"), "/karyawan");
+  assert.equal(safeStaffNext(null), "/karyawan");
+});

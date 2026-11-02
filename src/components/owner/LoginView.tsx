@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Eye, EyeOff, Lock } from "lucide-react";
+import { Download, Eye, EyeOff, IdCard, Lock } from "lucide-react";
 import { btn, errorMessage, Field, fieldErrors, focusRing, formatWait, inputClass, Notice, Spinner } from "@/components/admin/ui";
 import { deviceId, OWNER_MOCK, ownerApi } from "@/lib/owner/api";
 import { ApiError } from "@/lib/sissiApi";
@@ -22,7 +22,11 @@ function describe(err: unknown, via: "password" | "google"): LoginError | "locke
     case "INVALID_CREDENTIALS":
       return { text: "Email/nomor HP atau kata sandi salah." };
     case "OWNER_ONLY":
-      return { title: "Khusus pemilik usaha", text: "Dasbor web khusus pemilik usaha. Karyawan memakai aplikasi.", tone: "warning" };
+      return {
+        title: "Khusus pemilik usaha",
+        text: "Dasbor web khusus pemilik usaha. Karyawan absen lewat aplikasi atau halaman Masuk sebagai karyawan di bawah.",
+        tone: "warning",
+      };
     case "EMAIL_NOT_VERIFIED":
       return {
         title: "Email belum terverifikasi",
@@ -41,7 +45,7 @@ function describe(err: unknown, via: "password" | "google"): LoginError | "locke
     case "GOOGLE_EMPLOYEE_NOT_ALLOWED":
       return {
         title: "Akun karyawan",
-        text: "Email ini terdaftar sebagai karyawan. Dasbor web khusus pemilik usaha; karyawan masuk lewat aplikasi dengan PIN.",
+        text: "Email ini terdaftar sebagai karyawan. Dasbor web khusus pemilik usaha; karyawan masuk lewat aplikasi atau halaman Masuk sebagai karyawan.",
         tone: "warning",
       };
     case "GOOGLE_ACCOUNT_MISMATCH":
@@ -64,6 +68,8 @@ export function LoginView() {
   const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
+  // Dialihkan dari /karyawan/masuk (STAFF_ONLY): akun ini akun pemilik.
+  const fromStaff = params.get("dari") === "karyawan";
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -182,6 +188,11 @@ export function LoginView() {
             </p>
 
             <div className="mt-5 flex flex-col gap-4">
+              {fromStaff && !error && (
+                <Notice tone="info" role="status" title="Ini akun pemilik usaha">
+                  <p>Akun yang kamu pakai terdaftar sebagai pemilik. Masuk di sini untuk membuka dasbor pemilik.</p>
+                </Notice>
+              )}
               {locked && (
                 <Notice tone="warning" role="alert" icon={<Lock size={16} aria-hidden />} title="Terlalu banyak percobaan">
                   Coba lagi dalam <span className="font-semibold tabular-nums">{formatWait(lockLeft!)}</span>.
@@ -275,6 +286,12 @@ export function LoginView() {
             </div>
           </div>
 
+          <Link
+            href="/karyawan/masuk"
+            className={`mt-4 flex min-h-11 items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-[14px] font-semibold text-text-heading hover:border-border-active ${focusRing}`}
+          >
+            <IdCard size={16} aria-hidden /> Masuk sebagai karyawan
+          </Link>
           <p className="mt-5 text-center text-[13.5px] text-text-body">
             Belum punya akun?{" "}
             <Link href="/download" className={`font-semibold text-brand-ink underline underline-offset-2 ${focusRing}`}>

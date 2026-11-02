@@ -1341,6 +1341,20 @@ function seedLeaves(put: (entity: string, rows: SyncRecord[]) => void) {
       outlet_id: OUTLETS[0].id, employee_id: dewi, date: yesterday, clock_in_at: at(1, 8), clock_out_at: at(1, 12),
       status: "ontime", late_minutes: 0, note: "Pulang lebih awal, tidak enak badan", source: "pin", edited_by: null, edit_reason: "",
     }),
+    // Absen dari HP pribadi / website (label "via"): Sari masuk lewat website tanpa lokasi; Yoga masuk di aplikasi HP,
+    // pulang lewat website.
+    rec(uuid(`att:${sari}:${today}`), {
+      outlet_id: OUTLETS[1].id, employee_id: sari, date: today, clock_in_at: at(0, 8), clock_out_at: null,
+      status: "ontime", late_minutes: 0, note: "", source: "self", edited_by: null, edit_reason: "",
+      clock_in_via: "web", clock_out_via: null, clock_in_geo: null, clock_out_geo: null,
+    }),
+    rec(uuid(`att:${yoga}:${yesterday}`), {
+      outlet_id: OUTLETS[0].id, employee_id: yoga, date: yesterday, clock_in_at: at(1, 8), clock_out_at: at(1, 17),
+      status: "ontime", late_minutes: 0, note: "", source: "self", edited_by: null, edit_reason: "",
+      clock_in_via: "app", clock_out_via: "web",
+      clock_in_geo: { lat: -6.2, lng: 106.8, accuracy_m: 15, distance_m: 22, outside_area: false, mocked: false },
+      clock_out_geo: { lat: -6.2, lng: 106.8, accuracy_m: 40, distance_m: 35, outside_area: false, mocked: false },
+    }),
   ]);
 }
 

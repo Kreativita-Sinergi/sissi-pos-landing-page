@@ -112,6 +112,24 @@ Links membuka tautan langsung di aplikasi — butuh env `ANDROID_APP_LINKS_SHA25
 Mode tiruan dasbor (`NEXT_PUBLIC_OWNER_MOCK=1`): kode apa saja (10 karakter) = undangan contoh, awalan `R` = reset
 password, awalan `0000` = tidak berlaku. Kontrak: `sissi-pos-service/docs/api.md` "Akun karyawan & Ruang Karyawan".
 
+### Absen karyawan lewat web — `/karyawan`
+Karyawan (kasir, dapur, staff — tampilan sama, hanya absen) masuk di `/karyawan/masuk` (no. HP/email + kata sandi akun
+pribadi), lalu absen Masuk/Pulang di `/karyawan` dan melihat `/karyawan/riwayat`. Aktivasi akun tanpa aplikasi: tombol
+**Aktifkan lewat website** di `/undangan/<kode>`. Sesi cookie `__Host-sissi_staff` (terpisah dari sesi pemilik), header
+`X-Sissi-Staff: 1`; jam besar memakai waktu server. Lokasi diminta saat tombol ditekan; ditolak → dikirim tanpa lokasi.
+Semua `noindex`. Kontrak: `sissi-pos-service/docs/api.md` "Absen karyawan lewat web".
+
+```bash
+# .env.local — coba tanpa server
+NEXT_PUBLIC_STAFF_MOCK=1
+NEXT_PUBLIC_OWNER_MOCK=1   # opsional: data undangan contoh di /undangan/<kode>
+```
+Skenario mode tiruan dipilih dari teks no. HP/email (boleh digabung, mis. `cabang-telat`): bawaan = belum absen,
+`telat`, `pulang` (masuk via aplikasi, pulang via website), `kemarin` (belum pulang kemarin), `izin`, `tolak` (aturan
+lokasi Tolak → `OUTSIDE_AREA`), `gratis` (terkunci), `cabang` (2 outlet), `putus` (galat jaringan sekali → ulang dengan
+`Idempotency-Key` sama), `pemilik` (`STAFF_ONLY` → `/masuk`), `nonaktif`, `batas`. Kata sandi `salah` → galat.
+Tes e2e tiruan: `npm run e2e:karyawan` (server dev dengan `NEXT_PUBLIC_STAFF_MOCK=1` harus menyala).
+
 ### Linter
 ```bash
 npm run lint

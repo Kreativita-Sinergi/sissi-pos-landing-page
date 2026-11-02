@@ -16,6 +16,7 @@
 import { pullAll, pushChanges } from "./api";
 import { toLeave, type LeaveRequest } from "./leavePlan";
 import { readAttendance, type AttendanceRules } from "./settings";
+import type { AttendanceVia } from "../attendanceVia";
 import type { ChangeResult, SyncRecord, WritableEntity } from "./types";
 import { zonedDay, zonedHHMM, zoneOffsetMs, zonedToday } from "./tz";
 
@@ -70,6 +71,8 @@ export type Employee = {
   bound_at: string | null;
 };
 
+export type AttendanceGeo = { lat: number; lng: number; accuracy_m: number; distance_m: number | null; outside_area: boolean; mocked: boolean };
+
 export type Attendance = SyncRecord & {
   outlet_id: string;
   employee_id: string;
@@ -82,6 +85,12 @@ export type Attendance = SyncRecord & {
   source: "pin" | "manual" | "self";
   edited_by: string | null;
   edit_reason: string;
+  /** Jalur pengisian jam (`"app"`/`"web"`), diisi server saja; `null` = baris lama/tanpa jam → dibaca dari `source`. */
+  clock_in_via?: AttendanceVia | null;
+  clock_out_via?: AttendanceVia | null;
+  /** Lokasi absen `self` (server menghitung `distance_m`/`outside_area`); `null` = tanpa lokasi. */
+  clock_in_geo?: AttendanceGeo | null;
+  clock_out_geo?: AttendanceGeo | null;
   /** Pengajuan disetujui yang menghasilkan absen manual ini (null selainnya). */
   leave_request_id?: string | null;
 };

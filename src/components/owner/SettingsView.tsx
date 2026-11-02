@@ -922,7 +922,7 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
     <EditSection
       id="absensi"
       title="Aturan absensi"
-      description="Dipakai aplikasi untuk menandai terlambat & menghitung lembur saat karyawan absen dengan PIN."
+      description="Dipakai untuk menandai terlambat & menghitung lembur saat karyawan absen — dengan PIN, dari aplikasi HP, atau lewat website."
       dirty={dirty}
       saving={saver.saving}
       canSave={!startErr && !endErr && !tolErr}

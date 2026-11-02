@@ -23,11 +23,14 @@ import {
   type Employee,
 } from "@/lib/owner/team";
 import { formatDayLong, zonedToday } from "@/lib/owner/tz";
+import { viaSummary, viaText } from "@/lib/attendanceVia";
 import { WEEKDAYS, WEEKDAYS_SHORT } from "../labels";
 import { Avatar, DayBadge, dayTone, MonthSelect, type TeamCtx } from "./shared";
 
 // Tab Kehadiran — cermin `attendance_today.dart` (papan hari ini) & `attendance_history.dart` (kisi sebulan + rekap).
-// Absen masuk/pulang dengan PIN hanya di perangkat kasir; dari web pemilik mencatat absen manual / koreksi.
+// Karyawan absen masuk/pulang dengan PIN di perangkat toko, dari aplikasi HP pribadi, atau lewat website
+// (kasir.sissi.id/karyawan); label "via" per kontrak (`src/lib/attendanceVia.ts`). Dari dasbor pemilik mencatat absen
+// manual / koreksi.
 
 const CELL_TONE: Record<string, string> = {
   success: "bg-success-tint text-success",
@@ -87,7 +90,8 @@ export function AttendanceTab({
         <Info size={14} aria-hidden className="mt-0.5 shrink-0" />
         Jam kerja {rules.work_start}–{rules.work_end}, toleransi {rules.late_tolerance_min} menit
         {rules.off_days.length ? `, libur ${rules.off_days.map((d) => WEEKDAYS[d - 1]).join(", ")}` : ""}. Karyawan absen masuk & pulang dengan PIN
-        di aplikasi kasir; koreksi dari sini tercatat sebagai input manual pemilik.
+        di perangkat toko, dari aplikasi Sissi di HP pribadi, atau lewat website (kasir.sissi.id/karyawan); koreksi dari
+        sini tercatat sebagai input manual pemilik.
       </p>
     </>
   );
@@ -140,7 +144,7 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                         r?.clock_in_at ? `Masuk ${clockLabel(r.clock_in_at)}` : null,
                         r?.clock_out_at ? `Pulang ${clockLabel(r.clock_out_at)}` : null,
                         r?.status === "late" ? `Telat ${r.late_minutes} mnt` : null,
-                        r?.source === "manual" ? "Manual" : null,
+                        r ? (viaText(r) ?? (r.source === "manual" ? "Dicatat pemilik" : null)) : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -329,7 +333,7 @@ function DayList({
         <EmptyState icon={<CalendarCheck size={22} aria-hidden />} title="Belum ada catatan kehadiran bulan ini." />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[14px]">
+          <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[14px]">
             <thead>
               <tr>
                 <th scope="col" className={thClass}>
@@ -340,6 +344,9 @@ function DayList({
                 </th>
                 <th scope="col" className={thClass}>
                   Masuk – pulang
+                </th>
+                <th scope="col" className={thClass}>
+                  Lewat
                 </th>
                 <th scope="col" className={thClass}>
                   Catatan
@@ -359,6 +366,9 @@ function DayList({
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle tabular-nums`}>
                     {row?.clock_in_at ? `${clockLabel(row.clock_in_at)} – ${clockLabel(row.clock_out_at)}` : "—"}
+                  </td>
+                  <td className={`${tdClass} border-b border-border-subtle text-[13px] text-text-body`}>
+                    <ViaCell row={row} />
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle text-[13px] text-text-body`}>
                     {row?.note && <span className="block">{row.note}</span>}
@@ -389,5 +399,17 @@ function DayList({
         </div>
       )}
     </Section>
+  );
+}
+
+/** Label via (masuk & pulang beda → keduanya) + tanda "tanpa lokasi" untuk absen `self` tanpa geo. */
+function ViaCell({ row }: { row: Attendance | null }) {
+  const v = row ? viaSummary(row) : null;
+  if (!v) return <span className="text-text-muted">—</span>;
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span>{v.label}</span>
+      {v.noLocation && <Badge tone="warning">tanpa lokasi</Badge>}
+    </span>
   );
 }

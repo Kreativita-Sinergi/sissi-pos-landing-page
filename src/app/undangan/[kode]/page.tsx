@@ -8,11 +8,13 @@ import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/shared/Container";
 import { formatInviteCode, inviteIntentUrl, normalizeInviteCode } from "@/lib/appLinks";
 import { ApiError, getJson } from "@/lib/sissiApi";
+import { ActivateOnWeb } from "./ActivateOnWeb";
 import { InviteCode } from "./InviteCode";
 
 // Halaman undangan karyawan: tautan `/undangan/<kode>` dari pemilik (WhatsApp). Bila aplikasi Sissi terpasang,
 // Android App Links membukanya langsung di aplikasi (lihat /.well-known/assetlinks.json); halaman ini cadangan
-// tanpa aplikasi: tombol buka/unduh + kode untuk diketik manual ("Punya kode undangan").
+// tanpa aplikasi: tombol buka/unduh + kode untuk diketik manual ("Punya kode undangan"), atau "Aktifkan lewat website"
+// (buat kata sandi → sesi web karyawan → /karyawan; POST /staff/auth/accept/{code}).
 // Kontrak: sissi-pos-service/docs/api.md "Akun karyawan & Ruang Karyawan" (GET /invites/{code}, publik).
 
 export const metadata: Metadata = {
@@ -170,6 +172,13 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
             Sissi tersedia untuk HP Android. Buka tautan ini di HP Android-mu, atau ketik kodenya di aplikasi.
           </p>
         )}
+
+        <div className="mt-6 border-t border-[#e4e9e7] pt-6">
+          <p className="mb-3 text-[14px] leading-relaxed text-[#525866]">
+            Tidak memakai aplikasi? Aktifkan akunmu di sini untuk absen masuk & pulang lewat website (HP atau komputer).
+          </p>
+          <ActivateOnWeb code={code} reset={reset} />
+        </div>
       </div>
 
       <div className="rounded-[16px] border border-[#e4e9e7] bg-white p-6 shadow-2xs sm:p-8">
