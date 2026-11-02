@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { CalendarX2, MapPinOff } from "lucide-react";
 import { Badge, focusRing, Notice } from "@/components/admin/ui";
+import { Select } from "@/components/owner/Select";
 import { viaSummary } from "@/lib/attendanceVia";
 import { staffApi, StaffApiError } from "@/lib/staff/api";
 import { dateParts, formatTime, monthLabel, monthOptions, STATUS_LABEL } from "@/lib/staff/clock";
@@ -62,23 +63,18 @@ export function HistoryView() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-[22px] leading-tight font-bold tracking-tight text-text-heading">Riwayat kehadiran</h1>
         <div className="w-full min-[420px]:w-auto">
-          <label htmlFor="bulan" className="mb-1 block text-[12.5px] font-semibold text-text-heading">
+          <label htmlFor="bulan" className="mb-1 inline-block text-[12.5px] font-semibold text-text-heading">
             Bulan
           </label>
-          <select
+          <Select
             id="bulan"
             value={shownMonth ?? ""}
             disabled={!current}
-            onChange={(e) => setMonth(e.target.value === current ? null : e.target.value)}
-            className={`min-h-11 w-full rounded-[10px] border border-border-subtle bg-white px-3 text-[14px] font-semibold text-text-heading min-[420px]:w-[200px] ${focusRing}`}
-          >
-            {options.length === 0 && <option value="">Memuat…</option>}
-            {options.map((m) => (
-              <option key={m} value={m}>
-                {monthLabel(m)}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setMonth(v === current ? null : v)}
+            placeholder="Memuat…"
+            className="min-h-11 font-semibold min-[420px]:w-[200px]"
+            options={options.map((m) => ({ value: m, label: monthLabel(m) }))}
+          />
         </div>
       </div>
 

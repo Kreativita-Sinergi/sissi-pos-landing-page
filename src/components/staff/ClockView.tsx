@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Check, Lock, LogIn, LogOut, MapPin, MapPinOff, RotateCw } from "lucide-react";
 import { Badge, focusRing, Notice, Spinner } from "@/components/admin/ui";
+import { Select } from "@/components/owner/Select";
 import { missingLocation, viaLabel } from "@/lib/attendanceVia";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
 import { clockOffset, formatDateLong, formatTime, nextStep, STATUS_LABEL, zonedClock, zonedDate } from "@/lib/staff/clock";
@@ -215,22 +216,17 @@ export function ClockView() {
         </div>
         {outlets.length > 1 ? (
           <div className="w-full min-[420px]:w-auto">
-            <label htmlFor="outlet" className="mb-1 block text-[12.5px] font-semibold text-text-heading">
+            <label htmlFor="outlet" className="mb-1 inline-block text-[12.5px] font-semibold text-text-heading">
               Outlet
             </label>
-            <select
+            <Select
               id="outlet"
               value={today.outlet_id ?? ""}
-              onChange={(e) => chooseOutlet(e.target.value)}
+              onChange={(v) => chooseOutlet(v)}
               disabled={busy}
-              className={`min-h-11 w-full max-w-full rounded-[10px] border border-border-subtle bg-white px-3 text-[14px] font-semibold text-text-heading min-[420px]:w-[230px] ${focusRing}`}
-            >
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
+              className="min-h-11 font-semibold min-[420px]:w-[230px]"
+              options={outlets.map((o) => ({ value: o.id, label: o.name }))}
+            />
           </div>
         ) : (
           outletName && (

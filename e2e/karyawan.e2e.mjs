@@ -157,11 +157,11 @@ test("sudah masuk telat + multi-outlet; riwayat 13 pilihan bulan tanpa meluber",
   const page = await fresh();
   await login(page, "cabang-telat@contoh.id");
   await waitText(page, "Telat 17 menit");
-  assert(await page.$("select#outlet"), "pemilih outlet tidak ada");
+  assert(await page.$("button#outlet"), "pemilih outlet tidak ada");
   await shot(page, "absen-telat-cabang-360");
   await page.goto(`${BASE}/karyawan/riwayat`, { waitUntil: "networkidle2" });
   await waitText(page, "Hadir");
-  const n = await page.$$eval("#bulan option", (o) => o.length);
+  const n = await page.$$eval("#bulan ~ [role=listbox] [role=option]", (o) => o.length);
   assert(n === 13, `pilihan bulan ${n}`);
   await noOverflow(page, "riwayat 360");
   await shot(page, "riwayat-360");

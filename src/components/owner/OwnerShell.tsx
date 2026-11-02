@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Boxes, ChartColumn, ChevronDown, CreditCard, History, House, IdCard, LogOut, Package, ReceiptText, Settings, Store, UsersRound, Wallet } from "lucide-react";
 import { Avatar } from "@/components/admin/AdminShell";
 import { FilterSelect } from "@/components/admin/FilterMenu";
@@ -97,7 +97,6 @@ function currentPath(): string {
 }
 
 export function OwnerShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [session, setSession] = useState<OwnerSession | null>(null);
@@ -105,9 +104,11 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Navigasi penuh (bukan router.replace): Next menyimpan pohon rute yang ditinggalkan beserta state-nya, sehingga
+  // halaman login lama (tombol masih "Memeriksa…") atau shell sesi lama muncul kembali. Sama dengan StaffShell.
   const toLogin = useCallback(() => {
-    router.replace(loginUrl(currentPath()));
-  }, [router]);
+    window.location.replace(loginUrl(currentPath()));
+  }, []);
 
   useEffect(() => {
     setUnauthorizedHandler(toLogin);
@@ -147,8 +148,8 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
     } catch {
       // Tetap keluar dari tampilan; sesi server berakhir sendiri.
     }
-    router.replace("/masuk");
-  }, [router]);
+    window.location.replace("/masuk");
+  }, []);
 
   if (!session) {
     return (
