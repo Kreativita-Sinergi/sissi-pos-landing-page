@@ -121,6 +121,7 @@ const UPDATED_NEW = "13 Oktober 2026";
 const UPDATED_OCT21 = "21 Oktober 2026";
 const UPDATED_OCT23 = "23 Oktober 2026";
 const UPDATED_OCT28 = "28 Oktober 2026";
+const UPDATED_NOV3 = "3 November 2026";
 
 // Semua gambar panduan memakai tampilan tablet lanskap 1280×800 (keputusan pemilik).
 const TABLET = { device: "tablet" as const, width: 1280, height: 800 };
@@ -2300,7 +2301,7 @@ export const GUIDES: GuideItem[] = [
         id: "pelayan",
         title: "Untuk pelayan dan kasir",
         description:
-          "Saat dapur menandai pesanan siap, Kasir langsung memberi tahu: ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap diantar”, di HP maupun tablet. Ketuk loncengnya untuk membuka lembar “Siap diantar”, antar ke tamu, lalu ketuk “Tandai sudah diantar”.",
+          "Saat dapur menandai pesanan siap, Kasir langsung memberi tahu: ikon lonceng berangka di kepala layar Kasir dan pesan singkat “… siap diantar”, di HP maupun tablet. Ketuk loncengnya untuk membuka lembar “Siap diantar”, antar ke tamu, lalu ketuk “Tandai sudah diantar”. Lembar yang sama terbuka dari kartu “Siap diantar” di Beranda dan dari notifikasi “Pesanan siap diantar”.",
         points: [
           "Di “Pesanan”, pesanan yang siap naik ke atas dengan bingkai hijau. Pakai saringan “Siap diantar” untuk melihatnya saja.",
           "Di layar Meja, kartu meja diberi lencana hijau “N siap antar”.",
@@ -2918,7 +2919,7 @@ export const GUIDES: GuideItem[] = [
         id: "pengaturan-pemilik",
         title: "Pengaturan pemilik",
         points: [
-          "Pengaturan › “Shift kasir” (grup “Karyawan & absen”): “Daftar shift” (nama dan jam, tampil di Beranda) dan “Batas lama shift” (peringatan bila shift berjalan terlalu lama).",
+          "Pengaturan › grup “Karyawan & absen” › “Daftar shift”: nama dan jam shift (dipakai juga untuk jadwal karyawan di Tim › “Jadwal”) dan “Batas lama shift” (peringatan bila shift berjalan terlalu lama).",
           "“Kunci kasir” mengunci layar tanpa menutup shift; dibuka lagi dengan PIN karyawan.",
         ],
       },
@@ -3606,10 +3607,10 @@ export const GUIDES: GuideItem[] = [
     slug: "absensi-karyawan",
     category: "tim",
     title: "Absen karyawan",
-    description: "Absen masuk dan pulang dengan PIN, aturan jam kerja, dan koreksi manual.",
+    description: "Absen masuk dan pulang dengan PIN atau HP pribadi, jadwal shift per karyawan, aturan jam kerja, dan koreksi manual.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 3,
-    lastUpdated: UPDATED_OCT23,
+    lastUpdated: UPDATED_NOV3,
     overview: "Absen dicatat di perangkat kasir dengan PIN, sehingga tidak perlu alat absen terpisah. Kehadiran termasuk paket Pro.",
     steps: [
       {
@@ -3624,13 +3625,27 @@ export const GUIDES: GuideItem[] = [
           "Karyawan tanpa PIN ditandai “Belum punya PIN” dan belum bisa absen di perangkat toko.",
           "Karyawan yang diundang ke HP pribadi (Ruang Karyawan) bisa absen dari HP-nya sendiri, di lokasi yang diatur pemilik di Pengaturan › “Lokasi absen”.",
           "Di layar Kehadiran, “Hari ini” dan “Riwayat” berupa chip kecil di bawah tab utama.",
+          "Setelah absen dari HP pribadi, muncul konfirmasi “Absen masuk berhasil” beserta jam dan status (tepat waktu / terlambat). Saat offline, absen tersimpan di HP dan terkirim otomatis begitu ada internet.",
+        ],
+      },
+      {
+        id: "jadwal",
+        title: "Jadwal shift & shift tetap (pemilik)",
+        steps: [
+          "Buat daftar shift di Pengaturan › “Karyawan & absen” › “Daftar shift” (mis. Pagi 08:00–16:00, Malam 22:00–06:00).",
+          "Buka Tim › “Jadwal”, ketuk nama karyawan untuk mengatur “Shift tetap”: pilih satu atau lebih shift, pilih hari (atau “Setiap hari”), lalu “Terapkan”. Hari tanpa shift = libur. Berlaku setiap minggu sampai diubah.",
+          "Untuk tanggal tertentu saja, ketuk kotaknya di jadwal untuk mengganti shift atau meliburkan hari itu (tampil oranye).",
+        ],
+        points: [
+          "Telat dan lembur dihitung dari jam shift masing-masing karyawan.",
+          "Shift malam: absen masuk lewat tengah malam (mis. 00:30 untuk shift 22:00) dihitung ke shift kemarin.",
         ],
       },
       {
         id: "aturan",
         title: "Jam kerja & telat (pemilik)",
         description:
-          "Buka Pengaturan › grup “Karyawan & absen” › “Jam kerja & telat”, lalu ketuk “Ubah jam kerja”. Bisa juga lewat tombol “Jam kerja” di layar Kehadiran (tablet: di kepala layar; HP: di baris chip). Di lembar “Aturan jam kerja”, isi “Jam mulai”, “Jam selesai”, “Toleransi terlambat (menit)”, dan “Hari libur mingguan”. Aturan ini dipakai untuk status terlambat, lembur, dan libur.",
+          "Buka Pengaturan › grup “Karyawan & absen” › “Jam kerja & telat”, lalu ketuk “Ubah jam kerja”. Bisa juga lewat tombol “Jam kerja” di layar Kehadiran (tablet: di kepala layar; HP: di baris chip). Di lembar “Aturan jam kerja”, isi “Jam mulai”, “Jam selesai”, “Toleransi terlambat (menit)”, dan “Hari libur mingguan”. Aturan ini dipakai untuk status terlambat, lembur, dan libur. Kosongkan toleransi terlambat bila telat tidak dihitung. Jam kerja boleh lewat tengah malam (mis. 22:00–06:00).",
       },
       {
         id: "manual",
@@ -3640,7 +3655,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["karyawan-dan-pin", "gaji-dan-slip-gaji"],
-    keywords: ["absen", "absensi", "presensi", "kehadiran", "terlambat", "telat", "jam kerja", "koreksi absen", "absen manual", "lokasi absen", "izin", "sakit", "cuti"],
+    keywords: ["absen", "absensi", "presensi", "kehadiran", "jadwal shift", "shift tetap", "shift malam", "terlambat", "telat", "jam kerja", "koreksi absen", "absen manual", "lokasi absen", "izin", "sakit", "cuti"],
   },
   {
     slug: "gaji-dan-slip-gaji",
@@ -3649,7 +3664,7 @@ export const GUIDES: GuideItem[] = [
     description: "Atur gaji per karyawan, terbitkan slip dari data kehadiran, dan tandai sudah dibayar.",
     audience: ["Pemilik"],
     readMinutes: 4,
-    lastUpdated: UPDATED_OCT23,
+    lastUpdated: UPDATED_NOV3,
     overview: "Gaji dihitung dari pengaturan gaji tiap karyawan dan data kehadirannya. Fitur gaji termasuk paket Pro.",
     steps: [
       {
@@ -3665,7 +3680,7 @@ export const GUIDES: GuideItem[] = [
         id: "terbit",
         title: "Terbitkan slip",
         description:
-          "Buka slip karyawan untuk bulan itu, periksa rekap, lalu ketuk “Terbitkan slip”. Setelah terbit, perubahan kehadiran tidak lagi mengubah slip.",
+          "Buka slip karyawan untuk bulan itu, periksa rekap, lalu ketuk “Terbitkan slip”. Bila kehadiran berubah setelah slip terbit dan slip belum dibayar, ketuk “Terbitkan ulang” agar slip mengikuti kehadiran terbaru (nomor slip tetap). Setelah dibayar, slip tidak bisa diubah lagi.",
         points: [
           "Status slip: “Belum terbit” (abu) → “Belum dibayar” (kuning, setelah slip terbit) → “Dibayar” (hijau).",
         ],
@@ -3679,7 +3694,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["absensi-karyawan", "karyawan-dan-pin", "shift-kas-dan-tutup-kasir-harian"],
-    keywords: ["gaji", "payroll", "slip gaji", "upah", "lembur", "potongan", "belum dibayar", "dibayar"],
+    keywords: ["gaji", "payroll", "slip gaji", "terbitkan ulang", "upah", "lembur", "potongan", "belum dibayar", "dibayar"],
   },
 
   // ───────────────────────────── JASA ─────────────────────────────
