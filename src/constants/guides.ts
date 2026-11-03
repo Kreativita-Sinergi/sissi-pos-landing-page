@@ -173,7 +173,7 @@ export const GUIDES: GuideItem[] = [
         id: "transaksi-pertama",
         title: "Catat transaksi pertama",
         description:
-          "Di “Kasir”, ketuk produk untuk menambahkannya ke pesanan, ketuk “Bayar”, pilih cara bayar, lalu “Selesaikan pembayaran”.",
+          "Di “Kasir”, ketuk produk untuk menambahkannya ke pesanan, ketuk “Bayar”, pilih cara bayar, lalu “Selesai bayar”.",
         callout: {
           type: "tip",
           text: "Di Beranda ada kartu “Langkah persiapan” berisi daftar hal yang perlu disiapkan, misalnya “Tambah produk” dan “Atur meja”.",
@@ -2096,7 +2096,7 @@ export const GUIDES: GuideItem[] = [
         id: "dp-lebih",
         title: "DP lebih besar dari tagihan",
         description:
-          "Bila tagihan lebih kecil dari DP, layar Pembayaran menampilkan “DP lebih Rp … dari tagihan”. Pilih salah satu, lalu ketuk “Selesaikan pembayaran”:",
+          "Bila tagihan lebih kecil dari DP, layar Pembayaran menampilkan “DP lebih Rp … dari tagihan”. Pilih salah satu, lalu ketuk “Selesai bayar”:",
         points: [
           "“Kembalikan sisa DP” — sisanya dikembalikan ke tamu lewat metode DP. Bisa meminta PIN pemilik bila “PIN pemilik untuk batal & refund” aktif.",
           "“Sisa DP tidak dikembalikan” — sisanya dicatat sebagai pendapatan (baris “Sisa DP”).",
@@ -2581,7 +2581,7 @@ export const GUIDES: GuideItem[] = [
         steps: [
           "Di “Cara bayar”, pilih “Tunai”.",
           "Ketuk “Uang pas” atau salah satu nominal saran, atau “Nominal lain” untuk mengetik sendiri. Selama uang diterima belum dipilih, tombol utama bertuliskan “Pilih uang diterima dulu”.",
-          "Periksa “Kembalian”, lalu ketuk “Selesaikan pembayaran”.",
+          "Periksa “Kembalian”, lalu ketuk “Selesai bayar”.",
         ],
         points: [
           "Di lembar “Nominal lain”, tagihan tampil di atas (“Tagihan Rp …”), dan di bawah angka yang diketik langsung terlihat “Kembalian Rp …” (hijau) atau “Kurang Rp … (dicatat sebagian)” (kuning) bila uangnya kurang.",
@@ -2622,7 +2622,7 @@ export const GUIDES: GuideItem[] = [
           "Pilih cara bayar pertama, mis. Tunai, lalu ketuk tautan “Bayar pakai 2 metode” di bawah “Cara bayar” (muncul sebelum ada pembayaran masuk).",
           "Masukkan nominal untuk metode pertama. Bila kurang dari tagihan, ketuk “Tambah pembayaran · Rp …”.",
           "Pada “Bayar sisa dengan”, pilih cara bayar berikutnya sampai “Sisa tagihan” habis.",
-          "Ketuk “Selesaikan pembayaran”.",
+          "Ketuk “Selesai bayar”.",
         ],
         points: [
           "Salah masukkan? Hapus dengan “Hapus pembayaran”.",
