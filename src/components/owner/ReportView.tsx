@@ -54,7 +54,7 @@ export function ReportView() {
         r &&
         downloadCsv(
           `${fileBase}-ringkasan.csv`,
-          [r.hourly ? "jam" : "tanggal", "omzet", "transaksi"],
+          [r.hourly ? "jam" : "tanggal", "penjualan", "transaksi"],
           r.buckets.map((b) => [b.start.replace("T", " "), b.revenue, b.count])
         ),
     },
@@ -66,7 +66,7 @@ export function ReportView() {
         r?.products &&
         downloadCsv(
           `${fileBase}-produk.csv`,
-          ["peringkat", "produk", "varian", "item_cepat", "jumlah", "omzet"],
+          ["peringkat", "produk", "varian", "item_cepat", "jumlah", "penjualan"],
           r.products.map((p, i) => [i + 1, p.name, p.variant_name ?? "", p.is_custom ? "ya" : "tidak", p.quantity, p.revenue])
         ),
     },
@@ -78,7 +78,7 @@ export function ReportView() {
         r &&
         downloadCsv(
           `${fileBase}-kasir.csv`,
-          ["kasir", "transaksi", "omzet", "rata_rata", "dibatalkan"],
+          ["kasir", "transaksi", "penjualan", "rata_rata", "dibatalkan"],
           r.cashiers.map((c) => [c.name, c.count, c.revenue, c.average, c.cancelled])
         ),
     },

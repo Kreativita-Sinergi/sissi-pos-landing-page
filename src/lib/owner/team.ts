@@ -762,7 +762,7 @@ export function outcome(r: ChangeResult | undefined): TeamOutcome {
   const fields: Record<string, string> = {};
   for (const d of r.details ?? []) if (d.field && !fields[d.field]) fields[d.field] = friendly(d.message);
   const first = Object.values(fields)[0];
-  return { status: "rejected", record: r.record ?? null, message: friendly(first ?? r.message ?? "Perubahan ditolak server."), fields };
+  return { status: "rejected", record: r.record ?? null, message: friendly(first ?? r.message ?? "Perubahan tidak tersimpan."), fields };
 }
 
 async function pushOne(entity: WritableEntity, id: string, data: Record<string, unknown>, base?: string): Promise<TeamOutcome> {

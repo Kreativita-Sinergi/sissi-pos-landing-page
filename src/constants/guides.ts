@@ -99,7 +99,7 @@ export const GUIDE_CATEGORIES: GuideCategory[] = [
   { id: "jasa", label: "Jasa / servis", description: "Order servis, antrean, uang muka, dan penyerahan." },
   { id: "sewa", label: "Penyewaan", description: "Unit sewa, tarif, booking, dan sesi dengan timer." },
   { id: "notifikasi", label: "Notifikasi", description: "Notifikasi di aplikasi dan peringatan pemilik di HP." },
-  { id: "offline", label: "Bekerja offline", description: "Apa yang terjadi saat internet putus, status sinkron, dan perubahan ditolak." },
+  { id: "offline", label: "Bekerja offline", description: "Apa yang terjadi saat internet putus, status sinkron, dan perubahan yang tidak tersimpan." },
   { id: "pembaruan", label: "Perbarui aplikasi", description: "Pembaruan biasa dan pembaruan wajib." },
   { id: "akun", label: "Akun & keamanan", description: "Kata sandi, keluar akun, login perangkat baru, dan hapus akun." },
   { id: "langganan", label: "Langganan", description: "Paket Gratis dan Pro, batas transaksi, dan cara memperpanjang." },
@@ -2814,7 +2814,7 @@ export const GUIDES: GuideItem[] = [
     ],
     faqs: [
       {
-        question: "Muncul “tidak tersimpan” atau “perubahan ditolak” setelah membatalkan.",
+        question: "Muncul “perubahan tidak tersimpan” setelah membatalkan.",
         answer:
           "Server menolak pembatalan bila perangkat ini belum menerima semua pembayaran transaksi itu dari perangkat lain. Tunggu sinkron selesai, lalu ulangi pembatalan.",
       },
@@ -3838,7 +3838,7 @@ export const GUIDES: GuideItem[] = [
         id: "menu-notifikasi",
         title: "Menu Notifikasi",
         description:
-          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap diantar, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan yang tidak tersimpan (“Perubahan gagal disimpan”).",
+          "Berisi hal yang perlu diperhatikan di outlet, dikelompokkan lewat pilihan “Semua”, “Pesanan”, “Stok”, “Tim”, dan “Sistem” yang berjajar satu baris di atas daftar (geser ke samping bila tidak muat). Contohnya: pesanan QR baru, stok atau bahan baku menipis, kasbon jatuh tempo, pesanan siap diantar, order servis terlambat, booking segera mulai, shift terlalu lama, dan perubahan yang tidak tersimpan (“Perubahan tidak tersimpan”).",
         points: [
           "Untuk membersihkan tanda baru, ketuk “Tandai semua dibaca”. Muncul konfirmasi “Tandai semua dibaca?”; ketuk “Tandai dibaca”.",
         ],
@@ -3937,7 +3937,7 @@ export const GUIDES: GuideItem[] = [
           "“Offline · … menunggu” — internet putus; data aman di perangkat.",
           "“Menyinkronkan…” — sedang mengirim.",
           "“Gagal sinkron · Ketuk untuk coba lagi”.",
-          "“… perubahan ditolak” — ketuk untuk melihat daftarnya.",
+          "“… perubahan tidak tersimpan” — ketuk untuk melihat daftarnya.",
           "“Perlu pembaruan · Sinkron berhenti” — perbarui aplikasi.",
         ],
       },
@@ -3958,8 +3958,8 @@ export const GUIDES: GuideItem[] = [
   {
     slug: "perubahan-ditolak",
     category: "offline",
-    title: "Perubahan ditolak server",
-    description: "Kenapa perubahan bisa ditolak, dampaknya, dan cara menanganinya.",
+    title: "Perubahan tidak tersimpan",
+    description: "Kenapa perubahan bisa tidak tersimpan, dampaknya, dan cara menanganinya.",
     audience: ["Pemilik", "Kasir"],
     readMinutes: 3,
     lastUpdated: UPDATED,
@@ -3970,7 +3970,7 @@ export const GUIDES: GuideItem[] = [
         id: "buka",
         title: "Buka daftarnya",
         description:
-          "Ketuk chip “… perubahan ditolak”, atau kartu “Perubahan gagal disimpan” di Beranda/Notifikasi.",
+          "Ketuk chip “… perubahan tidak tersimpan”, atau kartu “Perubahan tidak tersimpan” di Beranda/Notifikasi.",
       },
       {
         id: "baca",
@@ -3993,7 +3993,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["bekerja-offline", "membatalkan-transaksi-void-refund"],
-    keywords: ["ditolak", "rejected", "konflik", "gagal sinkron", "error sinkron"],
+    keywords: ["tidak tersimpan", "ditolak", "rejected", "konflik", "gagal sinkron", "error sinkron"],
   },
 
   // ───────────────────────────── PEMBARUAN ─────────────────────────────

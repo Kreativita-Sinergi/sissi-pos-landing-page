@@ -8,7 +8,7 @@ const WORKFLOW_STEPS = [
   { name: "Dapur", detail: "Tiket masuk · Masak" },
   { name: "Pembayaran", detail: "QRIS · Rp89.100" },
   { name: "Tutup kasir", detail: "Hitung laci · selisih" },
-  { name: "Laporan", detail: "Omzet & laba hari ini" },
+  { name: "Laporan", detail: "Penjualan & laba hari ini" },
 ];
 
 const SCREEN_CARDS = [

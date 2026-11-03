@@ -62,7 +62,7 @@ export function PerangkatSection() {
             },
             {
               src: "/images/app/laporan-hp.webp",
-              alt: "Layar Laporan Sissi di HP dengan wawasan periode, omzet, dan laba kotor.",
+              alt: "Layar Laporan Sissi di HP dengan wawasan periode, penjualan, dan laba kotor.",
             },
           ].map((shot, idx) => (
             <div

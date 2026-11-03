@@ -185,7 +185,7 @@ const FEATURE_BLOCKS: FeatureBlock[] = [
     items: [
       {
         title: "Ringkasan",
-        description: "Omzet dibanding periode lalu, laba kotor, diskon, pajak, piutang.",
+        description: "Penjualan dibanding periode lalu, laba kotor, diskon, pajak, piutang.",
       },
       {
         title: "Produk terjual, jam ramai, per kasir",

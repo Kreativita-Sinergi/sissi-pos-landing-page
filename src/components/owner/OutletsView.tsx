@@ -40,7 +40,7 @@ export function OutletsView() {
                   r &&
                   downloadCsv(
                     `${slug(session.business.name)}-outlet-${from}_${to}.csv`,
-                    ["outlet", "status", "omzet", "bagian_persen", "transaksi", "rata_rata", "laba_kotor", "dibatalkan", "piutang_kasbon"],
+                    ["outlet", "status", "penjualan", "bagian_persen", "transaksi", "rata_rata", "laba_kotor", "dibatalkan", "piutang_kasbon"],
                     r.outlets.map((o) => [o.name, o.status, o.revenue, o.share_percent, o.transactions, o.average, o.gross_profit, o.cancelled_count, o.credit_outstanding])
                   ),
               },

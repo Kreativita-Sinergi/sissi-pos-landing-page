@@ -52,7 +52,7 @@ export const FEATURE_TABS: FeatureTab[] = [
     id: "laporan",
     name: "Laporan",
     summary:
-      "Omzet, laba kotor, produk terjual, jam ramai, dan penjualan per kasir. Bisa diekspor ke CSV.",
+      "Penjualan, laba kotor, produk terjual, jam ramai, dan penjualan per kasir. Bisa diekspor ke CSV.",
     imageSrc: "/images/app/laporan-tablet.webp",
     imageAlt: "Laporan Sissi tab Jam ramai: grafik transaksi per jam dan per hari.",
   },

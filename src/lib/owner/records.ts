@@ -31,7 +31,7 @@ function outcomeOf(r: ChangeResult | undefined): SaveOutcome {
   return {
     status: "rejected",
     record: r.record ?? null,
-    message: r.message || "Perubahan ditolak server.",
+    message: r.message || "Perubahan tidak tersimpan.",
     details: r.details ?? [],
   };
 }
