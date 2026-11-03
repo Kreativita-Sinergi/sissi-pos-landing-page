@@ -20,6 +20,7 @@ import {
   recapPresent,
   ROLE_LABEL,
   STATUS_LABEL,
+  todayHoursLabel,
   type Attendance,
   type DayKind,
   type Employee,
@@ -107,7 +108,8 @@ export function AttendanceTab({
 function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: string | null, date: string | null) => void }) {
   const today = zonedToday();
   const rules = ctx.data.rules;
-  const off = rules.off_days.includes(isoWeekday(today));
+  // Per karyawan (jadwal shift / shift tetap), bukan Jam kerja global saja — cermin `_ClockCard` app.
+  const hours = todayHoursLabel(rules, today, ctx.data.shifts, ctx.data.employees);
   const byEmp = useMemo(() => {
     const m = new Map<string, Attendance>();
     for (const a of ctx.data.attendances) if (a.date === today) m.set(a.employee_id, a);
@@ -129,7 +131,7 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
       <Section
         className="mt-4"
         title="Kehadiran hari ini"
-        description={`${formatDayLong(today)} · ${off ? "Hari libur" : `Jam kerja ${rules.work_start}–${rules.work_end}`}`}
+        description={`${formatDayLong(today)} · ${hours}`}
         bodyClass=""
       >
         {list.length === 0 ? (

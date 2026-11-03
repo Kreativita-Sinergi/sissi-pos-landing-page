@@ -392,6 +392,35 @@ export function planLabel(plan: DayPlan): string | null {
 }
 
 /**
+ * Jam absen manual (menit lokal sejak tengah malam `day`, bisa ≥ 1440 = esok hari) — cermin `_inAt`/`_outAt`
+ * `manual_attendance_sheet.dart`. Shift malam (selesai ≤ mulai, mis. 22:00–06:00) dengan jam masuk sebelum jam
+ * selesainya = esok hari (masuk 00:30 → D+1 00:30, telat dihitung dari 22:00). Jam pulang lebih awal dari jam masuk =
+ * esok hari (relatif terhadap jam masuk). Hari libur tidak digeser.
+ */
+export function manualClockMinutes(plan: DayPlan, inMin: number, outMin: number | null): { inAt: number; outAt: number | null } {
+  const inAt = !plan.off && inMin < plan.end - 1440 ? inMin + 1440 : inMin;
+  const outAt = outMin === null ? null : outMin < inAt ? outMin + 1440 : outMin;
+  return { inAt, outAt };
+}
+
+/** Karyawan untuk kartu "Kehadiran hari ini": aktif & bukan pemilik. */
+type StaffLite = Pick<Employee, "id" | "role" | "is_active">;
+
+/**
+ * Keterangan jam kerja kartu "Kehadiran hari ini" (cermin `_ClockCard` `attendance_today.dart`): per karyawan aktif
+ * selain pemilik menurut `dayPlan` (tanpa karyawan → Jam kerja global). "Hari libur" hanya bila tidak ada yang bekerja;
+ * jam sama semua → "Jam kerja HH:MM–HH:MM"; berbeda → "Jam kerja beda per shift".
+ */
+export function todayHoursLabel(rules: AttendanceRules, day: string, shifts: ShiftSchedule | null | undefined, employees: StaffLite[]): string {
+  const staff = employees.filter((e) => e.is_active && e.role !== "owner");
+  const plans = staff.length === 0 ? [dayPlan(rules, day)] : staff.map((e) => dayPlan(rules, day, shifts, e.id));
+  const working = plans.filter((p) => !p.off);
+  if (working.length === 0) return "Hari libur";
+  const hours = new Set(working.map((p) => `${hhmm(p.start)}–${hhmm(p.end)}`));
+  return hours.size > 1 ? "Jam kerja beda per shift" : `Jam kerja ${[...hours][0]}`;
+}
+
+/**
  * Absen masuk pada menit lokal `minute` hari `day`: terlambat bila lewat jam mulai efektif + toleransi; menit telat
  * dihitung dari jam mulai. Hari libur tidak pernah terlambat; toleransi `null` = telat tidak dihitung. Cermin
  * `evaluateClockIn`. `plan` bawaan = Jam kerja global.

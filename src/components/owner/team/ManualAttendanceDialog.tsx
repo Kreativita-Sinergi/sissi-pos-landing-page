@@ -11,6 +11,7 @@ import {
   clockLabel,
   dayPlan,
   evaluateClockIn,
+  manualClockMinutes,
   manualMinDay,
   parseClockMinutes,
   ROLE_LABEL,
@@ -141,7 +142,12 @@ function ManualForm({
   const present = f.choice === "present";
   const inMin = parseClockMinutes(f.inText);
   const outMin = parseClockMinutes(f.outText);
-  const verdict = present && inMin !== null ? evaluateClockIn(ctx.data.rules, date, inMin, dayPlan(ctx.data.rules, date, ctx.data.shifts, employeeId)) : null;
+  const plan = dayPlan(ctx.data.rules, date, ctx.data.shifts, employeeId);
+  // Menit relatif tengah malam `date` (≥ 1440 = esok hari): shift malam masuk 00:30 → D+1, pulang relatif jam masuk.
+  const at = present && inMin !== null ? manualClockMinutes(plan, inMin, outMin) : null;
+  const verdict = at ? evaluateClockIn(ctx.data.rules, date, at.inAt, plan) : null;
+  const inNextDay = !!at && at.inAt >= 1440;
+  const outNextDay = !!at && at.outAt !== null && at.outAt >= 1440;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,15 +159,17 @@ function ManualForm({
       if (!f.inText.trim()) err.in = "Wajib diisi";
       else if (inMin === null) err.in = "Format jam HH:MM";
       if (f.outText.trim() && outMin === null) err.out = "Format jam HH:MM";
-      else if (outMin !== null && inMin !== null && outMin < inMin) err.out = "Jam pulang sebelum jam masuk";
+      else if (at?.outAt != null && at.outAt === at.inAt) err.out = "Jam pulang tidak boleh sama dengan jam masuk";
+      else if (at?.outAt != null && at.outAt < at.inAt) err.out = "Jam pulang sebelum jam masuk";
     }
     if (!f.reason.trim()) err.reason = "Wajib diisi";
     setErrors(err);
     if (Object.keys(err).length || !employeeId) return;
 
     const status: AttendanceStatus = f.choice === "present" ? (verdict?.status ?? "ontime") : f.choice;
-    const clockIn = present && inMin !== null ? new Date(zonedAt(date, inMin)).toISOString() : null;
-    const clockOut = present && outMin !== null ? new Date(zonedAt(date, outMin)).toISOString() : null;
+    // `date` tetap tanggal kerja D; jam bisa jatuh D+1 (shift malam / pulang lewat tengah malam).
+    const clockIn = at ? new Date(zonedAt(date, at.inAt)).toISOString() : null;
+    const clockOut = at?.outAt != null ? new Date(zonedAt(date, at.outAt)).toISOString() : null;
     setBusy(true);
     setFormError(null);
     try {
@@ -263,6 +271,11 @@ function ManualForm({
               />
             </Field>
           </div>
+          {(inNextDay || outNextDay) && (
+            <p className="mt-1.5 text-[13px] text-text-muted">
+              {inNextDay ? "Shift malam: jam masuk jatuh esok hari (lewat tengah malam)" : "Pulang esok hari (lewat tengah malam)"}
+            </p>
+          )}
           {verdict && (
             <p className={`mt-1.5 text-[13px] ${verdict.status === "late" ? "text-warning" : "text-text-muted"}`}>
               {verdict.status === "late"
