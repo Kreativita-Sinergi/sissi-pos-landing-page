@@ -456,7 +456,9 @@ export type WritableEntity =
   | "sales"
   | "cash_movements"
   // Pengajuan izin/sakit/cuti: setujui/tolak (setujui = satu kiriman bersama absen manual per tanggal).
-  | "leave_requests";
+  | "leave_requests"
+  // Jadwal shift per tanggal (2026-11-03): pemilik menyusun dari Tim › Jadwal.
+  | "shift_assignments";
 
 /** Record sync mentah: bentuk per entitas ada di api.md "Sync v1". */
 export type SyncRecord = { id: string; updated_at: string; deleted_at: string | null; [key: string]: unknown };

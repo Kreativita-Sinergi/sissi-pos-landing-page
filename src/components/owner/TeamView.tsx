@@ -19,6 +19,7 @@ import { ManualAttendanceDialog, type ManualTarget } from "./team/ManualAttendan
 import { PayrollDialog } from "./team/PayrollDialog";
 import { PayrollTab } from "./team/PayrollTab";
 import { PayslipSheet } from "./team/PayslipSheet";
+import { ScheduleTab } from "./team/ScheduleTab";
 import type { TeamCtx } from "./team/shared";
 import { LockedCard, SyncNote } from "./ui";
 
@@ -26,11 +27,12 @@ import { LockedCard, SyncNote } from "./ui";
 // riwayat sebulan, absen manual/koreksi), Gaji (pengaturan gaji, slip: terbitkan → tandai dibayar).
 // Kehadiran & Gaji = kunci Pro `staff`; daftar karyawan + PIN tetap Gratis (api.md "Kunci fitur Pro").
 // Pengajuan (izin/sakit/cuti dari HP karyawan; kunci `staff`): setujui/tolak.
-// URL: ?tab=karyawan|kehadiran|pengajuan|gaji, ?bulan=YYYY-MM, ?lihat=riwayat, ?karyawan=<id> (filter riwayat),
+// Jadwal (kunci `staff`, 2026-11-03): shift tetap per karyawan + pengecualian per tanggal — cermin Tim › Jadwal app.
+// URL: ?tab=karyawan|kehadiran|jadwal|pengajuan|gaji, ?bulan=YYYY-MM, ?lihat=riwayat, ?karyawan=<id> (filter riwayat),
 // ?saring=semua (pengajuan; bawaan Menunggu). Rute push `leave_request` = /tim?tab=pengajuan.
 
-type TabId = "karyawan" | "kehadiran" | "pengajuan" | "gaji";
-const TABS: TabId[] = ["karyawan", "kehadiran", "pengajuan", "gaji"];
+type TabId = "karyawan" | "kehadiran" | "jadwal" | "pengajuan" | "gaji";
+const TABS: TabId[] = ["karyawan", "kehadiran", "jadwal", "pengajuan", "gaji"];
 
 export function TeamView() {
   const { session, outletId } = useOwner();
@@ -76,7 +78,7 @@ export function TeamView() {
     <>
       <PageHeader
         title="Tim"
-        description="Kelola karyawan, PIN kasir, kehadiran, pengajuan izin, dan gaji. Perubahan diterima perangkat kasir saat sinkron berikutnya."
+        description="Kelola karyawan, PIN kasir, kehadiran, jadwal shift, pengajuan izin, dan gaji. Perubahan diterima perangkat kasir saat sinkron berikutnya."
         actions={
           tab === "karyawan" && data ? (
             <button type="button" className={btn.primary} onClick={() => setEmployee({ id: null, key: Date.now() })}>
@@ -93,6 +95,7 @@ export function TeamView() {
         tabs={[
           { id: "karyawan", label: "Karyawan", count: data?.employees.length },
           { id: "kehadiran", label: "Kehadiran" },
+          { id: "jadwal", label: "Jadwal" },
           { id: "pengajuan", label: "Pengajuan", count: staff && pendingLeaves > 0 ? pendingLeaves : undefined },
           { id: "gaji", label: "Gaji" },
         ]}
@@ -110,10 +113,16 @@ export function TeamView() {
           <LoadingBar active={state.status === "loading"} />
           {tab === "karyawan" && <EmployeesTab ctx={ctx} selfId={session.user.id} onOpen={(id) => setEmployee({ id, key: Date.now() })} />}
           {tab !== "karyawan" && !staff && (
-            <LockedCard title={tab === "kehadiran" ? "Kehadiran karyawan" : tab === "pengajuan" ? "Pengajuan izin" : "Gaji karyawan"}>
+            <LockedCard
+              title={
+                tab === "kehadiran" ? "Kehadiran karyawan" : tab === "jadwal" ? "Jadwal shift" : tab === "pengajuan" ? "Pengajuan izin" : "Gaji karyawan"
+              }
+            >
               {tab === "pengajuan"
                 ? "Karyawan mengajukan izin, sakit, atau cuti dari HP-nya; kamu setujui atau tolak di sini dan tanggalnya tercatat di Kehadiran. Termasuk paket Pro."
-                : "Catat absen masuk/pulang dengan PIN, pantau keterlambatan dan lembur, lalu hitung dan terbitkan slip gaji dengan paket Pro."}
+                : tab === "jadwal"
+                  ? "Atur shift tetap tiap karyawan dan ubah tanggal tertentu (libur, tukar shift); telat dan lembur dihitung dari jadwalnya. Termasuk paket Pro."
+                  : "Catat absen masuk/pulang dengan PIN, pantau keterlambatan dan lembur, lalu hitung dan terbitkan slip gaji dengan paket Pro."}
             </LockedCard>
           )}
           {tab === "kehadiran" && staff && (
@@ -128,6 +137,7 @@ export function TeamView() {
               onManual={(employeeId, date) => setManual({ employeeId, date, key: Date.now() })}
             />
           )}
+          {tab === "jadwal" && staff && <ScheduleTab ctx={ctx} businessId={session.business.id} />}
           {tab === "pengajuan" && staff && (
             <LeaveTab
               ctx={ctx}

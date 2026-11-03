@@ -1259,7 +1259,7 @@ function seedStore(): Map<string, Map<string, SyncRecord>> {
       },
     })
   ));
-  put("business_settings", [rec(BUSINESS.id, { settings: { timezone: "Asia/Jakarta", loyalty: { enabled: false } } })]);
+  put("business_settings", [rec(BUSINESS.id, { settings: { timezone: "Asia/Jakarta", loyalty: { enabled: false }, ...SHIFT_SETTINGS } })]);
   put("categories", [rec(catDrink, { name: "Minuman", sort_order: 0 }), rec(catFood, { name: "Makanan", sort_order: 1 })]);
   put("modifier_groups", [
     rec(modGroup, { name: "Tambahan kopi", min_select: 0, max_select: 2, sort_order: 0, options: MODIFIERS.map((x, i) => ({ id: uuid(`modopt:${i}`), name: x.name, price: x.price, cost_price: x.cost, recipe: [] })) }),
@@ -1301,7 +1301,38 @@ function seedStore(): Map<string, Map<string, SyncRecord>> {
     rec(uuid("staff:joko"), { name: "Joko", role: "staff", job_title: "Kebersihan", email: null, phone: null, payroll: null, pin_hash: null, is_active: true, ...base, personal_access: "none" }),
   ]);
   seedLeaves(put);
+  seedSchedule(put);
   return m;
+}
+
+// Jadwal shift contoh (Tim › Jadwal): daftar shift, shift tetap Dewi (Pagi Sen–Jum, Sabtu Pagi + Sore) & Bagas (Sore
+// Sel–Sab, Malam Minggu); Sari/Yoga ikut Jam kerja. Pengecualian tanggal minggu ini dibuat di `seedSchedule`.
+const SHIFT_TEMPLATES = [
+  { id: uuid("tpl:pagi"), name: "Pagi", start: "07:00", end: "15:00" },
+  { id: uuid("tpl:sore"), name: "Sore", start: "15:00", end: "23:00" },
+  { id: uuid("tpl:malam"), name: "Malam", start: "22:00", end: "06:00" },
+];
+const [TPL_PAGI, TPL_SORE, TPL_MALAM] = SHIFT_TEMPLATES.map((t) => t.id);
+const SHIFT_SETTINGS = {
+  shift_rules: { templates: SHIFT_TEMPLATES, max_hours: 14 },
+  shift_patterns: {
+    [uuid("c1")]: { 1: [TPL_PAGI], 2: [TPL_PAGI], 3: [TPL_PAGI], 4: [TPL_PAGI], 5: [TPL_PAGI], 6: [TPL_PAGI, TPL_SORE] },
+    [uuid("c2")]: { 2: [TPL_SORE], 3: [TPL_SORE], 4: [TPL_SORE], 5: [TPL_SORE], 6: [TPL_SORE], 7: [TPL_MALAM] },
+  },
+};
+
+/** Pengecualian minggu ini: Dewi libur lusa, Bagas tukar ke Pagi besok, Sari masuk Sore di hari Minggu. */
+function seedSchedule(put: (entity: string, rows: SyncRecord[]) => void) {
+  const today = wibDay(Date.now());
+  const wd = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const sunday = addDays(today, wd === 0 ? 0 : 7 - wd);
+  const row = (emp: string, date: string, d: Record<string, unknown>) =>
+    rec(uuid(`shift:${emp}:${date}`), { employee_id: emp, date, template_id: null, name: "", start: "", end: "", ...d });
+  put("shift_assignments", [
+    row(uuid("c1"), addDays(today, 2), { kind: "off" }),
+    row(uuid("c2"), addDays(today, 1), { kind: "shift", template_id: TPL_PAGI, name: "Pagi", start: "07:00", end: "15:00" }),
+    row(uuid("c3"), sunday, { kind: "shift", template_id: TPL_SORE, name: "Sore", start: "15:00", end: "23:00" }),
+  ]);
 }
 
 /**

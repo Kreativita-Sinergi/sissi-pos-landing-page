@@ -121,12 +121,16 @@ export type TeamData = {
   /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
   leaves: LeaveRequest[];
   rules: AttendanceRules;
-  /** Shift tetap mingguan (`shift_patterns`) + jadwal per tanggal (`shift_assignments`, hanya dibaca web). */
+  /** Shift tetap mingguan (`shift_patterns`) + jadwal per tanggal (`shift_assignments`). */
   shifts: ShiftSchedule;
   outlets: OutletLite[];
+  /** Record `business_settings` mentah (untuk menyimpan shift tetap dengan `base_updated_at`). */
+  settingsRecord: SyncRecord | null;
+  /** Record `shift_assignments` mentah (termasuk `default`; untuk `base_updated_at` saat mengubah sel jadwal). */
+  assignmentRecords: SyncRecord[];
 };
 
-export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_requests";
+export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_requests" | "shift_assignments" | "business_settings";
 
 /**
  * Pengecualian jadwal satu karyawan pada satu tanggal (`shift_assignments`, api.md "Jadwal shift per karyawan").
@@ -238,6 +242,8 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     rules: readAttendance(settings[0]?.settings),
     shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns) },
     outlets: outlets.map(toOutlet),
+    settingsRecord: settings[0] ?? null,
+    assignmentRecords: assigns,
   };
 }
 
@@ -253,6 +259,18 @@ export function mergeRecord(data: TeamData, entity: TeamEntity, rec: SyncRecord)
   if (entity === "employees") return { ...data, employees: upsert(data.employees, toEmployee(rec)) };
   if (entity === "attendances") return { ...data, attendances: upsert(data.attendances, toAttendance(rec)) };
   if (entity === "leave_requests") return { ...data, leaves: upsert(data.leaves, toLeave(rec)) };
+  if (entity === "shift_assignments") {
+    const assignmentRecords = upsert(data.assignmentRecords, rec);
+    return { ...data, assignmentRecords, shifts: { ...data.shifts, assignments: toAssignments(assignmentRecords) } };
+  }
+  if (entity === "business_settings") {
+    return {
+      ...data,
+      settingsRecord: rec,
+      rules: readAttendance(rec.settings),
+      shifts: { ...readShiftPatterns(rec.settings), assignments: data.shifts.assignments },
+    };
+  }
   return { ...data, payslips: upsert(data.payslips, toPayslip(rec)) };
 }
 
@@ -733,6 +751,10 @@ async function uuidV5(name: string, namespace = NS_URL): Promise<string> {
 /** Id baris kehadiran yang sama di semua perangkat — `attendanceIdFor`. */
 export const attendanceIdFor = (businessId: string, employeeId: string, date: string) =>
   uuidV5(`sissi-attendance:${businessId}:${employeeId}:${date}`);
+
+/** Id jadwal shift satu karyawan pada satu tanggal — `shiftAssignmentIdFor` app. */
+export const shiftAssignmentIdFor = (businessId: string, employeeId: string, date: string) =>
+  uuidV5(`sissi-shift-assignment:${businessId}:${employeeId}:${date}`);
 
 /** Id slip: satu per karyawan per periode — `issuePayslip`. */
 export const payslipIdFor = (businessId: string, employeeId: string, from: string, to: string) =>
