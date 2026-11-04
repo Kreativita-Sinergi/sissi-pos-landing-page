@@ -122,6 +122,7 @@ const UPDATED_OCT21 = "21 Oktober 2026";
 const UPDATED_OCT23 = "23 Oktober 2026";
 const UPDATED_OCT28 = "28 Oktober 2026";
 const UPDATED_NOV3 = "3 November 2026";
+const UPDATED_NOV4 = "4 November 2026";
 
 // Semua gambar panduan memakai tampilan tablet lanskap 1280×800 (keputusan pemilik).
 const TABLET = { device: "tablet" as const, width: 1280, height: 800 };
@@ -2829,10 +2830,10 @@ export const GUIDES: GuideItem[] = [
     slug: "shift-kas-dan-tutup-kasir-harian",
     category: "shift",
     title: "Shift kas & tutup kasir harian",
-    description: "Buka kasir dengan kas awal, catat kas masuk/keluar, hitung uang, dan cetak laporan tutup kasir.",
+    description: "Buka kasir dengan kas awal, catat atau batalkan kas masuk/keluar, hitung uang, dan cetak laporan tutup kasir.",
     audience: ["Kasir", "Pemilik"],
     readMinutes: 6,
-    lastUpdated: UPDATED_OCT23,
+    lastUpdated: UPDATED_NOV4,
     overview:
       "Setiap uang tunai di laci tercatat dalam satu shift: dari kas awal, penjualan tunai, kas masuk/keluar, sampai hitungan akhir saat tutup kasir.",
     steps: [
@@ -2867,6 +2868,27 @@ export const GUIDES: GuideItem[] = [
         callout: {
           type: "warning",
           text: "Selisih kas paling sering terjadi karena pengeluaran kecil yang tidak dicatat. Catat saat uang diambil, jangan menunggu tutup kasir.",
+        },
+      },
+      {
+        id: "batal-kas",
+        title: "Membatalkan catatan kas yang salah",
+        description:
+          "Salah ketik nominal atau salah pilih Kas Masuk/Keluar? Batalkan catatannya, lalu catat ulang yang benar.",
+        steps: [
+          "Di “Shift saat ini”, ketuk catatan di “Aktivitas kas”.",
+          "Ketuk “Batalkan catatan ini”.",
+          "Isi “Alasan pembatalan” (mis. “Salah ketik nominal”), lalu ketuk “Batalkan catatan ini”.",
+        ],
+        points: [
+          "Catatan yang dibatalkan tidak dihitung lagi di “Perkiraan uang di laci”, tetapi tetap terlihat dicoret dengan keterangan “Dibatalkan · alasan” agar jejaknya tersimpan.",
+          "Hanya catatan di shift yang masih terbuka yang bisa dibatalkan. Setelah kasir ditutup, selisihnya dijelaskan lewat “Alasan selisih”.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/kas-batal-tablet.png",
+          alt: "Dialog Batalkan catatan kas dengan isian Alasan pembatalan di panel Shift saat ini",
+          caption: "Catatan yang dibatalkan tetap terlihat dicoret di Aktivitas kas.",
         },
       },
       {
@@ -2937,7 +2959,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["menerima-pembayaran-qris-dan-tunai", "membaca-laporan-penjualan-dan-margin", "karyawan-dan-pin"],
-    keywords: ["shift", "buka kasir", "tutup kasir", "kas awal", "modal laci", "petty cash", "kas keluar", "kas masuk", "selisih", "laporan z", "blind close", "tutup buta", "riwayat tutup kasir", "uang kurang", "uang lebih"],
+    keywords: ["shift", "buka kasir", "tutup kasir", "kas awal", "modal laci", "petty cash", "kas keluar", "kas masuk", "batalkan kas", "salah catat kas", "selisih", "laporan z", "blind close", "tutup buta", "riwayat tutup kasir", "uang kurang", "uang lebih"],
   },
 
   // ───────────────────────────── STOK ─────────────────────────────
@@ -3607,10 +3629,10 @@ export const GUIDES: GuideItem[] = [
     slug: "absensi-karyawan",
     category: "tim",
     title: "Absen karyawan",
-    description: "Absen masuk dan pulang dengan PIN atau HP pribadi, jadwal shift per karyawan, aturan jam kerja, dan koreksi manual.",
+    description: "Absen masuk dan pulang dengan PIN, HP pribadi, atau website, pengajuan izin/sakit/cuti, jadwal shift per karyawan, aturan jam kerja, dan koreksi manual.",
     audience: ["Kasir", "Pemilik"],
-    readMinutes: 3,
-    lastUpdated: UPDATED_NOV3,
+    readMinutes: 5,
+    lastUpdated: UPDATED_NOV4,
     overview: "Absen dicatat di perangkat kasir dengan PIN, sehingga tidak perlu alat absen terpisah. Kehadiran termasuk paket Pro.",
     steps: [
       {
@@ -3627,6 +3649,103 @@ export const GUIDES: GuideItem[] = [
           "Di layar Kehadiran, “Hari ini” dan “Riwayat” berupa chip kecil di bawah tab utama.",
           "Setelah absen dari HP pribadi, muncul konfirmasi “Absen masuk berhasil” beserta jam dan status (tepat waktu / terlambat). Saat offline, absen tersimpan di HP dan terkirim otomatis begitu ada internet.",
         ],
+      },
+      {
+        id: "absen-web",
+        title: "Absen lewat website (kasir.sissi.id/karyawan)",
+        description:
+          "Karyawan yang punya akun pribadi di Sissi bisa absen dari browser HP atau komputer, tanpa memasang aplikasi. Cocok untuk karyawan yang HP-nya tidak bisa memasang aplikasi atau sedang memakai HP lain.",
+        steps: [
+          "Buka kasir.sissi.id/karyawan di browser.",
+          "Isi “No. HP atau email” dan “Kata sandi” akun pribadi, lalu ketuk “Masuk”. Centang “Ingat saya di perangkat ini” hanya di HP sendiri.",
+          "Di tab “Absen”, periksa jam server, jadwal masuk dan pulang, lalu ketuk “Absen Masuk” (atau “Absen Pulang”).",
+          "Bila browser meminta izin lokasi, ketuk “Izinkan”. Lokasi dipakai untuk mengecek jarak ke outlet bila pemilik menyalakan cek lokasi.",
+          "Tab “Riwayat” menampilkan kehadiran per bulan: hadir, terlambat, izin/sakit/cuti, dan alpa.",
+        ],
+        points: [
+          "Belum punya kata sandi atau lupa? Minta pemilik mengirim tautan undangan atau reset kata sandi dari menu Tim. Buka tautannya, lalu pilih “Aktifkan lewat website”.",
+          "Login di website tidak mengikat HP: karyawan boleh masuk dari perangkat mana saja. Sesi berakhir setelah 2 jam tanpa aktivitas.",
+          "Bila aturan absen di luar area = “Boleh, dengan tanda” dan karyawan berada di luar radius, muncul “Kamu di luar area outlet” dengan jaraknya. Ketuk “Tetap absen masuk” bila memang perlu; absen tercatat dengan tanda “di luar area”. Bila aturannya “Tolak”, absen di luar radius tidak bisa.",
+          "Absen lewat website butuh internet dan paket Pro, sama seperti fitur Kehadiran lainnya.",
+        ],
+        image: {
+          device: "hp",
+          width: 360,
+          height: 820,
+          src: "/panduan/absen-web-absen-hp.png",
+          alt: "Halaman Absen di website karyawan dengan jam server, jadwal masuk dan pulang, dan tombol Absen Masuk",
+          caption: "Absen dari browser HP: jam server, jadwal hari ini, lalu “Absen Masuk”.",
+        },
+        callout: {
+          type: "info",
+          title: "Absen di luar area",
+          text: "Dialog “Kamu di luar area outlet” hanya muncul bila pemilik memilih “Boleh, dengan tanda” di Pengaturan › “Lokasi absen”. Pemilik bisa melihat tanda itu di Tim › Kehadiran.",
+        },
+      },
+      {
+        id: "keterangan-absen",
+        title: "Membaca keterangan absen (pemilik)",
+        description:
+          "Di Tim › “Kehadiran”, setiap baris menuliskan dari mana karyawan absen. Bila masuk dan pulang lewat cara berbeda, ditulis terpisah, mis. “Masuk: Website · Pulang: Aplikasi HP”.",
+        points: [
+          "“Perangkat toko (PIN)” — absen di tablet/HP kasir dengan PIN.",
+          "“Aplikasi HP” — absen dari aplikasi Sissi di HP pribadi karyawan (Ruang Karyawan).",
+          "“Website” — absen lewat kasir.sissi.id/karyawan.",
+          "“Dicatat pemilik · alasan” — dicatat lewat “Koreksi absen” atau dari pengajuan yang disetujui.",
+          "Tanda “Tanpa lokasi” muncul bila absen dari HP atau website tidak membawa lokasi, padahal outlet itu memakai cek lokasi. Biasanya izin lokasi di HP/browser karyawan ditolak; minta karyawan mengizinkannya.",
+          "Tanda “Di luar area · … m” muncul bila karyawan absen di luar radius dengan aturan “Boleh, dengan tanda”.",
+          "Keterangan yang sama tampil di rincian “Riwayat” dan di Riwayat Kehadiran Ruang Karyawan.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/absen-via-tablet.png",
+          alt: "Tim › Kehadiran hari ini: Andi masuk lewat Website dan pulang lewat Aplikasi HP dengan tanda Tanpa lokasi; Dewi masuk dengan PIN dan pulang lewat Website",
+          caption: "Keterangan “Masuk: … · Pulang: …” dan tanda “Tanpa lokasi” di Kehadiran.",
+        },
+      },
+      {
+        id: "pengajuan",
+        title: "Mengajukan izin, sakit, atau cuti (karyawan)",
+        description:
+          "Karyawan dengan akses HP pribadi bisa mengajukan izin, sakit, atau cuti dari aplikasi. Pemilik menerima notifikasi dan memutuskannya.",
+        steps: [
+          "Di Ruang Karyawan, ketuk “Ajukan izin, sakit, atau cuti” di tab Absen (atau buka “Riwayat” › “Pengajuan” › “Ajukan izin”).",
+          "Pilih “Jenis”: Izin, Sakit, atau Cuti.",
+          "Ketuk “Pilih tanggal”, pilih satu hari atau rentang tanggal, lalu “Terapkan”. Jumlah harinya tampil, mis. “4 Nov 2026 · 1 hari”.",
+          "Tulis “Alasan” (mis. “Demam, ada surat dokter”), lalu ketuk “Kirim”.",
+        ],
+        points: [
+          "Status pengajuan tampil di “Riwayat” › “Pengajuan”: “Menunggu”, “Disetujui”, “Ditolak”, atau “Dibatalkan”, beserta catatan pemilik bila ada.",
+          "Selama masih “Menunggu”, pengajuan bisa ditarik lewat “Batalkan” › “Ya, batalkan”.",
+          "Satu pengajuan paling lama 31 hari, mulai paling jauh 7 hari ke belakang.",
+          "Bila HP sedang offline, pengajuan terkirim otomatis saat online. Izinkan notifikasi agar langsung tahu saat pemilik memutuskan.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pengajuan-izin-tablet.png",
+          alt: "Lembar Ajukan izin dengan pilihan Jenis Izin, Sakit, Cuti, Tanggal, dan Alasan",
+          caption: "Pilih jenis, tanggal, dan alasan, lalu “Kirim”.",
+        },
+      },
+      {
+        id: "pengajuan-pemilik",
+        title: "Menyetujui atau menolak pengajuan (pemilik)",
+        steps: [
+          "Buka Tim › “Pengajuan” (angka di tab = jumlah yang menunggu), atau ketuk notifikasi pengajuan.",
+          "Di “Menunggu”, ketuk pengajuan untuk melihat tanggal, alasan, dan kapan diajukan.",
+          "Tulis “Catatan untuk karyawan (opsional)”, lalu ketuk “Setujui” atau “Tolak”.",
+        ],
+        points: [
+          "“Setujui” langsung mencatat hari-hari itu sebagai izin/sakit/cuti di Kehadiran (hari libur dilewati).",
+          "Salah menyetujui? Buka “Sudah diputuskan”, ketuk pengajuannya, lalu “Batalkan persetujuan”. Isi “Alasan pembatalan”. Catatan izin/sakit/cuti dari persetujuan itu ikut dihapus; tanggal yang sudah ada jam masuknya tidak diubah.",
+          "Pengajuan yang sudah diputuskan dari perangkat lain lebih dulu mengikuti keputusan di server.",
+        ],
+        image: {
+          ...TABLET,
+          src: "/panduan/pengajuan-tinjau-tablet.png",
+          alt: "Lembar Pengajuan sakit di Tim › Pengajuan dengan tombol Tolak dan Setujui",
+          caption: "Lembar pengajuan: “Disetujui = 3 hari dicatat sebagai sakit di Kehadiran.”",
+        },
       },
       {
         id: "jadwal",
@@ -3655,7 +3774,7 @@ export const GUIDES: GuideItem[] = [
       },
     ],
     relatedSlugs: ["karyawan-dan-pin", "gaji-dan-slip-gaji"],
-    keywords: ["absen", "absensi", "presensi", "kehadiran", "jadwal shift", "shift tetap", "shift malam", "terlambat", "telat", "jam kerja", "koreksi absen", "absen manual", "lokasi absen", "izin", "sakit", "cuti"],
+    keywords: ["absen web", "absen lewat browser", "website karyawan", "kasir.sissi.id/karyawan", "pengajuan", "ajukan izin", "ajukan cuti", "izin sakit", "setujui izin", "batalkan persetujuan", "tanpa lokasi", "di luar area", "absen", "absensi", "presensi", "kehadiran", "jadwal shift", "shift tetap", "shift malam", "terlambat", "telat", "jam kerja", "koreksi absen", "absen manual", "lokasi absen", "izin", "sakit", "cuti"],
   },
   {
     slug: "gaji-dan-slip-gaji",
