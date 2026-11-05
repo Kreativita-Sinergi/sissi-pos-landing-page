@@ -4,7 +4,7 @@ import { useEffect } from "react";
 // dan Tabs di dalam halaman (HP/tablet), juga judul + deskripsi halaman. Item pertama = bawaan, tautannya tanpa ?tab=.
 
 export const PRODUCT_SECTIONS = [
-  { id: "produk", label: "Produk", description: "Menu yang dijual di kasir. Perubahan diterima kasir saat sinkron berikutnya." },
+  { id: "produk", label: "Produk", description: "Menu yang dijual di kasir." },
   { id: "kategori", label: "Kategori", description: "Kelompokkan produk agar mudah dicari di kasir." },
   { id: "modifier", label: "Modifier", description: "Pilihan tambahan saat memesan, mis. tingkat gula atau topping. Pasang ke produk lewat panel produk." },
   { id: "diskon", label: "Diskon", description: "Diskon otomatis langsung terpasang di kasir; diskon lain dipilih kasir saat transaksi." },
@@ -19,11 +19,20 @@ export const STOCK_SECTIONS = [
 ] as const;
 
 export const TEAM_SECTIONS = [
-  { id: "karyawan", label: "Karyawan", description: "Akun dan PIN kasir karyawan. Perubahan diterima kasir saat sinkron berikutnya." },
+  { id: "karyawan", label: "Karyawan", description: "Akun dan PIN kasir karyawan." },
   { id: "kehadiran", label: "Kehadiran", description: "Catatan absen masuk dan pulang karyawan." },
   { id: "jadwal", label: "Jadwal", description: "Susun jadwal shift karyawan." },
   { id: "pengajuan", label: "Pengajuan", description: "Pengajuan izin dan cuti dari karyawan." },
   { id: "gaji", label: "Gaji", description: "Ringkasan gaji dan slip karyawan per bulan." },
+] as const;
+
+// Pengaturan: tiga bagian pertama per outlet, dua terakhir per usaha (lihat SettingsView).
+export const SETTINGS_SECTIONS = [
+  { id: "outlet", label: "Outlet & struk", description: "Nama, alamat, dan isi struk outlet" },
+  { id: "biaya", label: "Pajak & biaya", description: "Pajak, biaya layanan, dan pembulatan total" },
+  { id: "transaksi", label: "Transaksi & bayar", description: "Jenis pesanan, aturan transaksi, dan metode pembayaran" },
+  { id: "usaha", label: "Zona waktu & loyalti", description: "Berlaku untuk semua outlet" },
+  { id: "absensi", label: "Absensi", description: "Jam kerja, toleransi terlambat, dan hari libur karyawan. Berlaku untuk semua outlet" },
 ] as const;
 
 export type SubSection = { readonly id: string; readonly label: string; readonly description: string };
@@ -33,6 +42,7 @@ export const SUB_SECTIONS: Record<string, readonly SubSection[]> = {
   "/dasbor/produk": PRODUCT_SECTIONS,
   "/dasbor/stok": STOCK_SECTIONS,
   "/dasbor/tim": TEAM_SECTIONS,
+  "/dasbor/pengaturan": SETTINGS_SECTIONS,
 };
 
 /** Bagian aktif dari nilai ?tab=; nilai tak dikenal jatuh ke bagian pertama. */

@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useId, useRef
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Boxes, ChartColumn, ChevronDown, CreditCard, History, House, IdCard, LogOut, Package, ReceiptText, Settings, Store, UsersRound, Wallet } from "lucide-react";
+import { Boxes, ChartColumn, ChevronDown, CreditCard, History, House, IdCard, LogOut, Menu, Package, ReceiptText, Settings, Store, UsersRound, Wallet, X } from "lucide-react";
 import { Avatar } from "@/components/admin/AdminShell";
 import { FilterSelect } from "@/components/admin/FilterMenu";
 import { useQueryState } from "@/components/admin/filters";
@@ -19,7 +19,7 @@ import { planLabel } from "./labels";
 import { activeSection, sectionHref, SUB_SECTIONS } from "./sections";
 
 // Kerangka dasbor pemilik: memeriksa sesi (GET /owner/auth/me) sebelum menampilkan halaman,
-// mengarahkan ke /masuk?next=… saat 401, navigasi samping (desktop) / tab atas (HP), pemilih outlet
+// mengarahkan ke /masuk?next=… saat 401, navigasi samping (desktop) / laci menu (HP), pemilih outlet
 // (tersimpan di ?outlet= agar tautan bisa dibagikan), badge paket, dan menu akun + Keluar.
 
 const NAV_GROUPS = [
@@ -106,6 +106,7 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
   const [loggingOut, setLoggingOut] = useState(false);
   // Buka/tutup sub-menu sidebar. Pilihan pengguna berlaku selama halaman aktif sama; pindah halaman →
   // kembali ke bawaan (hanya halaman aktif yang terbuka).
+  const [drawer, setDrawer] = useState(false);
   const [navOpen, setNavOpen] = useState<{ at: string | undefined; open: Record<string, boolean> }>({ at: undefined, open: {} });
 
   // Navigasi penuh (bukan router.replace): Next menyimpan pohon rute yang ditinggalkan beserta state-nya, sehingga
@@ -195,6 +196,74 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
   const toggleNav = (href: string) => setNavOpen({ at: match, open: { ...openMap, [href]: !isNavOpen(href) } });
   const plan = planLabel(session.subscription);
   const { business, user } = session;
+  // Pohon menu (grup → item → sub-menu); dipakai sidebar desktop dan laci menu HP/tablet.
+  const navTree = (onNavigate?: () => void) => (
+    <>
+    {NAV_GROUPS.map((g) => (
+      <div key={g.label}>
+        <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">{g.label}</p>
+        <div className="flex flex-col gap-0.5">
+          {g.items.map(({ href, label, icon: Icon }) => {
+            const active = href === match;
+            const subs = SUB_SECTIONS[href];
+            const itemClass = `relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
+              active && !subs
+                ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
+                : active
+                  ? "font-semibold text-brand-ink hover:bg-bg-muted"
+                  : "text-text-body hover:bg-bg-muted hover:text-text-heading"
+            } ${focusRing}`;
+            if (!subs) {
+              return (
+                <Link key={href} href={withOutlet(href)} aria-current={active ? "page" : undefined} className={itemClass} onClick={onNavigate}>
+                  <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
+                  {label}
+                </Link>
+              );
+            }
+            // Induk ber-sub-menu = tombol buka/tutup. Di HP/tablet bagian yang sama juga tampil sebagai Tabs di halaman.
+            const open = isNavOpen(href);
+            const current = active ? activeSection(subs, params.get("tab")) : undefined;
+            const subId = `nav-sub-${href.split("/").pop()}`;
+            return (
+              <React.Fragment key={href}>
+                <button type="button" aria-expanded={open} aria-controls={subId} onClick={() => toggleNav(href)} className={`${itemClass} w-full text-left`}>
+                  <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
+                  <span className="flex-1">{label}</span>
+                  <ChevronDown size={16} aria-hidden className={`shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+                </button>
+                {open && (
+                  <div id={subId} className="mb-1 flex flex-col gap-0.5">
+                    {subs.map((s) => {
+                      const on = s.id === current;
+                      return (
+                        <Link
+                          key={s.id}
+                          href={withOutlet(sectionHref(href, subs, s.id))}
+                          aria-current={on ? "page" : undefined}
+                        onClick={onNavigate}
+                          className={`relative flex min-h-9 items-center rounded-[10px] pr-3 pl-[42px] text-[13.5px] transition-colors ${
+                            on
+                              ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
+                              : "font-medium text-text-body hover:bg-bg-muted hover:text-text-heading"
+                          } ${focusRing}`}
+                        >
+                          {s.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    ))}
+    </>
+  );
+  const currentLabel = NAV.find((n) => n.href === match)?.label;
+
 
   return (
     <Ctx.Provider value={{ session, outletId, outlet, withOutlet, refreshSession }}>
@@ -219,66 +288,7 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <nav aria-label="Menu dasbor" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pt-1 pb-3">
-              {NAV_GROUPS.map((g) => (
-                <div key={g.label}>
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">{g.label}</p>
-                  <div className="flex flex-col gap-0.5">
-                    {g.items.map(({ href, label, icon: Icon }) => {
-                      const active = href === match;
-                      const subs = SUB_SECTIONS[href];
-                      const itemClass = `relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
-                        active && !subs
-                          ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
-                          : active
-                            ? "font-semibold text-brand-ink hover:bg-bg-muted"
-                            : "text-text-body hover:bg-bg-muted hover:text-text-heading"
-                      } ${focusRing}`;
-                      if (!subs) {
-                        return (
-                          <Link key={href} href={withOutlet(href)} aria-current={active ? "page" : undefined} className={itemClass}>
-                            <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
-                            {label}
-                          </Link>
-                        );
-                      }
-                      // Induk ber-sub-menu = tombol buka/tutup; di HP/tablet bagian ini tampil sebagai Tabs di halaman.
-                      const open = isNavOpen(href);
-                      const current = active ? activeSection(subs, params.get("tab")) : undefined;
-                      const subId = `nav-sub-${href.split("/").pop()}`;
-                      return (
-                        <React.Fragment key={href}>
-                          <button type="button" aria-expanded={open} aria-controls={subId} onClick={() => toggleNav(href)} className={`${itemClass} w-full text-left`}>
-                            <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
-                            <span className="flex-1">{label}</span>
-                            <ChevronDown size={16} aria-hidden className={`shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
-                          </button>
-                          {open && (
-                            <div id={subId} className="mb-1 flex flex-col gap-0.5">
-                              {subs.map((s) => {
-                                const on = s.id === current;
-                                return (
-                                  <Link
-                                    key={s.id}
-                                    href={withOutlet(sectionHref(href, subs, s.id))}
-                                    aria-current={on ? "page" : undefined}
-                                    className={`relative flex min-h-9 items-center rounded-[10px] pr-3 pl-[42px] text-[13.5px] transition-colors ${
-                                      on
-                                        ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
-                                        : "font-medium text-text-body hover:bg-bg-muted hover:text-text-heading"
-                                    } ${focusRing}`}
-                                  >
-                                    {s.label}
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+              {navTree()}
             </nav>
             <div className="border-t border-border-subtle p-3">
               <div className="flex items-center gap-1">
@@ -300,39 +310,41 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex min-w-0 flex-1 flex-col">
             <OwnerMockBanner />
-            {/* Kepala + tab — HP & tablet */}
+            {/* Kepala — HP & tablet: tombol Menu membuka laci berisi menu yang sama dengan sidebar desktop */}
             <header className="sticky top-0 z-20 border-b border-border-subtle bg-white lg:hidden">
-              <div className="flex h-14 items-center gap-2.5 px-4">
+              <div className="flex h-14 items-center gap-2 px-2 sm:px-4">
+                <button type="button" className={iconBtn} onClick={() => setDrawer(true)} aria-label="Buka menu" aria-haspopup="dialog" aria-expanded={drawer}>
+                  <Menu size={20} aria-hidden />
+                </button>
                 <Link href="/" className={`shrink-0 rounded ${focusRing}`} aria-label="Beranda situs Sissi">
                   <Image src="/logos/sissi-logo-horizontal.svg" alt="Sissi" width={74} height={24} />
                 </Link>
                 <span className="h-4 w-px shrink-0 bg-border-subtle" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text-heading">{business.name}</p>
+                <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-text-heading">{currentLabel ?? business.name}</p>
                 <AccountMenu session={session} onLogout={askLogout} loggingOut={loggingOut} planText={plan.text} />
               </div>
-              <nav aria-label="Menu dasbor" className="-mb-px flex gap-1 overflow-x-auto px-2 [scrollbar-width:none]">
-                {NAV.map(({ href, label, icon: Icon }, i) => {
-                  const active = href === match;
-                  const groupStart = i > 0 && NAV_GROUPS.some((g) => g.items[0].href === href);
-                  return (
-                    <React.Fragment key={href}>
-                      {groupStart && <span aria-hidden className="my-2.5 w-px shrink-0 bg-border-subtle" />}
-                      <Link
-                        href={withOutlet(href)}
-                        aria-current={active ? "page" : undefined}
-                        ref={active ? (el) => el?.scrollIntoView({ block: "nearest", inline: "nearest" }) : undefined}
-                        className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[14px] font-medium ${
-                          active ? "border-brand-deep text-brand-ink" : "border-transparent text-text-body"
-                        } ${focusRing}`}
-                      >
-                        <Icon size={15} aria-hidden />
-                        {label}
-                      </Link>
-                    </React.Fragment>
-                  );
-                })}
-              </nav>
             </header>
+            <NavDrawer open={drawer} onClose={() => setDrawer(false)}>
+              <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border-subtle px-4">
+                <Image src="/logos/sissi-logo-horizontal.svg" alt="Sissi" width={74} height={24} />
+                <span className="h-4 w-px bg-border-subtle" aria-hidden />
+                <p className="flex-1 text-[13px] font-medium text-text-muted">Dasbor</p>
+                <button type="button" className={iconBtn} onClick={() => setDrawer(false)} aria-label="Tutup menu">
+                  <X size={18} aria-hidden />
+                </button>
+              </div>
+              <div className="mx-3 mt-3 mb-2 rounded-[12px] bg-bg-muted px-3 py-2.5">
+                <p className="truncate text-[14px] font-semibold" title={business.name}>
+                  {business.name}
+                </p>
+                <div className="mt-1">
+                  <Badge tone={plan.tone}>{plan.text}</Badge>
+                </div>
+              </div>
+              <nav aria-label="Menu dasbor" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pt-1 pb-4">
+                {navTree(() => setDrawer(false))}
+              </nav>
+            </NavDrawer>
 
             <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
               <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -385,6 +397,40 @@ function OutletPicker({ outlets, selected }: { outlets: OwnerOutlet[]; selected:
       selected={[selected ?? "all"]}
       onChange={(n) => qs.update({ outlet: n[0] === "all" ? null : n[0] })}
     />
+  );
+}
+
+/** Laci menu kiri untuk HP/tablet (<dialog> modal: fokus terkunci, Esc & klik latar menutup). Tertutup sendiri di layar lg. */
+function NavDrawer({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    else if (!open && d.open) d.close();
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => mq.matches && onClose();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [open, onClose]);
+  return (
+    <dialog
+      ref={ref}
+      aria-label="Menu dasbor"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="m-0 h-dvh max-h-dvh w-[288px] max-w-[85vw] bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.5)]"
+    >
+      {open && <div className="flex h-full flex-col">{children}</div>}
+    </dialog>
   );
 }
 

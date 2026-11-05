@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, CloudOff, Download, Lock } from "lucide-react";
+import { ChevronDown, CloudOff, Download, Lock, RefreshCw } from "lucide-react";
 import { compactRange, FilterPopover, OptionList, PanelFooter, useFilterClose } from "@/components/admin/FilterMenu";
 import { useQueryState } from "@/components/admin/filters";
 import { btn, cardClass, focusRing, inputClass } from "@/components/admin/ui";
@@ -77,6 +77,19 @@ export function LockedCard({ title, children, compact = false }: { title: string
         </Link>
       </div>
     </section>
+  );
+}
+
+/**
+ * Catatan kecil di bawah deskripsi PageHeader halaman yang mengubah data kasir (katalog, tim, pelanggan, pengaturan).
+ * <span> agar sah di dalam <p> deskripsi.
+ */
+export function PushNote() {
+  return (
+    <span className="mt-1 flex items-center gap-1.5 text-[12.5px] text-text-muted">
+      <RefreshCw size={13} aria-hidden className="shrink-0" />
+      Perubahan diterima perangkat kasir saat sinkron berikutnya.
+    </span>
   );
 }
 

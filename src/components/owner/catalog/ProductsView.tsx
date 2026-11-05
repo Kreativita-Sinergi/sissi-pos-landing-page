@@ -28,7 +28,7 @@ import { downloadCsv, slug } from "@/lib/owner/csv";
 import { exportRows } from "@/lib/owner/productImport";
 import type { BusinessType, SyncRecord } from "@/lib/owner/types";
 import { useOwner } from "../OwnerShell";
-import { ExportMenu } from "../ui";
+import { ExportMenu, PushNote } from "../ui";
 import { Check } from "./bits";
 import { BulkEdit } from "./BulkEdit";
 import { CategoriesPanel } from "./CategoriesPanel";
@@ -93,7 +93,12 @@ export function ProductsView() {
     <>
       <PageHeader
         title={section.label}
-        description={section.description}
+        description={
+          <>
+            {section.description}
+            <PushNote />
+          </>
+        }
         actions={
           data && tab === "produk" ? (
             <>

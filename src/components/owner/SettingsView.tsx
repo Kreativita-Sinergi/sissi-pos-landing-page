@@ -17,8 +17,10 @@ import {
   PageHeader,
   SkeletonList,
   Switch,
+  Tabs,
   useLoad,
 } from "@/components/admin/ui";
+import { useQueryState } from "@/components/admin/filters";
 import { newId, pullAll } from "@/lib/owner/api";
 import { hasFeature, saveRecord } from "@/lib/owner/records";
 import {
@@ -59,11 +61,17 @@ import { PaymentMethodsSection } from "./PaymentMethodsSection";
 import { ORDER_TYPES, WEEKDAYS } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { Select } from "./Select";
-import { LockedCard } from "./ui";
+import { LockedCard, PushNote } from "./ui";
+import { activeSection, sectionOf, SETTINGS_SECTIONS, useSectionTitle } from "./sections";
 
 // Pengaturan: per outlet (`outlets` — nama/alamat, pajak, biaya layanan, pembulatan, struk, transaksi, metode
 // pembayaran dengan konfirmasi password) dan per usaha (`business_settings` — loyalti, aturan absensi). Setiap bagian disimpan
 // sendiri dengan seluruh field record + `base_updated_at`; kunci pengaturan yang tidak diedit tetap utuh.
+// Bagian dikelompokkan ke sub-menu (?tab=, lihat SETTINGS_SECTIONS). Semua kelompok tetap ter-mount (disembunyikan
+// dengan kelas `hidden`) agar draf yang belum disimpan tidak hilang saat pindah sub-menu.
+
+type SettingsTab = (typeof SETTINGS_SECTIONS)[number]["id"];
+const OUTLET_TABS: readonly SettingsTab[] = ["outlet", "biaya", "transaksi"];
 
 type Rec = SyncRecord & { settings?: unknown; name?: string; address?: string };
 
@@ -91,87 +99,90 @@ export function SettingsView() {
   const credit = hasFeature(session.subscription, "credit");
   const staff = hasFeature(session.subscription, "staff");
 
-  const toc = [
-    ...(effectiveId
-      ? [
-          ["outlet", "Outlet"],
-          ["pajak", "Pajak"],
-          ["biaya-layanan", "Biaya layanan"],
-          ["pembulatan", "Pembulatan"],
-          ["struk", "Struk"],
-          ["transaksi", "Transaksi"],
-          ["pembayaran", "Pembayaran"],
-        ]
-      : []),
-    ["zona-waktu", "Zona waktu"],
-    ["loyalti", "Loyalti"],
-    ["absensi", "Absensi"],
-  ];
+  const qs = useQueryState();
+  const tab = activeSection(SETTINGS_SECTIONS, qs.get("tab")) as SettingsTab;
+  const section = sectionOf(SETTINGS_SECTIONS, tab);
+  useSectionTitle("Pengaturan", SETTINGS_SECTIONS, tab);
+  const outletTab = OUTLET_TABS.includes(tab);
+  const group = (id: SettingsTab) => `${tab === id ? "flex" : "hidden"} flex-col gap-5`;
+  const onBiz = (r: SyncRecord) => biz.setData(r as Rec);
 
   return (
     <>
       <PageHeader
-        title="Pengaturan"
-        description="Perubahan terkirim ke semua perangkat kasir saat sinkron. Aplikasi yang sedang offline memakai pengaturan lama sampai tersambung."
+        title={section.label}
+        description={
+          <>
+            {section.description}
+            {outletTab ? (rec?.name ? ` · ${rec.name}` : "") : ` ${session.business.name}`}.
+            <PushNote />
+          </>
+        }
+      />
+      <Tabs<SettingsTab>
+        label="Bagian pengaturan"
+        hideOnDesktop
+        tabs={SETTINGS_SECTIONS.map(({ id, label }) => ({ id, label }))}
+        active={tab}
+        onChange={(t) => qs.update({ tab: t === SETTINGS_SECTIONS[0].id ? null : t })}
       />
 
-      <nav aria-label="Bagian pengaturan" className="-mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-        {toc.map(([id, label]) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            className={`inline-flex min-h-8 shrink-0 items-center rounded-full border border-border-subtle bg-white px-3 text-[13px] font-medium text-text-body hover:border-border-active hover:text-text-heading ${focusRing}`}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
-
-      <h2 className="mb-3 text-[17px] font-bold text-text-heading">Pengaturan outlet</h2>
-      {!effectiveId ? (
-        <OutletChooser />
-      ) : outlets.state.status === "error" && !outlets.state.data ? (
-        <ErrorBlock error={outlets.state.error} onRetry={outlets.reload} />
-      ) : !outlets.state.data ? (
-        <SkeletonList rows={4} label="Memuat pengaturan outlet" />
-      ) : !rec ? (
-        <ErrorBlock error={new Error("Outlet tidak ditemukan")} onRetry={outlets.reload} />
-      ) : (
-        <div className="flex flex-col gap-5">
-          <OutletInfoSection rec={rec} onRecord={setOutlet} />
-          <TaxesSection rec={rec} onRecord={setOutlet} />
-          <ServiceFeeSection rec={rec} onRecord={setOutlet} />
-          <RoundingSection rec={rec} onRecord={setOutlet} />
-          <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} />
-          <TransactionSection rec={rec} onRecord={setOutlet} credit={credit} />
-          <PaymentMethodsSection rec={rec} onRecord={setOutlet} />
-        </div>
-      )}
-
-      <h2 className="mt-8 mb-1 text-[17px] font-bold text-text-heading">Pengaturan usaha</h2>
-      <p className="mb-3 text-[13.5px] text-text-body">Berlaku untuk semua outlet {session.business.name}.</p>
-      {biz.state.status === "error" && biz.state.data === undefined ? (
-        <ErrorBlock error={biz.state.error} onRetry={biz.reload} />
-      ) : biz.state.data === undefined ? (
-        <SkeletonList rows={3} label="Memuat pengaturan usaha" />
-      ) : (
-        <div className="flex flex-col gap-5">
-          <TimezoneSection rec={biz.state.data} businessId={session.business.id} onRecord={(r) => biz.setData(r as Rec)} />
-          <LoyaltySection rec={biz.state.data} businessId={session.business.id} onRecord={(r) => biz.setData(r as Rec)} />
-          {staff ? (
-            <AttendanceSection rec={biz.state.data} businessId={session.business.id} onRecord={(r) => biz.setData(r as Rec)} />
-          ) : (
-            <div id="absensi" className="scroll-mt-20">
-              <LockedCard title="Aturan absensi">Atur jam kerja, toleransi terlambat, dan hari libur untuk absensi & gaji karyawan dengan paket Pro.</LockedCard>
+      <div className={outletTab ? "" : "hidden"}>
+        {!effectiveId ? (
+          <OutletChooser tab={tab} />
+        ) : outlets.state.status === "error" && !outlets.state.data ? (
+          <ErrorBlock error={outlets.state.error} onRetry={outlets.reload} />
+        ) : !outlets.state.data ? (
+          <SkeletonList rows={4} label="Memuat pengaturan outlet" />
+        ) : !rec ? (
+          <ErrorBlock error={new Error("Outlet tidak ditemukan")} onRetry={outlets.reload} />
+        ) : (
+          <>
+            <div className={group("outlet")}>
+              <OutletInfoSection rec={rec} onRecord={setOutlet} />
+              <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} />
             </div>
-          )}
-        </div>
-      )}
+            <div className={group("biaya")}>
+              <TaxesSection rec={rec} onRecord={setOutlet} />
+              <ServiceFeeSection rec={rec} onRecord={setOutlet} />
+              <RoundingSection rec={rec} onRecord={setOutlet} />
+            </div>
+            <div className={group("transaksi")}>
+              <TransactionSection rec={rec} onRecord={setOutlet} credit={credit} />
+              <PaymentMethodsSection rec={rec} onRecord={setOutlet} />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className={outletTab ? "hidden" : ""}>
+        {biz.state.status === "error" && biz.state.data === undefined ? (
+          <ErrorBlock error={biz.state.error} onRetry={biz.reload} />
+        ) : biz.state.data === undefined ? (
+          <SkeletonList rows={3} label="Memuat pengaturan usaha" />
+        ) : (
+          <>
+            <div className={group("usaha")}>
+              <TimezoneSection rec={biz.state.data} businessId={session.business.id} onRecord={onBiz} />
+              <LoyaltySection rec={biz.state.data} businessId={session.business.id} onRecord={onBiz} />
+            </div>
+            <div className={group("absensi")}>
+              {staff ? (
+                <AttendanceSection rec={biz.state.data} businessId={session.business.id} onRecord={onBiz} />
+              ) : (
+                <div id="absensi">
+                  <LockedCard title="Aturan absensi">Atur jam kerja, toleransi terlambat, dan hari libur untuk absensi & gaji karyawan dengan paket Pro.</LockedCard>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
 
-function OutletChooser() {
+function OutletChooser({ tab }: { tab: SettingsTab }) {
   const { session } = useOwner();
   return (
     <section className={`${cardClass} p-4 sm:p-5`} id="outlet">
@@ -183,7 +194,7 @@ function OutletChooser() {
         {session.outlets.map((o) => (
           <li key={o.id}>
             <Link
-              href={`/dasbor/pengaturan?outlet=${encodeURIComponent(o.id)}`}
+              href={`/dasbor/pengaturan?${tab === SETTINGS_SECTIONS[0].id ? "" : `tab=${tab}&`}outlet=${encodeURIComponent(o.id)}`}
               className={`flex min-h-12 items-center gap-3 rounded-[12px] border border-border-subtle px-3.5 py-2.5 hover:border-border-active ${focusRing}`}
             >
               <Store size={18} aria-hidden className="shrink-0 text-text-muted" />

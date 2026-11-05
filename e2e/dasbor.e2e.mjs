@@ -604,6 +604,50 @@ test("pelanggan: tambah → ubah → hapus", async () => {
   }
 });
 
+test("pengaturan: sub-menu menampilkan satu kelompok & draf tetap ada saat pindah sub-menu", async () => {
+  const outlet = (await api.live("outlets")).sort((a, b) => (a.name < b.name ? -1 : 1))[0];
+  const sel = 'textarea[id$="-footer"]';
+  const visible = (q) => page.$eval(q, (el) => el.offsetParent !== null).catch(() => false);
+  await go(`/dasbor/pengaturan?outlet=${outlet.id}`);
+  await page.waitForSelector(sel, { visible: true });
+  assert(!(await visible("#pajak")), "kelompok Pajak tampil di sub-menu Outlet & struk");
+  const before = await page.$eval(sel, (e) => e.value);
+  const draft = `${before} draf-e2e-${RUN}`;
+  await fillSel(sel, draft);
+
+  await click("Pajak & biaya", { within: "aside", selector: "a" });
+  await page.waitForSelector("#pajak", { visible: true });
+  assert(!(await visible(sel)), "kelompok Outlet & struk masih tampil di sub-menu Pajak & biaya");
+  await poll(async () => (await page.title()) === "Pajak & biaya · Pengaturan · Dasbor Sissi", `judul tab browser (${await page.title()})`);
+
+  await click("Outlet & struk", { within: "aside", selector: "a" });
+  await page.waitForSelector(sel, { visible: true });
+  eq(await page.$eval(sel, (e) => e.value), draft, "draf yang belum disimpan hilang setelah pindah sub-menu");
+  // Buang draf (tanpa menyimpan) agar navigasi berikutnya tidak tertahan peringatan beforeunload.
+  await click("Batalkan", { within: "#struk" });
+  await poll(async () => (await page.$eval(sel, (e) => e.value)) === before, "Batalkan tidak mengembalikan teks bawah struk");
+});
+
+test("navigasi HP: laci menu membuka sub-menu dan tertutup setelah memilih", async () => {
+  await page.setViewport({ width: 390, height: 844 });
+  try {
+    await go("/dasbor/produk");
+    assert(!(await page.$eval("aside", (el) => el.offsetParent !== null)), "sidebar desktop tampil di HP");
+    await click("Buka menu");
+    await page.waitForSelector("dialog[open] nav");
+    await click("Stok", { within: "dialog", selector: "button" });
+    await click("Opname", { within: "dialog", selector: "a" });
+    await page.waitForFunction(() => location.pathname === "/dasbor/stok" && new URL(location.href).searchParams.get("tab") === "opname");
+    await page.waitForFunction(() => !document.querySelector("dialog[open]"));
+    await page.waitForFunction(() => document.querySelector("main h1")?.innerText.trim() === "Opname");
+    eq(await page.$eval("header p", (el) => el.innerText.trim()), "Stok", "label halaman di kepala HP");
+    // Di HP, Tabs halaman tetap tampil.
+    assert(await page.$eval('main [role="tablist"]', (el) => el.offsetParent !== null), "Tabs halaman tidak tampil di HP");
+  } finally {
+    await page.setViewport({ width: 1366, height: 900 });
+  }
+});
+
 test("pengaturan: simpan teks bawah struk lalu kembalikan", async () => {
   const outlets = await api.live("outlets");
   const outlet = outlets.sort((a, b) => (a.name < b.name ? -1 : 1))[0];
@@ -675,7 +719,7 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kemb
   const before = (await api.pull("outlets")).find((o) => o.id === outletId);
   const name = `E2E QRIS ${RUN}`;
   try {
-    await go(`/dasbor/pengaturan?outlet=${outletId}`);
+    await go(`/dasbor/pengaturan?tab=transaksi&outlet=${outletId}`);
     await page.waitForSelector("#pembayaran", { visible: true });
     await waitText("Ini mengubah tujuan uang pelanggan", { root: "#pembayaran" });
     if (!(await page.$("#pembayaran input[id$='-merchant']"))) await click("QRIS", { within: "#pembayaran", selector: "label" });

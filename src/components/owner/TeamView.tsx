@@ -22,7 +22,7 @@ import { PayslipSheet } from "./team/PayslipSheet";
 import { activeSection, sectionOf, TEAM_SECTIONS, useSectionTitle } from "./sections";
 import { ScheduleTab } from "./team/ScheduleTab";
 import type { TeamCtx } from "./team/shared";
-import { LockedCard, SyncNote } from "./ui";
+import { LockedCard, PushNote, SyncNote } from "./ui";
 
 // Tim (kelola, setara menu Tim di aplikasi): Karyawan (tambah/ubah, peran, aktif, PIN), Kehadiran (papan hari ini,
 // riwayat sebulan, absen manual/koreksi), Gaji (pengaturan gaji, slip: terbitkan → tandai dibayar).
@@ -80,7 +80,12 @@ export function TeamView() {
     <>
       <PageHeader
         title={section.label}
-        description={section.description}
+        description={
+          <>
+            {section.description}
+            <PushNote />
+          </>
+        }
         actions={
           tab === "karyawan" && data ? (
             <button type="button" className={btn.primary} onClick={() => setEmployee({ id: null, key: Date.now() })}>
