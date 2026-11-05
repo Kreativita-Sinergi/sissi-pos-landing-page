@@ -5,7 +5,7 @@ import "./support/tsResolve.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-const { mergeReceipt, paperLabel, readReceipt, readReceiptLogo, readReceiptPaper } = await import("../src/lib/owner/settings.ts");
+const { mergeReceipt, paperLabel, readReceipt, readReceiptLogo, readReceiptLogoStyle, readReceiptPaper, withReceiptLogo } = await import("../src/lib/owner/settings.ts");
 
 const LOGO = "https://apipos.sissi.id/files/0192a7c4-aaaa-7000-8000-000000000001/0192a7c4-cccc-7000-8000-000000000003.png";
 const stored = {
@@ -72,4 +72,31 @@ test("baca logo: kosong/null/bukan teks = tanpa logo", () => {
   assert.equal(readReceiptLogo({ receipt: { logo_url: null } }), "");
   assert.equal(readReceiptLogo({ receipt: { logo_url: 5 } }), "");
   assert.equal(readReceiptLogo({}), "");
+});
+
+test("logo dari web (2026-11-05): draf berlogo menulis logo_url & logo_style, kunci lain utuh", () => {
+  const NEW = "https://apipos.sissi.id/files/0192a7c4-aaaa-7000-8000-000000000001/0192a7c4-dddd-7000-8000-000000000004.png";
+  const out = mergeReceipt(stored, { ...readReceipt(stored), logo_url: NEW, logo_style: "threshold" });
+  assert.equal(out.receipt.logo_url, NEW);
+  assert.equal(out.receipt.logo_style, "threshold");
+  assert.deepEqual(out.receipt.paper, stored.receipt.paper);
+  // Hapus logo = string kosong.
+  assert.equal(mergeReceipt(stored, { ...readReceipt(stored), logo_url: "", logo_style: "auto" }).receipt.logo_url, "");
+});
+
+test("gaya logo: nilai tak dikenal dibaca auto (sama dengan app)", () => {
+  assert.equal(readReceiptLogoStyle(stored), "dither");
+  assert.equal(readReceiptLogoStyle({ receipt: { logo_style: "aneh" } }), "auto");
+  assert.equal(readReceiptLogoStyle({}), "auto");
+});
+
+test("pakai logo di outlet lain: hanya logo_url & logo_style yang berubah", () => {
+  const other = { tax: { a: 1 }, receipt: { header: "Outlet B", paper_mm: 80, logo_url: "", show_logo: false } };
+  const out = withReceiptLogo(other, { logo_url: LOGO, logo_style: "dither" });
+  assert.deepEqual(out.tax, other.tax);
+  assert.equal(out.receipt.header, "Outlet B");
+  assert.equal(out.receipt.paper_mm, 80);
+  assert.equal(out.receipt.show_logo, false);
+  assert.equal(out.receipt.logo_url, LOGO);
+  assert.equal(out.receipt.logo_style, "dither");
 });

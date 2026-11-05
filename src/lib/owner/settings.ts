@@ -93,9 +93,11 @@ export function readReceipt(settings: unknown): Receipt {
 }
 
 // ——— Struk: logo & ukuran kertas (2026-10-21, kontrak "Struk satu sumber: logo & ukuran kertas") ———
-// Logo diunggah & diolah hitam-putih di aplikasi; ukuran kertas yang dipakai mencetak = milik printer di aplikasi.
-// Web hanya menampilkan `logo_url` dan preset `paper`, tidak pernah menulis `logo_url`/`logo_style` (server
-// menggabung `receipt` per kunci; web mengirim objek tersimpan + bagian yang diedit, jadi kunci itu tetap utuh).
+// Logo bisa diunggah dari aplikasi ATAU web (2026-11-05, POST /owner/uploads/images); pengolahan hitam-putih tetap di
+// aplikasi per printer menurut `logo_style`. Ukuran kertas yang dipakai mencetak = milik printer di aplikasi.
+// `readReceipt` sengaja tidak memuat logo: form struk web menambahkan `logo_url`/`logo_style` sendiri (lihat
+// ReceiptLogo) sehingga kunci itu hanya ikut ditulis bila form memuatnya; tanpa itu nilai tersimpan tetap utuh (server
+// menggabung `receipt` per kunci; web mengirim objek tersimpan + bagian yang diedit).
 
 export type PaperSpec = { preset: string; columns: number; dots: number; font: "a" | "b" };
 
@@ -145,6 +147,19 @@ export function readReceiptPaper(settings: unknown): PaperSpec | null {
 
 /** URL logo struk tersimpan ("" = tanpa logo). */
 export const readReceiptLogo = (settings: unknown): string => str(obj(obj(settings).receipt).logo_url).trim();
+
+export type LogoStyle = "auto" | "threshold" | "dither";
+export const LOGO_STYLES: LogoStyle[] = ["auto", "threshold", "dither"];
+/** Cara app mengubah logo jadi hitam-putih; nilai lain dibaca `auto` (sama dengan app). */
+export function readReceiptLogoStyle(settings: unknown): LogoStyle {
+  const v = str(obj(obj(settings).receipt).logo_style);
+  return (LOGO_STYLES as string[]).includes(v) ? (v as LogoStyle) : "auto";
+}
+
+/** Pasang logo (URL + gaya) ke `settings` outlet lain tanpa menyentuh kunci struk lainnya ("pakai di semua outlet"). */
+export function withReceiptLogo(settings: unknown, logo: { logo_url: string; logo_style: LogoStyle }): Obj {
+  return mergeSection(settings, "receipt", { logo_url: logo.logo_url, logo_style: logo.logo_style });
+}
 
 /**
  * Bagian struk diedit web → objek `settings` baru. Kunci `receipt` yang tidak dikenal web (logo_url, logo_style,

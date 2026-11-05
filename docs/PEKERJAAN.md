@@ -24,7 +24,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Berikutnya
 
-- _(kosong)_
+- **P2 · [service] Header CORS untuk `GET /files/*`** agar logo struk bisa dimuat dasbor web ke kanvas (logo di kepala
+  PDF Laporan Penjualan). Sekarang browser menolak: "No 'Access-Control-Allow-Origin' header" → PDF dibuat tanpa logo
+  (sudah ditangani). Usul: `Access-Control-Allow-Origin: *` khusus `/files/*` (gambar publik, tanpa cookie) di
+  `internal/upload`; perbarui `docs/api.md`. Ditunda karena repo service sedang berisi perubahan agent lain
+  (2026-11-05). Setelah itu kembalikan cek `/Subtype /Image` di tes e2e logo.
 
 ## Backlog
 
@@ -56,6 +60,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-05 · Unggah logo struk dari web** (Claude Opus 5.5): Pengaturan › Outlet & struk › Struk: unggah/ganti/hapus
+  logo (PNG tetap PNG, ≤ 800 px; `POST /owner/uploads/images`), pilihan cara cetak (`logo_style`), "Pakai logo ini di
+  semua outlet", berkas lama dihapus best effort. Tes unit 3 + e2e unggah→simpan→kembalikan. Catatan tes: pull sync
+  menahan record yang baru berubah beberapa detik — tes yang memulihkan record lewat API menunggu record terlihat lagi.
 - **2026-11-05 · PDF Laporan Penjualan: tren & kerapian** (Claude Opus 5.5): catatan sinkron + "hari ini masih
   berjalan" di kepala; laporan periode sebelumnya (permintaan ke-2) → tren produk/kasir & kolom "vs lalu"; rata-rata
   per transaksi vs periode lalu; varian digabung di kesimpulan; kesimpulan dikelompokkan per tema; logo struk outlet di

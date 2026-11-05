@@ -9,6 +9,7 @@ import {
   btn,
   cardClass,
   ErrorBlock,
+  errorMessage,
   Field,
   focusRing,
   formatRupiah,
@@ -16,6 +17,7 @@ import {
   inputClass,
   PageHeader,
   SkeletonList,
+  Spinner,
   Switch,
   Tabs,
   useLoad,
@@ -39,7 +41,10 @@ import {
   readAttendance,
   readLoyalty,
   readReceipt,
+  LOGO_STYLES,
+  type LogoStyle,
   readReceiptLogo,
+  readReceiptLogoStyle,
   readReceiptPaper,
   readRounding,
   readServiceFee,
@@ -53,7 +58,9 @@ import {
   TIMEZONE_CHOICES,
   type TimezoneChoice,
   type TransactionSettings,
+  withReceiptLogo,
 } from "@/lib/owner/settings";
+import { deleteUploadedPhoto, PHOTO_ACCEPT, uploadReceiptLogo } from "@/lib/owner/upload";
 import type { SyncRecord } from "@/lib/owner/types";
 import { zoneLabel } from "@/lib/owner/tz";
 import { ChipGroup, EditSection, NumberInput, Segmented, useDraft, useSaver } from "./editing";
@@ -140,7 +147,7 @@ export function SettingsView() {
           <>
             <div className={group("outlet")}>
               <OutletInfoSection rec={rec} onRecord={setOutlet} />
-              <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} />
+              <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} outlets={outlets.state.data} />
             </div>
             <div className={group("biaya")}>
               <TaxesSection rec={rec} onRecord={setOutlet} />
@@ -490,13 +497,21 @@ function RoundingSection({ rec, onRecord }: OutletProps) {
 
 // ——— Outlet: struk ———
 
-function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { businessName: string }) {
+type ReceiptDraft = Receipt & { logo_url: string; logo_style: LogoStyle };
+const readReceiptDraft = (settings: unknown): ReceiptDraft => ({
+  ...readReceipt(settings),
+  logo_url: readReceiptLogo(settings),
+  logo_style: readReceiptLogoStyle(settings),
+});
+
+function ReceiptSection({ rec, onRecord, businessName, outlets }: OutletProps & { businessName: string; outlets: Rec[] }) {
   const uid = useId();
   const settings = settingsOf(rec);
-  const { draft, setDraft, dirty, reset } = useDraft<Receipt>(readReceipt(settings));
+  const { draft, setDraft, dirty, reset } = useDraft<ReceiptDraft>(readReceiptDraft(settings));
   const saver = useSaver(onRecord);
-  const set = <K extends keyof Receipt>(k: K, v: Receipt[K]) => setDraft({ ...draft, [k]: v });
-  const logoUrl = readReceiptLogo(settings);
+  const set = <K extends keyof ReceiptDraft>(k: K, v: ReceiptDraft[K]) => setDraft({ ...draft, [k]: v });
+  const savedLogo = readReceiptLogo(settings);
+  const logoUrl = draft.logo_url;
   // Preset dari aplikasi (huruf kecil / kertas kecil / Lainnya) hanya ditampilkan bila ukurannya belum diubah di sini.
   const savedPaper = readReceiptPaper(settings);
   const appPaper = savedPaper && draft.paper_mm === readReceipt(settings).paper_mm ? savedPaper : null;
@@ -512,16 +527,20 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
         reset();
         saver.clearError();
       }}
-      onSave={() =>
-        saver.run(
+      onSave={async () => {
+        const replaced = savedLogo && savedLogo !== draft.logo_url ? savedLogo : null;
+        await saver.run(
           () =>
             saveRecord("outlets", rec.id, rec, {
+              // mergeReceipt menyebar seluruh draf → logo_url & logo_style ikut tertulis.
               settings: mergeReceipt(settings, draft),
             }),
           "Pengaturan struk disimpan.",
-          (r) => setDraft(readReceipt(settingsOf(r as Rec)))
-        )
-      }
+          (r) => setDraft(readReceiptDraft(settingsOf(r as Rec)))
+        );
+        // Logo lama yang diganti/dihapus: hapus berkasnya (best effort; server menolak bila masih dipakai outlet lain).
+        if (replaced) void deleteUploadedPhoto(replaced);
+      }}
     >
       <div className="grid gap-5 lg:grid-cols-[1fr_auto]">
         <div className="flex min-w-0 flex-col gap-4">
@@ -563,18 +582,131 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
               Ukuran bawaan outlet; kertas tiap printer diatur di aplikasi.
             </p>
           </div>
+          <ReceiptLogo
+            url={draft.logo_url}
+            style={draft.logo_style}
+            onChange={(logo_url) => setDraft({ ...draft, logo_url, show_logo: logo_url ? true : draft.show_logo })}
+            onStyle={(v) => set("logo_style", v)}
+          />
           <Switch
             id={`${uid}-logo`}
             label="Tampilkan logo"
-            description={logoUrl ? "Logo toko dicetak hitam-putih di atas struk. Ganti logo dari aplikasi (Pengaturan › Struk)." : "Belum ada logo. Unggah logo dari aplikasi (Pengaturan › Struk)."}
+            description={logoUrl ? "Logo dicetak hitam-putih di atas struk." : "Belum ada logo. Unggah logo di atas."}
             checked={draft.show_logo}
             onChange={(v) => set("show_logo", v)}
           />
+          {!dirty && savedLogo && <ApplyLogoToOutlets rec={rec} outlets={outlets} onRecord={onRecord} />}
           <Switch id={`${uid}-rate`} label="Tampilkan tarif pajak" description="Mis. “PB1 10%” alih-alih “PB1”." checked={draft.show_tax_rate} onChange={(v) => set("show_tax_rate", v)} />
         </div>
         <ReceiptPreview receipt={draft} logoUrl={logoUrl} outletName={String(rec.name ?? "")} address={String(rec.address ?? "")} businessName={businessName} taxes={readTaxes(settings)} />
       </div>
     </EditSection>
+  );
+}
+
+const LOGO_STYLE_LABEL: Record<LogoStyle, string> = { auto: "Otomatis", threshold: "Garis tegas", dither: "Foto (arsir)" };
+const LOGO_STYLE_HINT: Record<LogoStyle, string> = {
+  auto: "Aplikasi memilih cara terbaik untuk printer.",
+  threshold: "Untuk logo teks atau garis: hitam-putih tegas.",
+  dither: "Untuk logo bergambar/foto: gradasi jadi titik-titik.",
+};
+
+/** Unggah/ganti/hapus logo struk (draf; tersimpan lewat tombol Simpan bagian Struk). */
+function ReceiptLogo({ url, style, onChange, onStyle }: { url: string; style: LogoStyle; onChange: (url: string) => void; onStyle: (v: LogoStyle) => void }) {
+  const uid = useId();
+  const input = React.useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onChange(await uploadReceiptLogo(file));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  };
+  return (
+    <div>
+      <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Logo</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border-subtle bg-white">
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL unggahan API (host dinamis)
+            <img src={url} alt="Logo struk" className="max-h-full max-w-full object-contain" />
+          ) : (
+            <Store size={22} aria-hidden className="text-text-muted" />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input ref={input} id={`${uid}-file`} type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(e) => void pick(e.target.files?.[0])} />
+          <button type="button" className={btn.secondary} disabled={busy} onClick={() => input.current?.click()}>
+            {busy && <Spinner />} {url ? "Ganti logo" : "Unggah logo"}
+          </button>
+          {url && (
+            <button type="button" className={`${btn.ghost} hover:text-danger`} disabled={busy} onClick={() => onChange("")}>
+              <Trash2 size={16} aria-hidden /> Hapus
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="mt-1.5 text-[12.5px] text-text-muted">JPG, PNG, atau WebP. PNG berlatar transparan paling rapi di struk. Diperkecil otomatis ke 800 px.</p>
+      {error && (
+        <p role="alert" className="mt-1.5 text-[13px] text-danger">
+          {error}
+        </p>
+      )}
+      {url && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Cara cetak logo</p>
+          <Segmented label="Cara cetak logo" value={style} onChange={onStyle} options={LOGO_STYLES.map((v) => ({ value: v, label: LOGO_STYLE_LABEL[v] }))} />
+          <p className="mt-1.5 text-[12.5px] text-text-muted">{LOGO_STYLE_HINT[style]}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Salin logo tersimpan outlet ini (URL + cara cetak) ke outlet lain yang logonya berbeda. */
+function ApplyLogoToOutlets({ rec, outlets, onRecord }: { rec: Rec; outlets: Rec[]; onRecord: (r: SyncRecord) => void }) {
+  const toast = useToast();
+  const [busy, setBusy] = React.useState(false);
+  const logo = { logo_url: readReceiptLogo(settingsOf(rec)), logo_style: readReceiptLogoStyle(settingsOf(rec)) };
+  const others = outlets.filter(
+    (o) => o.id !== rec.id && !o.deleted_at && (readReceiptLogo(settingsOf(o)) !== logo.logo_url || readReceiptLogoStyle(settingsOf(o)) !== logo.logo_style)
+  );
+  if (!others.length) return null;
+  const run = async () => {
+    setBusy(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const o of others) {
+      try {
+        const r = await saveRecord("outlets", o.id, o, { settings: withReceiptLogo(settingsOf(o), logo) });
+        if (r.record) onRecord(r.record);
+        if (r.status === "applied") ok++;
+        else failed.push(String(o.name ?? "outlet"));
+      } catch {
+        failed.push(String(o.name ?? "outlet"));
+      }
+    }
+    setBusy(false);
+    if (ok) toast.success(`Logo dipakai di ${ok.toLocaleString("id-ID")} outlet lain.`);
+    if (failed.length) toast.error(`Gagal menyimpan logo di: ${failed.join(", ")}. Coba lagi.`);
+  };
+  return (
+    <div className="rounded-[10px] bg-bg-muted px-3 py-2.5 text-[13px] text-text-body">
+      <p>
+        {others.length.toLocaleString("id-ID")} outlet lain memakai logo berbeda atau belum punya logo.
+      </p>
+      <button type="button" className={`${btn.secondary} mt-2`} disabled={busy} onClick={() => void run()}>
+        {busy && <Spinner />} Pakai logo ini di semua outlet
+      </button>
+    </div>
   );
 }
 

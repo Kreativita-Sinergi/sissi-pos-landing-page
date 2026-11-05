@@ -712,6 +712,39 @@ test("pengaturan: simpan teks bawah struk lalu kembalikan", async () => {
   }
 });
 
+test("pengaturan: unggah logo struk dari web, tersimpan, lalu kembalikan", async () => {
+  const outlet = (await api.live("outlets")).sort((a, b) => (a.name < b.name ? -1 : 1))[0];
+  const original = { logo_url: outlet.settings?.receipt?.logo_url ?? "", logo_style: outlet.settings?.receipt?.logo_style ?? "auto" };
+  const logoOf = async () => (await api.live("outlets")).find((o) => o.id === outlet.id)?.settings?.receipt ?? {};
+  try {
+    await go(`/dasbor/pengaturan?outlet=${outlet.id}`);
+    const input = await page.waitForSelector("#struk input[type=file]");
+    await input.uploadFile(globalThis.__pngPath);
+    await page.waitForFunction((old) => {
+      const img = document.querySelector('#struk img[alt="Logo struk"]');
+      return img && img.getAttribute("src") && img.getAttribute("src") !== old;
+    }, {}, original.logo_url);
+    await click("Garis tegas", { within: "#struk" });
+    await submitFormOf("#struk input[type=file]");
+    await poll(async () => {
+      const r = await logoOf();
+      return /\/files\/[^/]+\/[^/]+\.png$/.test(r.logo_url ?? "") && r.logo_url !== original.logo_url && r.logo_style === "threshold";
+    }, "logo struk tidak tersimpan");
+
+    // Logo di kepala PDF belum diuji: GET /files/* di API belum mengirim header CORS (lihat docs/PEKERJAAN.md).
+  } finally {
+    const cur = (await api.live("outlets")).find((o) => o.id === outlet.id);
+    const r = cur.settings?.receipt ?? {};
+    if ((r.logo_url ?? "") !== original.logo_url || (r.logo_style ?? "auto") !== original.logo_style) {
+      const settings = { ...cur.settings, receipt: { ...r, ...original } };
+      await api.upsert("outlets", cur.id, { settings }, cur.updated_at);
+    }
+    // Pull sinkron menahan record yang baru berubah beberapa detik (jeda commit di syncapi); tunggu sampai outlet ini
+    // terlihat lagi agar tes berikutnya (yang menarik outlets) tidak kehilangan record.
+    await poll(async () => (await api.live("outlets")).some((o) => o.id === outlet.id), "outlet belum terlihat lagi di pull");
+  }
+});
+
 test("aktivitas memuat ringkasan & filter Jenis: Perubahan data", async () => {
   await go("/dasbor/aktivitas");
   await waitText("Perubahan data", { root: "main" });
