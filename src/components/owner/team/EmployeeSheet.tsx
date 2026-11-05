@@ -20,6 +20,7 @@ import {
   ROLE_LABEL,
   saveEmployee,
   savePin,
+  WAITER_APP_NOTE,
   type Employee,
   type PersonalAccess,
   type Role,
@@ -356,6 +357,7 @@ function EmployeeForm({
         )}
         <p className="mt-1.5 text-[13px] text-text-muted">{isSelf ? "Kamu tidak dapat mengubah peranmu sendiri." : ROLE_HINT[f.role]}</p>
         {errors.role && <p className="mt-1 text-[13px] text-danger">{errors.role}</p>}
+        {f.role === "waiter" && !isSelf && <p className="mt-1 text-[12.5px] text-warning">{WAITER_APP_NOTE}</p>}
         {!kitchenRole && !isSelf && (
           <p className="mt-1 text-[12.5px] text-text-muted">Peran Dapur & Pelayan tersedia untuk usaha kuliner atau bila fitur dapur outlet diaktifkan.</p>
         )}

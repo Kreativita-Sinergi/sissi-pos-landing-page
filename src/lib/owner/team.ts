@@ -623,6 +623,11 @@ export const ROLE_HINT: Record<Role, string> = {
   waiter: "Mencatat pesanan meja & mengirim ke dapur. Tidak menerima pembayaran.",
   staff: "Karyawan (absen saja): tanpa akses kasir. Absen, slip gaji, dan pengajuan dari HP pribadi (Ruang Karyawan), atau absen dengan PIN di perangkat toko lewat Tim › Absen.",
 };
+/**
+ * Catatan peran Pelayan (urutan rilis, docs/api.md "Peran Pelayan"): aplikasi lama membuka peran tak dikenal sebagai
+ * Kasir (bisa menerima pembayaran) — pemilik memperbarui semua perangkat dulu.
+ */
+export const WAITER_APP_NOTE = "Peran Pelayan butuh aplikasi versi terbaru di semua perangkat. Perbarui aplikasi di semua tablet/HP toko dulu — aplikasi lama membukanya sebagai Kasir.";
 export const PAY_TYPE_LABEL: Record<PayType, string> = { monthly: "Bulanan", daily: "Harian", hourly: "Per jam", none: "Tidak digaji" };
 export const PAY_TYPE_HINT: Record<PayType, string> = {
   monthly: "Gaji tetap per bulan; alpa bisa dipotong.",
