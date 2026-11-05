@@ -8,7 +8,7 @@
 //
 // Setiap tes membersihkan data yang dibuatnya (nama berawalan "E2E "). Sisa dari run gagal sebelumnya dihapus di awal.
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -800,6 +800,31 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kemb
   }
 });
 
+test("transaksi: ekspor PDF lewat dialog (ringkasan, per kasir, daftar)", async () => {
+  const dir = globalThis.__downloads;
+  const cdp = await page.createCDPSession();
+  await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
+  await go("/dasbor/transaksi");
+  await click("Ekspor", { within: "main" });
+  await waitDialog("Ekspor transaksi");
+  await waitText("transaksi", { root: "dialog[open]" });
+  await click("Unduh PDF", { within: "dialog", partial: true });
+  await waitDialogClosed("Ekspor transaksi");
+  let file = null;
+  await poll(async () => {
+    file = readdirSync(dir).find((f) => f.endsWith(".pdf") && !f.endsWith(".crdownload"));
+    return !!file && existsSync(join(dir, file));
+  }, "berkas PDF tidak terunduh");
+  const buf = readFileSync(join(dir, file));
+  eq(buf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
+  const text = buf.toString("latin1");
+  for (const part of ["Laporan Transaksi", "Ringkasan", "Per kasir", "Daftar transaksi", "Halaman 1 dari"]) {
+    assert(text.includes(part), `PDF memuat "${part}"`);
+  }
+  // Simpan salinan untuk diperiksa manual: E2E_PDF_OUT=/jalur/laporan.pdf npm run e2e
+  if (process.env.E2E_PDF_OUT) writeFileSync(process.env.E2E_PDF_OUT, buf);
+});
+
 test("transaksi: batalkan (void) transaksi lunas dari detail", async () => {
   await ensureLoggedIn();
   // Data demo diisi ulang sesi utama; pembatalan ini memang tidak bisa diurungkan.
@@ -889,6 +914,7 @@ async function main() {
   const png = join(fixtures, "foto-e2e.png");
   writeFileSync(png, makePng(64, 64, [240, 120, 40]));
   globalThis.__pngPath = png;
+  globalThis.__downloads = mkdtempSync(join(fixtures, "unduhan-"));
 
   try {
     await api.login();

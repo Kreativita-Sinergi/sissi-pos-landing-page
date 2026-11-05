@@ -1,39 +1,23 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { ReceiptText, X } from "lucide-react";
+import React from "react";
+import { ReceiptText } from "lucide-react";
 import { ClearFiltersButton, FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import { SearchBox } from "@/components/admin/filters";
-import {
-  btn,
-  cardClass,
-  EmptyState,
-  ErrorBlock,
-  errorMessage,
-  focusRing,
-  formatRupiah,
-  LoadingBar,
-  Notice,
-  PageHeader,
-  Pagination,
-  SkeletonList,
-  Spinner,
-  useLoad,
-} from "@/components/admin/ui";
+import { cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, LoadingBar, PageHeader, Pagination, SkeletonList, useLoad } from "@/components/admin/ui";
 import { ownerApi } from "@/lib/owner/api";
-import { csvDateTime, downloadCsv, slug } from "@/lib/owner/csv";
-import { zoneLabel } from "@/lib/owner/tz";
-import type { SaleListItem, SalesPage, SalesSort, StaffMember } from "@/lib/owner/types";
-import { refundedTotalOf } from "@/lib/owner/saleRefunds";
-import { labelOf, METHODS, orderTypeLabel, SALE_STATUS, SALE_STATUS_SHORT } from "./labels";
+import { slug } from "@/lib/owner/csv";
+import { dayLabel } from "@/lib/owner/salesPdf";
+import type { SalesPage, SalesSort, StaffMember } from "@/lib/owner/types";
+import { labelOf, METHODS, SALE_STATUS, SALE_STATUS_SHORT } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SalesTable } from "./parts";
-import { PeriodFilter, SyncNote, usePeriod } from "./ui";
+import { PeriodFilter, periodTitle, SyncNote, usePeriod } from "./ui";
+import { SalesExport } from "./SalesExport";
 
 // Riwayat transaksi (GET /owner/sales). Semua filter di URL: from, to, status, method, cashier, q, sort, page.
 
 const PER_PAGE = 25;
-const EXPORT_LIMIT = 5000;
 const STATUSES = ["paid", "unpaid", "partial", "open", "void", "refunded"];
 const METHOD_KEYS = ["cash", "qris", "card", "transfer", "split", "credit"];
 const SORTS: { value: SalesSort; label: string }[] = [
@@ -85,6 +69,14 @@ export function SalesView() {
   const data = state.data;
   const filtered = status.length > 0 || method.length > 0 || !!cashier || !!q;
 
+  // Filter selain periode & outlet, untuk dialog & kepala PDF.
+  const extraFilters = [
+    method.length ? `Metode: ${method.map((m) => labelOf(METHODS, m)).join(", ")}` : null,
+    status.length ? `Status: ${status.map((x) => labelOf(SALE_STATUS, x)).join(", ")}` : null,
+    cashier ? `Kasir: ${cashierOptions.find((c) => c.value === cashier)?.label ?? "terpilih"}` : null,
+    q ? `Cari: "${q}"` : null,
+  ].filter((x): x is string => !!x);
+
   const toggleStatus = (s: string) => qs.update({ status: status.includes(s) ? status.filter((x) => x !== s) : [...status, s] });
 
   return (
@@ -93,11 +85,15 @@ export function SalesView() {
         title="Transaksi"
         description="Riwayat transaksi dari semua perangkat kasir. Klik baris untuk melihat struk."
         actions={
-          <ExportSales
-            disabled={!data || data.meta.total === 0}
+          <SalesExport
             total={data?.meta.total ?? 0}
-            filename={`${slug(session.business.name)}-${slug(outlet?.name ?? "semua-outlet")}-transaksi-${from}_${to}.csv`}
-            fetchPage={async (p, signal) => (await ownerApi()).sales({ ...query, page: p, per_page: 100 }, signal)}
+            query={query}
+            extraFilters={extraFilters}
+            businessName={session.business.name}
+            outletLabel={outlet?.name ?? (session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? "-"))}
+            periodLabel={from === to ? dayLabel(from) : `${periodTitle(from, to, preset)} (${dayLabel(from)} - ${dayLabel(to)})`}
+            showOutlet={!outlet && session.outlets.length > 1}
+            filenameBase={`${slug(session.business.name)}-${slug(outlet?.name ?? "semua-outlet")}-transaksi-${from}_${to}`}
           />
         }
       />
@@ -207,90 +203,3 @@ function Chip({ on, onClick, children, title }: { on: boolean; onClick: () => vo
   );
 }
 
-/** Ekspor semua halaman hasil filter (berurutan, 100 per permintaan, maksimal 5.000 baris) dengan progres. */
-function ExportSales({
-  disabled,
-  total,
-  filename,
-  fetchPage,
-}: {
-  disabled: boolean;
-  total: number;
-  filename: string;
-  fetchPage: (page: number, signal: AbortSignal) => Promise<SalesPage>;
-}) {
-  const [progress, setProgress] = useState<{ done: number; of: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const ctrlRef = useRef<AbortController | null>(null);
-
-  async function run() {
-    const ctrl = new AbortController();
-    ctrlRef.current = ctrl;
-    setError(null);
-    const target = Math.min(total, EXPORT_LIMIT);
-    setProgress({ done: 0, of: target });
-    const rows: SaleListItem[] = [];
-    try {
-      for (let p = 1; rows.length < target; p++) {
-        const r = await fetchPage(p, ctrl.signal);
-        rows.push(...r.items);
-        setProgress({ done: Math.min(rows.length, target), of: Math.min(r.meta.total, EXPORT_LIMIT) });
-        if (r.items.length === 0 || rows.length >= r.meta.total) break;
-      }
-      downloadCsv(
-        filename,
-        [`waktu_${zoneLabel().toLowerCase()}`, "no_struk", "outlet", "kasir", "pelanggan", "meja", "jenis_pesanan", "status", "metode", "total", "refund_sebagian", "dibayar", "jumlah_item"],
-        rows.slice(0, EXPORT_LIMIT).map((s) => [
-          csvDateTime(s.paid_at),
-          s.receipt_no,
-          s.outlet_name,
-          s.cashier_name,
-          s.customer_name ?? "",
-          s.table_name ?? "",
-          s.order_type ? orderTypeLabel(s.order_type) : "",
-          labelOf(SALE_STATUS, s.status),
-          labelOf(METHODS, s.payment_method),
-          s.total,
-          refundedTotalOf(s),
-          s.paid_total,
-          s.items_count,
-        ])
-      );
-    } catch (err) {
-      if (!ctrl.signal.aborted) setError(errorMessage(err));
-    } finally {
-      ctrlRef.current = null;
-      setProgress(null);
-    }
-  }
-
-  if (progress) {
-    const pct = progress.of ? Math.round((progress.done / progress.of) * 100) : 0;
-    return (
-      <div className="flex items-center gap-2" role="status">
-        <span className="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-border-subtle bg-white px-3 text-[13.5px]">
-          <Spinner />
-          <span className="tabular-nums">
-            Mengambil {progress.done.toLocaleString("id-ID")}/{progress.of.toLocaleString("id-ID")} ({pct}%)
-          </span>
-        </span>
-        <button type="button" className={btn.ghost} onClick={() => ctrlRef.current?.abort()} aria-label="Batalkan ekspor">
-          <X size={16} aria-hidden /> Batal
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col items-end gap-2">
-      <button type="button" className={btn.secondary} disabled={disabled} onClick={run} title={total > EXPORT_LIMIT ? `Hanya ${EXPORT_LIMIT.toLocaleString("id-ID")} baris pertama` : undefined}>
-        Ekspor CSV
-      </button>
-      {total > EXPORT_LIMIT && <p className="text-[12px] text-text-muted">Maks. {EXPORT_LIMIT.toLocaleString("id-ID")} baris — persempit periode untuk sisanya.</p>}
-      {error && (
-        <Notice tone="danger" role="alert">
-          Ekspor gagal: {error}
-        </Notice>
-      )}
-    </div>
-  );
-}
