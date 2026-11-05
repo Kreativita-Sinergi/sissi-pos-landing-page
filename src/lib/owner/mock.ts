@@ -791,6 +791,12 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       };
     },
 
+    async salesPdf() {
+      await guard();
+      // Mode tiruan: PDF kosong minimal sebagai pengganti (server sungguhan membuat laporan lengkap).
+      return new Blob(["%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"], { type: "application/pdf" });
+    },
+
     async salesReport(q) {
       const s = await guard();
       checkOutlet(q.outlet_id);

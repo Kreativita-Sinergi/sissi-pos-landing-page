@@ -7,13 +7,13 @@ import { SearchBox } from "@/components/admin/filters";
 import { cardClass, EmptyState, ErrorBlock, focusRing, formatRupiah, LoadingBar, PageHeader, Pagination, SkeletonList, useLoad } from "@/components/admin/ui";
 import { ownerApi } from "@/lib/owner/api";
 import { slug } from "@/lib/owner/csv";
-import { dayLabel } from "@/lib/owner/salesPdf";
 import type { SalesPage, SalesSort, StaffMember } from "@/lib/owner/types";
 import { labelOf, METHODS, SALE_STATUS, SALE_STATUS_SHORT } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { SalesTable } from "./parts";
 import { PeriodFilter, periodTitle, SyncNote, usePeriod } from "./ui";
 import { SalesExport } from "./SalesExport";
+import { dayLabel } from "@/lib/owner/tz";
 
 // Riwayat transaksi (GET /owner/sales). Semua filter di URL: from, to, status, method, cashier, q, sort, page.
 
@@ -89,9 +89,7 @@ export function SalesView() {
             total={data?.meta.total ?? 0}
             query={query}
             extraFilters={extraFilters}
-            businessName={session.business.name}
             outletLabel={outlet?.name ?? (session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? "-"))}
-            compareOutlets={!outlet && session.outlets.length > 1}
             periodLabel={from === to ? dayLabel(from) : `${periodTitle(from, to, preset)} (${dayLabel(from)} - ${dayLabel(to)})`}
             filenameBase={`${slug(session.business.name)}-${slug(outlet?.name ?? "semua-outlet")}-transaksi-${from}_${to}`}
           />

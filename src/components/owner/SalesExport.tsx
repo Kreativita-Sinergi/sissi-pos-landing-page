@@ -4,12 +4,10 @@ import React, { useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { Modal } from "@/components/admin/ConfirmDialog";
 import { btn, errorMessage, Notice, Spinner } from "@/components/admin/ui";
-import { ownerApi, pullAll } from "@/lib/owner/api";
-import { readReceiptLogo } from "@/lib/owner/settings";
+import { ownerApi } from "@/lib/owner/api";
 import { csvDateTime, downloadCsv } from "@/lib/owner/csv";
-import { buildSalesPdf, summaryFromReport, summaryFromRows, withOutlets, withPrevious } from "@/lib/owner/salesPdf";
 import { zoneLabel } from "@/lib/owner/tz";
-import type { SaleListItem, SalesQuery, SyncRecord } from "@/lib/owner/types";
+import type { SaleListItem, SalesQuery } from "@/lib/owner/types";
 import { refundedTotalOf } from "@/lib/owner/saleRefunds";
 import { labelOf, METHODS, orderTypeLabel, SALE_STATUS } from "./labels";
 
@@ -25,22 +23,17 @@ export function SalesExport({
   total,
   query,
   extraFilters,
-  businessName,
   outletLabel,
   periodLabel,
-  compareOutlets,
   filenameBase,
 }: {
   total: number;
   /** Kueri halaman tanpa page/per_page. */
   query: SalesQuery;
-  /** Label filter selain periode & outlet, mis. "Metode: QRIS". Kosong → ringkasan PDF dari laporan. */
+  /** Label filter selain periode & outlet, mis. "Metode: QRIS".  */
   extraFilters: string[];
-  businessName: string;
   outletLabel: string;
   periodLabel: string;
-  /** "Semua outlet" dengan > 1 outlet → PDF memuat perbandingan outlet. */
-  compareOutlets: boolean;
   filenameBase: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -90,43 +83,9 @@ export function SalesExport({
           ])
         );
       } else {
-        // Tanpa filter tambahan: cukup laporan server (= halaman Laporan), satu permintaan.
-        // Dengan filter tambahan: ringkasan dihitung dari transaksi yang cocok, jadi ambil sampai CSV_LIMIT.
-        const fromReport = extraFilters.length === 0;
-        const api = await ownerApi();
-        const range = { from: query.from ?? "", to: query.to ?? "" };
-        let rows: SaleListItem[] = [];
-        let summary;
-        if (fromReport) {
-          setProgress({ done: 0, of: 0 });
-          const [report, outlets] = await Promise.all([
-            api.salesReport({ from: query.from, to: query.to, outlet_id: query.outlet_id }, ctrl.signal),
-            compareOutlets ? api.outletsReport({ from: query.from, to: query.to }, ctrl.signal) : null,
-          ]);
-          summary = summaryFromReport(report);
-          if (outlets) summary = withOutlets(summary, outlets);
-          // Periode sebelumnya (panjang sama) untuk tren per produk & per kasir; gagal → laporan tetap jadi tanpa tren.
-          const prev = await api
-            .salesReport({ from: report.previous.from, to: report.previous.to, outlet_id: query.outlet_id }, ctrl.signal)
-            .catch(() => null);
-          if (prev) summary = withPrevious(summary, prev);
-        } else {
-          rows = await fetchRows(CSV_LIMIT, ctrl.signal);
-          summary = summaryFromRows(rows, range);
-        }
-        const logo = await loadLogo(query.outlet_id, ctrl.signal);
-        const blob = await buildSalesPdf({
-          logo,
-          businessName,
-          outletLabel,
-          periodLabel,
-          filters: extraFilters,
-          summary,
-          summarizedCount: rows.length,
-          total,
-          partialSummary: !fromReport && total > rows.length,
-          generatedAt: new Date(),
-        });
+        // PDF dibuat server (logo, analisis, tren, perbandingan outlet) dengan filter aktif; web hanya mengunduh.
+        setProgress({ done: 0, of: 0 });
+        const blob = await (await ownerApi()).salesPdf(query, ctrl.signal);
         downloadBlob(blob, `${filenameBase}.pdf`);
       }
       setOpen(false);
@@ -199,8 +158,8 @@ export function SalesExport({
 
         {format === "pdf" && extraFilters.length > 0 && (
           <p className="mt-3 text-[12.5px] text-text-muted">
-            Ada filter tambahan, jadi ringkasan dihitung dari transaksi yang cocok (tanpa rincian diskon & pajak). Tanpa filter tambahan, ringkasan
-            sama dengan halaman Laporan.
+            Ada filter tambahan, jadi ringkasan dihitung dari transaksi yang cocok (tanpa produk, laba, dan rincian diskon & pajak). Tanpa filter
+            tambahan, ringkasan sama dengan halaman Laporan.
           </p>
         )}
         {error && (
@@ -236,37 +195,6 @@ export function SalesExport({
       </Modal>
     </>
   );
-}
-
-/**
- * Logo usaha untuk kepala PDF: logo struk outlet terpilih, atau outlet pertama yang punya logo
- * (`outlets.settings.receipt.logo_url`). Dimuat lewat <canvas> → PNG; butuh header CORS dari GET /files/* (api.md).
- * Gagal (CORS, 404, waktu habis) → null.
- */
-async function loadLogo(outletId: string | undefined, signal: AbortSignal): Promise<{ dataUrl: string; width: number; height: number } | null> {
-  try {
-    const outlets = await pullAll<SyncRecord & { settings?: unknown }>("outlets", signal);
-    const pick = (outletId ? outlets.filter((o) => o.id === outletId) : outlets).map((o) => readReceiptLogo(o.settings)).find(Boolean);
-    if (!pick) return null;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error("timeout")), 5000);
-      img.onload = () => (clearTimeout(t), resolve());
-      img.onerror = () => (clearTimeout(t), reject(new Error("logo")));
-      // Penanda query: logo yang sama mungkin sudah ada di cache browser dari <img> biasa (tanpa header CORS, cache
-      // setahun) — permintaan CORS ke URL itu akan ditolak. URL berbeda = permintaan baru (server mengabaikan query).
-      img.src = `${pick}${pick.includes("?") ? "&" : "?"}cors=1`;
-    });
-    const scale = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return { dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height };
-  } catch {
-    return null;
-  }
 }
 
 function downloadBlob(blob: Blob, filename: string) {
