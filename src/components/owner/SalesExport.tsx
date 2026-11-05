@@ -240,7 +240,8 @@ export function SalesExport({
 
 /**
  * Logo usaha untuk kepala PDF: logo struk outlet terpilih, atau outlet pertama yang punya logo
- * (`outlets.settings.receipt.logo_url`). Dimuat lewat <canvas> → PNG. Gagal (CORS, 404, waktu habis) → null.
+ * (`outlets.settings.receipt.logo_url`). Dimuat lewat <canvas> → PNG; butuh header CORS dari GET /files/* (api.md).
+ * Gagal (CORS, 404, waktu habis) → null.
  */
 async function loadLogo(outletId: string | undefined, signal: AbortSignal): Promise<{ dataUrl: string; width: number; height: number } | null> {
   try {
@@ -253,7 +254,9 @@ async function loadLogo(outletId: string | undefined, signal: AbortSignal): Prom
       const t = setTimeout(() => reject(new Error("timeout")), 5000);
       img.onload = () => (clearTimeout(t), resolve());
       img.onerror = () => (clearTimeout(t), reject(new Error("logo")));
-      img.src = pick;
+      // Penanda query: logo yang sama mungkin sudah ada di cache browser dari <img> biasa (tanpa header CORS, cache
+      // setahun) — permintaan CORS ke URL itu akan ditolak. URL berbeda = permintaan baru (server mengabaikan query).
+      img.src = `${pick}${pick.includes("?") ? "&" : "?"}cors=1`;
     });
     const scale = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement("canvas");

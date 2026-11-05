@@ -712,7 +712,7 @@ test("pengaturan: simpan teks bawah struk lalu kembalikan", async () => {
   }
 });
 
-test("pengaturan: unggah logo struk dari web, tersimpan, lalu kembalikan", async () => {
+test("pengaturan: unggah logo struk dari web, tersimpan, ikut di PDF, lalu kembalikan", async () => {
   const outlet = (await api.live("outlets")).sort((a, b) => (a.name < b.name ? -1 : 1))[0];
   const original = { logo_url: outlet.settings?.receipt?.logo_url ?? "", logo_style: outlet.settings?.receipt?.logo_style ?? "auto" };
   const logoOf = async () => (await api.live("outlets")).find((o) => o.id === outlet.id)?.settings?.receipt ?? {};
@@ -731,7 +731,23 @@ test("pengaturan: unggah logo struk dari web, tersimpan, lalu kembalikan", async
       return /\/files\/[^/]+\/[^/]+\.png$/.test(r.logo_url ?? "") && r.logo_url !== original.logo_url && r.logo_style === "threshold";
     }, "logo struk tidak tersimpan");
 
-    // Logo di kepala PDF belum diuji: GET /files/* di API belum mengirim header CORS (lihat docs/PEKERJAAN.md).
+
+    // Logo outlet ikut di kepala PDF Transaksi (outlet terpilih). Halaman Pengaturan sudah memuat logo sebagai <img>
+    // biasa (tersimpan di cache tanpa header CORS) — ini sekaligus menguji penanda query di loadLogo.
+    const dir = globalThis.__downloads;
+    for (const f of readdirSync(dir)) rmSync(join(dir, f), { force: true });
+    const cdp = await page.createCDPSession();
+    await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
+    await go(`/dasbor/transaksi?outlet=${outlet.id}`);
+    await click("Ekspor", { within: "main" });
+    await waitDialog("Ekspor transaksi");
+    await click("Unduh PDF", { within: "dialog", partial: true });
+    await waitDialogClosed("Ekspor transaksi");
+    let file;
+    await poll(async () => (file = readdirSync(dir).find((f) => f.endsWith(".pdf"))) !== undefined, "PDF tidak terunduh");
+    const logoPdf = readFileSync(join(dir, file));
+    if (process.env.E2E_PDF_OUT) writeFileSync(process.env.E2E_PDF_OUT, logoPdf);
+    assert(logoPdf.toString("latin1").includes("/Subtype /Image"), "logo tidak ikut di PDF");
   } finally {
     const cur = (await api.live("outlets")).find((o) => o.id === outlet.id);
     const r = cur.settings?.receipt ?? {};

@@ -24,11 +24,9 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Berikutnya
 
-- **P2 · [service] Header CORS untuk `GET /files/*`** agar logo struk bisa dimuat dasbor web ke kanvas (logo di kepala
-  PDF Laporan Penjualan). Sekarang browser menolak: "No 'Access-Control-Allow-Origin' header" → PDF dibuat tanpa logo
-  (sudah ditangani). Usul: `Access-Control-Allow-Origin: *` khusus `/files/*` (gambar publik, tanpa cookie) di
-  `internal/upload`; perbarui `docs/api.md`. Ditunda karena repo service sedang berisi perubahan agent lain
-  (2026-11-05). Setelah itu kembalikan cek `/Subtype /Image` di tes e2e logo.
+- **P2 · Deploy service `07ebd5c`** (`GET /files/*` mengirim `Access-Control-Allow-Origin: *`; belum di-push/deploy —
+  butuh izin pemilik). Web sudah memuat logo dengan penanda query (`?cors=1`) sehingga logo di PDF jalan selama origin
+  dasbor ada di `CORS_ORIGINS` server; commit service membuatnya tidak bergantung konfigurasi itu.
 
 ## Backlog
 
@@ -60,6 +58,9 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-05 · Logo di kepala PDF** (Claude Opus 5.5): penyebab gagal = respons logo di cache browser (dari `<img>`
+  biasa, tanpa header CORS, cache setahun) dipakai ulang untuk permintaan CORS. Web: penanda query `?cors=1`; service:
+  `07ebd5c` `Access-Control-Allow-Origin: *` di `/files/*`. e2e logo kini juga memeriksa gambar di PDF.
 - **2026-11-05 · Unggah logo struk dari web** (Claude Opus 5.5): Pengaturan › Outlet & struk › Struk: unggah/ganti/hapus
   logo (PNG tetap PNG, ≤ 800 px; `POST /owner/uploads/images`), pilihan cara cetak (`logo_style`), "Pakai logo ini di
   semua outlet", berkas lama dihapus best effort. Tes unit 3 + e2e unggah→simpan→kembalikan. Catatan tes: pull sync
