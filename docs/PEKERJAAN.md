@@ -28,8 +28,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
-- **P3 · Tes e2e laci menu di lebar tablet** (768–1023 px) — saat ini hanya HP (390 px) dan desktop (1366 px).
-- **P3 · Kartu ringkasan Aktivitas sebagai pintasan filter** (klik kartu → filter Jenis terkait).
+- _(kosong)_
 
 ## Keputusan
 
@@ -44,6 +43,9 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 - **Urutan kategori** dari web = `reorderCategories` aplikasi (indeks → `sort_order`, hanya baris berubah).
 
 ## Selesai
+
+- **2026-11-05 · Backlog P3 dasbor** (Claude Opus 5.5): kartu ringkasan Aktivitas kini tautan ke filter Jenis terkait
+  (periode & outlet tetap); tes e2e laci menu di lebar tablet 820 px (termasuk Esc menutup laci).
 
 - **2026-11-05 · Navigasi & tata letak dasbor pemilik** (Claude Opus 5.5; cabang `development`, di-push):
   - `7df73fd` sub-menu sidebar (Produk, Stok, Tim) yang bisa dibuka-tutup; judul/deskripsi/judul tab browser ikut

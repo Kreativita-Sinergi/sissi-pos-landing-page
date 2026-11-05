@@ -638,6 +638,28 @@ test("pengaturan: sub-menu menampilkan satu kelompok & draf tetap ada saat pinda
   await poll(async () => (await page.$eval(sel, (e) => e.value)) === before, "Batalkan tidak mengembalikan teks bawah struk");
 });
 
+test("navigasi tablet: laci menu di lebar 820 px", async () => {
+  await page.setViewport({ width: 820, height: 1180 });
+  try {
+    await go("/dasbor");
+    assert(!(await page.$eval("aside", (el) => el.offsetParent !== null)), "sidebar desktop tampil di tablet");
+    await click("Buka menu");
+    await page.waitForSelector("dialog[open] nav");
+    await click("Tim", { within: "dialog", selector: "button" });
+    await click("Jadwal", { within: "dialog", selector: "a" });
+    await page.waitForFunction(() => location.pathname === "/dasbor/tim" && new URL(location.href).searchParams.get("tab") === "jadwal");
+    await page.waitForFunction(() => !document.querySelector("dialog[open]"));
+    await page.waitForFunction(() => document.querySelector("main h1")?.innerText.trim() === "Jadwal");
+    // Esc menutup laci.
+    await click("Buka menu");
+    await page.waitForSelector("dialog[open] nav");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector("dialog[open]"));
+  } finally {
+    await page.setViewport({ width: 1366, height: 900 });
+  }
+});
+
 test("navigasi HP: laci menu membuka sub-menu dan tertutup setelah memilih", async () => {
   await page.setViewport({ width: 390, height: 844 });
   try {
@@ -702,6 +724,21 @@ test("aktivitas memuat ringkasan & filter Jenis: Perubahan data", async () => {
   await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
   const kinds = await page.$$eval("main li[data-kind]", (els) => [...new Set(els.map((e) => e.dataset.kind))]);
   assert(kinds.every((k) => k === "change"), `hanya entri perubahan data (${kinds.join(",")})`);
+});
+
+test("aktivitas: kartu ringkasan menjadi pintasan filter Jenis", async () => {
+  const day = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
+  const from = day(new Date(Date.now() - 29 * 86_400_000));
+  await go(`/dasbor/aktivitas?from=${from}&to=${day(new Date())}`);
+  await page.waitForFunction(() => !document.querySelector('[aria-label="Memuat ringkasan"]'));
+  await click("Kas masuk / keluar", { within: "main", partial: true, selector: "a" });
+  await page.waitForFunction(() => new URL(location.href).searchParams.get("kind") === "cash_in,cash_out");
+  eq(await page.evaluate(() => new URL(location.href).searchParams.get("from")), from, "periode tetap setelah klik kartu");
+  await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
+  const kinds = await page.$$eval("main li[data-kind]", (els) => [...new Set(els.map((e) => e.dataset.kind))]);
+  assert(kinds.every((k) => k === "cash_in" || k === "cash_out"), `hanya entri kas (${kinds.join(",")})`);
+  await waitText("Jenis:", { root: "main" });
+  assert(!(await hasText("Jenis: Semua", "main")), "filter Jenis tidak ikut berubah");
 });
 
 // ——— Nomor 14: outlet, QRIS (konfirmasi password), batal transaksi, kas shift ———

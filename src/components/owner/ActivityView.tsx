@@ -471,13 +471,15 @@ async function loadSummary(base: ActivityQuery, signal: AbortSignal): Promise<Su
   };
 }
 
-function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
+/** Kartu ringkasan = pintasan filter Jenis (klik → daftar hanya jenis terkait, periode & outlet tetap). */
+function SummaryCards({ s, allOutlets, kindHref }: { s: Summary; allOutlets: boolean; kindHref: (kinds: ActivityKind[]) => string }) {
   const c = s.counts;
   const cancelled = c.void + c.refund;
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
       <StatCard
         label="Pembatalan & pengembalian"
+        href={kindHref(["void", "refund", "partial_refund"])}
         icon={<Ban size={14} aria-hidden />}
         value={cancelled}
         tone={cancelled > 0 ? "danger" : "neutral"}
@@ -491,6 +493,7 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
       />
       <StatCard
         label="Selisih kas kurang"
+        href={kindHref(["shift_closed"])}
         icon={<Wallet size={14} aria-hidden />}
         value={s.short.count > 0 ? `-${formatRupiah(s.short.amount)}` : "Tidak ada"}
         tone={s.short.count > 0 ? "danger" : "success"}
@@ -498,6 +501,7 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
       />
       <StatCard
         label="Diskon manual"
+        href={kindHref(["manual_discount", "discount_unapproved"])}
         icon={<Percent size={14} aria-hidden />}
         value={c.manual_discount}
         tone={c.discount_unapproved > 0 ? "danger" : "neutral"}
@@ -511,12 +515,14 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
       />
       <StatCard
         label="Kas masuk / keluar"
+        href={kindHref(["cash_in", "cash_out"])}
         icon={<ArrowUpRight size={14} aria-hidden />}
         value={`${c.cash_in.toLocaleString("id-ID")} / ${c.cash_out.toLocaleString("id-ID")}`}
         hint={allOutlets ? `${c.new_device.toLocaleString("id-ID")} login dari perangkat baru` : "catatan kas laci"}
       />
       <StatCard
         label="Perubahan data"
+        href={kindHref(["change"])}
         icon={s.payment.count > 0 ? <ShieldAlert size={14} aria-hidden /> : <PencilLine size={14} aria-hidden />}
         value={c.change}
         tone={s.payment.count > 0 ? "warning" : "neutral"}
@@ -559,6 +565,12 @@ export function ActivityView() {
   const categories = useCategoryNames(!!data?.items.some((a) => a.kind === "change" && (a.changes ?? []).some((c) => c.field === "category_id")));
   const ctx: ChangeCtx = { categories };
   const filtered = kind.length > 0;
+  const kindHref = (ks: ActivityKind[]) => {
+    const p = new URLSearchParams(qs.params.toString());
+    p.delete("page");
+    p.set("kind", ks.join(","));
+    return `/dasbor/aktivitas?${p}`;
+  };
 
   // Kelompokkan per tanggal (zona usaha) (data sudah urut terbaru).
   const groups: { day: string; items: ActivityItem[] }[] = [];
@@ -589,7 +601,7 @@ export function ActivityView() {
       </FilterBar>
 
       {summary.state.status === "error" ? null : summary.state.data ? (
-        <SummaryCards s={summary.state.data} allOutlets={allOutlets} />
+        <SummaryCards s={summary.state.data} allOutlets={allOutlets} kindHref={kindHref} />
       ) : (
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" role="status" aria-label="Memuat ringkasan">
           {Array.from({ length: 5 }, (_, i) => (
