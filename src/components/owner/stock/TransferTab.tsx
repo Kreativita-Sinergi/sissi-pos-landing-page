@@ -28,6 +28,7 @@ import { useOwner } from "../OwnerShell";
 import { Select } from "../Select";
 import { commitMessage, ItemCell, ItemPicker, OutletPrompt, rowName, StatusBadge, TRANSFER_STATUS } from "./parts";
 import type { StockOps } from "./useStockOps";
+import { HeaderActions } from "../headerActions";
 
 // Transfer stok antar outlet (`TransfersScreen` aplikasi): dari outlet terpilih ke outlet lain, status Menunggu →
 // Selesai (dua gerakan `transfer` per baris: −qty di asal, +qty di tujuan, `ref_id` = transfer) atau Batal.
@@ -52,14 +53,13 @@ export function TransferTab({ ops }: { ops: StockOps }) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[14px] text-text-body">Pindahkan stok produk atau bahan baku dari outlet ini ke outlet lain.</p>
-        {outletId && many && (
+      {outletId && many && (
+        <HeaderActions>
           <button type="button" className={btn.primary} onClick={() => setCreating(true)}>
             <Plus size={16} aria-hidden /> Transfer baru
           </button>
-        )}
-      </div>
+        </HeaderActions>
+      )}
       {!outletId && many && (
         <div className="mb-4">
           <OutletPrompt action="mencatat transfer (outlet asal)" />

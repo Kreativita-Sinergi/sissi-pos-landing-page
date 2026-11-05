@@ -12,9 +12,9 @@ export const PRODUCT_SECTIONS = [
 
 export const STOCK_SECTIONS = [
   { id: "stock", label: "Stok saat ini", description: "Jumlah stok yang dilacak" },
-  { id: "opname", label: "Opname", description: "Cocokkan stok fisik & sistem" },
-  { id: "po", label: "Pembelian", description: "Pesanan pembelian (PO) ke supplier" },
-  { id: "transfer", label: "Transfer", description: "Pindahkan stok antar outlet" },
+  { id: "opname", label: "Opname", description: "Hitung stok fisik di rak/gudang lalu posting — selisihnya otomatis menyesuaikan stok sistem" },
+  { id: "po", label: "Pembelian", description: "Buat PO ke supplier, kirim lewat WhatsApp, lalu catat barang yang diterima — stok & harga rata-rata ikut diperbarui" },
+  { id: "transfer", label: "Transfer", description: "Pindahkan stok produk atau bahan baku dari satu outlet ke outlet lain" },
   { id: "supplier", label: "Supplier", description: "Kontak pemasok untuk PO" },
 ] as const;
 

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import { HeaderActionsProvider, HeaderActionsSlot } from "../headerActions";
 import { Boxes, Download, Info } from "lucide-react";
 import { ClearFiltersButton, FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import { SearchBox, useQueryState } from "@/components/admin/filters";
@@ -58,6 +59,8 @@ export function StockView() {
   const scope = outlet ? outlet.name : session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? session.business.name);
   const section = sectionOf(STOCK_SECTIONS, tab);
   useSectionTitle("Stok", STOCK_SECTIONS, tab);
+  // Tombol aksi tab operasi (Mulai opname, PO baru, …) dipasang ke kepala halaman lewat portal (headerActions.tsx).
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   // Kepala + Tabs; aksi kepala (mis. Ekspor CSV) diisi bagian yang memegang datanya.
   const header = (actions?: React.ReactNode) => (
     <>
@@ -75,8 +78,10 @@ export function StockView() {
     <CurrentStockTab header={header} />
   ) : (
     <>
-      {header()}
-      <StockOpsPanel tab={tab} />
+      {header(<HeaderActionsSlot ref={setSlot} />)}
+      <HeaderActionsProvider value={slot}>
+        <StockOpsPanel tab={tab} />
+      </HeaderActionsProvider>
     </>
   );
 }
