@@ -7,8 +7,8 @@
 Terakhir diperbarui: **2026-11-05** · oleh: Claude Opus 5.5 (navigasi & tata letak dasbor pemilik)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
-pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (belum ada workflow CI di
-repo ini; push tidak memicu deploy).
+pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
+ini; push `development` tidak memicu deploy, push `main` ditayangkan Vercel).
 
 ## Menunggu reviu sebelum merge
 
@@ -24,9 +24,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Berikutnya
 
-- **P2 · Deploy service `07ebd5c`** (`GET /files/*` mengirim `Access-Control-Allow-Origin: *`; belum di-push/deploy —
-  butuh izin pemilik). Web sudah memuat logo dengan penanda query (`?cors=1`) sehingga logo di PDF jalan selama origin
-  dasbor ada di `CORS_ORIGINS` server; commit service membuatnya tidak bergantung konfigurasi itu.
+- **P1 · Rilis web ke produksi** (`development` → `main`; Vercel menayangkan otomatis dari `main`, tidak perlu CI
+  deploy sendiri). **Urutan wajib:** service dideploy dulu — web kini mengunduh PDF Transaksi dari
+  `GET /owner/reports/sales.pdf` (`60215c0`) dan halaman `/setujui/[token]` memanggil `/approval-links/*`; keduanya
+  baru ada di service `development`. Butuh izin pemilik.
 
 ## Backlog
 
@@ -58,6 +59,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-05 · Reviu `826043f` `/setujui/[token]`** (Claude Opus 5.5): GET hanya membaca, keputusan lewat POST
+  (aman dari pemindai tautan email), `noindex` + `no-referrer`. Ditambah header `/setujui/:path*` di `next.config.ts`
+  (`X-Frame-Options: DENY`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer`) seperti `/undangan`. Catatan:
+  waktu ditampilkan dalam WIB (kontrak tidak mengirim zona outlet).
 - **2026-11-05 · Logo di kepala PDF** (Claude Opus 5.5): penyebab gagal = respons logo di cache browser (dari `<img>`
   biasa, tanpa header CORS, cache setahun) dipakai ulang untuk permintaan CORS. Web: penanda query `?cors=1`; service:
   `07ebd5c` `Access-Control-Allow-Origin: *` di `/files/*`. e2e logo kini juga memeriksa gambar di PDF.
