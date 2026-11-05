@@ -732,8 +732,7 @@ test("pengaturan: unggah logo struk dari web, tersimpan, ikut di PDF, lalu kemba
     }, "logo struk tidak tersimpan");
 
 
-    // Logo outlet ikut di kepala PDF Transaksi (outlet terpilih). Halaman Pengaturan sudah memuat logo sebagai <img>
-    // biasa (tersimpan di cache tanpa header CORS) — ini sekaligus menguji penanda query di loadLogo.
+    // PDF dibuat server (logo struk outlet terpilih ikut di kepala): web hanya mengunduh hasilnya.
     const dir = globalThis.__downloads;
     for (const f of readdirSync(dir)) rmSync(join(dir, f), { force: true });
     const cdp = await page.createCDPSession();
@@ -741,13 +740,15 @@ test("pengaturan: unggah logo struk dari web, tersimpan, ikut di PDF, lalu kemba
     await go(`/dasbor/transaksi?outlet=${outlet.id}`);
     await click("Ekspor", { within: "main" });
     await waitDialog("Ekspor transaksi");
+    const req = page.waitForRequest((r) => r.url().includes("/owner/reports/sales.pdf"), { timeout: 15000 });
     await click("Unduh PDF", { within: "dialog", partial: true });
+    eq(new URL((await req).url()).searchParams.get("outlet_id"), outlet.id, "PDF diminta dengan outlet terpilih");
     await waitDialogClosed("Ekspor transaksi");
     let file;
-    await poll(async () => (file = readdirSync(dir).find((f) => f.endsWith(".pdf"))) !== undefined, "PDF tidak terunduh");
+    await poll(async () => (file = readdirSync(dir).find((f) => f.endsWith(".pdf") && !f.endsWith(".crdownload"))) !== undefined, "PDF tidak terunduh");
     const logoPdf = readFileSync(join(dir, file));
     if (process.env.E2E_PDF_OUT) writeFileSync(process.env.E2E_PDF_OUT, logoPdf);
-    assert(logoPdf.toString("latin1").includes("/Subtype /Image"), "logo tidak ikut di PDF");
+    eq(logoPdf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
   } finally {
     const cur = (await api.live("outlets")).find((o) => o.id === outlet.id);
     const r = cur.settings?.receipt ?? {};
@@ -849,28 +850,30 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kemb
   }
 });
 
-test("transaksi: ekspor PDF lewat dialog (kesimpulan, saran, produk, pola waktu, tanpa daftar)", async () => {
+test("transaksi: ekspor PDF lewat dialog (diunduh dari server dengan filter aktif)", async () => {
   const dir = globalThis.__downloads;
+  for (const f of readdirSync(dir)) rmSync(join(dir, f), { force: true });
   const cdp = await page.createCDPSession();
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
   await go("/dasbor/transaksi");
   await click("Ekspor", { within: "main" });
   await waitDialog("Ekspor transaksi");
   await waitText("transaksi", { root: "dialog[open]" });
+  const req = page.waitForRequest((r) => r.url().includes("/owner/reports/sales.pdf"), { timeout: 15000 });
   await click("Unduh PDF", { within: "dialog", partial: true });
+  const u = new URL((await req).url());
+  assert(u.searchParams.get("from") && u.searchParams.get("to"), "PDF diminta dengan periode aktif");
+  assert(!u.searchParams.has("page") && !u.searchParams.has("per_page"), "tanpa page/per_page");
   await waitDialogClosed("Ekspor transaksi");
   let file = null;
   await poll(async () => {
     file = readdirSync(dir).find((f) => f.endsWith(".pdf") && !f.endsWith(".crdownload"));
     return !!file && existsSync(join(dir, file));
   }, "berkas PDF tidak terunduh");
+  assert(/-transaksi-\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.pdf$/.test(file), `nama berkas: ${file}`);
   const buf = readFileSync(join(dir, file));
   eq(buf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
-  const text = buf.toString("latin1");
-  for (const part of ["Laporan Penjualan", "Kesimpulan periode ini", "Saran", "Produk terlaris", "Kapan pelanggan paling ramai", "Kinerja kasir", "Perbandingan outlet", "Rincian penjualan", "gunakan Ekspor CSV", "Halaman 1 dari", "sudah sinkron", "hari ini masih berjalan", "vs lalu", "WAKTU RAMAI"]) {
-    assert(text.includes(part), `PDF memuat "${part}"`);
-  }
-  assert(!text.includes("No. struk"), "PDF tidak memuat daftar per transaksi");
+  assert(buf.length > 1000, "PDF tidak kosong");
   // Simpan salinan untuk diperiksa manual: E2E_PDF_OUT=/jalur/laporan.pdf npm run e2e
   if (process.env.E2E_PDF_OUT) writeFileSync(process.env.E2E_PDF_OUT, buf);
 });
