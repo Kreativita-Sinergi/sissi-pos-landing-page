@@ -1,7 +1,7 @@
 // Ekspor PDF halaman Transaksi (jsPDF + jspdf-autotable, dimuat hanya saat ekspor).
 //
 // Isi: kepala (usaha, outlet, periode, filter, waktu dibuat) → ringkasan → per metode bayar → per kasir → per hari/jam
-// → daftar transaksi (maks. PDF_ROW_LIMIT baris) → nomor halaman di setiap halaman.
+// → nomor halaman di setiap halaman. Tanpa daftar per transaksi (itu tugas Ekspor CSV).
 //
 // Sumber ringkasan:
 // - "report": tanpa filter tambahan (metode/status/kasir/cari) → GET /owner/reports/sales, angka SAMA dengan halaman
@@ -10,10 +10,8 @@
 //   penjualan"); diskon/pajak/biaya layanan tidak ada di daftar transaksi sehingga tidak ditampilkan.
 import type { SaleListItem, SalesReport } from "./types";
 import { netTotalOf } from "./saleRefunds";
-import { formatDateTime, formatStamp, zonedDay, zonedHHMM, zoneLabel } from "./tz";
-import { labelOf, METHODS, SALE_STATUS_SHORT } from "@/components/owner/labels";
-
-export const PDF_ROW_LIMIT = 1000;
+import { formatDateTime, zonedDay, zonedHHMM, zoneLabel } from "./tz";
+import { labelOf, METHODS } from "@/components/owner/labels";
 
 const COUNTED = new Set(["paid", "unpaid", "partial"]);
 const CANCELLED = new Set(["void", "refunded"]);
@@ -121,13 +119,12 @@ export type SalesPdfInput = {
   /** Mis. ["Metode: QRIS, Tunai", "Kasir: Rani"]; kosong = tanpa filter tambahan. */
   filters: string[];
   summary: SalesSummary;
-  /** Transaksi untuk daftar (sudah urut sesuai halaman); dipotong ke PDF_ROW_LIMIT. */
-  rows: SaleListItem[];
+  /** Jumlah transaksi yang dipakai menghitung ringkasan "rows" (untuk catatan ringkasan sebagian). */
+  summarizedCount: number;
   /** Total transaksi yang cocok dengan filter (meta.total). */
   total: number;
   /** Ringkasan "rows" hanya dari sebagian transaksi (melebihi batas ambil). */
   partialSummary: boolean;
-  showOutlet: boolean;
   generatedAt: Date;
 };
 
@@ -233,7 +230,7 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
     s.source === "report"
       ? "Angka sama dengan halaman Laporan: penjualan = transaksi lunas + kasbon (sesudah refund sebagian); pembatalan & refund penuh dihitung terpisah."
       : `Dihitung dari transaksi yang cocok dengan filter (rumus sama dengan halaman Laporan).${
-          input.partialSummary ? ` Hanya ${num(input.rows.length)} dari ${num(input.total)} transaksi pertama - persempit periode untuk angka lengkap.` : ""
+          input.partialSummary ? ` Hanya ${num(input.summarizedCount)} dari ${num(input.total)} transaksi pertama - persempit periode untuk angka lengkap.` : ""
         }`,
     M,
     y,
@@ -269,45 +266,8 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
     y = finalY(doc) + 6;
   }
 
-  // ——— Daftar transaksi ———
-  const list = input.rows.slice(0, PDF_ROW_LIMIT);
-  doc.addPage();
-  y = heading(doc, `Daftar transaksi (${num(input.total)})`, M, M + 2);
-  if (input.total > list.length) {
-    y = note(doc, `Menampilkan ${num(list.length)} transaksi pertama sesuai urutan halaman. Persempit periode atau gunakan Ekspor CSV untuk semua baris.`, M, y, W - 2 * M);
-  }
-  const head = ["Waktu", "No. struk", ...(input.showOutlet ? ["Outlet"] : []), "Kasir", "Pelanggan", "Metode", "Status", "Total"];
-  autoTable(doc, {
-    startY: y,
-    margin: { left: M, right: M, top: M },
-    head: [head],
-    body: list.map((r) => [
-      formatStamp(r.paid_at),
-      r.receipt_no,
-      ...(input.showOutlet ? [r.outlet_name] : []),
-      r.cashier_name,
-      r.customer_name ?? "-",
-      labelOf(METHODS, r.payment_method),
-      labelOf(SALE_STATUS_SHORT, r.status),
-      rp(CANCELLED.has(r.status) ? r.total : netTotalOf(r)),
-    ]),
-    theme: "striped",
-    // Satu baris per transaksi: lebar tetap untuk kolom pendek, teks panjang dipotong "...".
-    styles: { fontSize: 8, cellPadding: 1.5, textColor: INK, lineColor: LINE, overflow: "ellipsize" },
-    headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [248, 246, 244] },
-    columnStyles: {
-      0: { cellWidth: 21 },
-      1: { cellWidth: 21 },
-      [head.length - 3]: { cellWidth: 17 },
-      [head.length - 2]: { cellWidth: 19 },
-      [head.length - 1]: { halign: "right", cellWidth: 22 },
-    },
-    didParseCell: (d) => {
-      if (d.section === "head" && d.column.index === head.length - 1) d.cell.styles.halign = "right";
-      if (d.section === "body" && CANCELLED.has(list[d.row.index]?.status)) d.cell.styles.textColor = MUTED;
-    },
-  });
+  // Daftar per transaksi sengaja tidak dimuat (keputusan pemilik 2026-11-05): PDF = laporan ringkas; rincian → CSV.
+  note(doc, "Laporan ini hanya berisi ringkasan. Untuk daftar per transaksi, gunakan Ekspor CSV di halaman Transaksi.", M, y, W - 2 * M);
 
   // ——— Kaki: nomor halaman ———
   const pages = doc.getNumberOfPages();

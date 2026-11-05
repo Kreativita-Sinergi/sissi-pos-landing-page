@@ -6,7 +6,7 @@ import { Modal } from "@/components/admin/ConfirmDialog";
 import { btn, errorMessage, Notice, Spinner } from "@/components/admin/ui";
 import { ownerApi } from "@/lib/owner/api";
 import { csvDateTime, downloadCsv } from "@/lib/owner/csv";
-import { buildSalesPdf, PDF_ROW_LIMIT, summaryFromReport, summaryFromRows } from "@/lib/owner/salesPdf";
+import { buildSalesPdf, summaryFromReport, summaryFromRows } from "@/lib/owner/salesPdf";
 import { zoneLabel } from "@/lib/owner/tz";
 import type { SaleListItem, SalesQuery } from "@/lib/owner/types";
 import { refundedTotalOf } from "@/lib/owner/saleRefunds";
@@ -27,7 +27,6 @@ export function SalesExport({
   businessName,
   outletLabel,
   periodLabel,
-  showOutlet,
   filenameBase,
 }: {
   total: number;
@@ -38,7 +37,6 @@ export function SalesExport({
   businessName: string;
   outletLabel: string;
   periodLabel: string;
-  showOutlet: boolean;
   filenameBase: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -88,13 +86,17 @@ export function SalesExport({
           ])
         );
       } else {
-        // Tanpa filter tambahan: ringkasan dari laporan server (= halaman Laporan), daftar cukup PDF_ROW_LIMIT baris.
+        // Tanpa filter tambahan: cukup laporan server (= halaman Laporan), satu permintaan.
         // Dengan filter tambahan: ringkasan dihitung dari transaksi yang cocok, jadi ambil sampai CSV_LIMIT.
         const fromReport = extraFilters.length === 0;
-        const [rows, report] = await Promise.all([
-          fetchRows(fromReport ? PDF_ROW_LIMIT : CSV_LIMIT, ctrl.signal),
-          fromReport ? (await ownerApi()).salesReport({ from: query.from, to: query.to, outlet_id: query.outlet_id }, ctrl.signal) : null,
-        ]);
+        let report = null;
+        let rows: SaleListItem[] = [];
+        if (fromReport) {
+          setProgress({ done: 0, of: 0 });
+          report = await (await ownerApi()).salesReport({ from: query.from, to: query.to, outlet_id: query.outlet_id }, ctrl.signal);
+        } else {
+          rows = await fetchRows(CSV_LIMIT, ctrl.signal);
+        }
         const hourly = query.from === query.to;
         const blob = await buildSalesPdf({
           businessName,
@@ -102,10 +104,9 @@ export function SalesExport({
           periodLabel,
           filters: extraFilters,
           summary: report ? summaryFromReport(report) : summaryFromRows(rows, hourly),
-          rows,
+          summarizedCount: rows.length,
           total,
           partialSummary: !report && total > rows.length,
-          showOutlet,
           generatedAt: new Date(),
         });
         downloadBlob(blob, `${filenameBase}.pdf`);
@@ -129,13 +130,13 @@ export function SalesExport({
       id: "pdf",
       icon: <FileText size={20} aria-hidden />,
       title: "PDF — laporan siap dibaca",
-      body: `Ringkasan, per metode bayar, per kasir, per hari, dan daftar transaksi (maks. ${PDF_ROW_LIMIT.toLocaleString("id-ID")} baris).`,
+      body: "Ringkasan, per metode bayar, per kasir, dan per hari. Untuk daftar per transaksi, pilih CSV.",
     },
     {
       id: "csv",
       icon: <FileSpreadsheet size={20} aria-hidden />,
       title: "CSV — data mentah",
-      body: `Untuk Excel/Google Sheets, maks. ${CSV_LIMIT.toLocaleString("id-ID")} baris.`,
+      body: `Daftar per transaksi untuk Excel/Google Sheets, maks. ${CSV_LIMIT.toLocaleString("id-ID")} baris.`,
     },
   ];
 
@@ -199,7 +200,8 @@ export function SalesExport({
                 Batal
               </button>
               <span role="status" className="inline-flex min-h-10 items-center gap-2 text-[13.5px] tabular-nums">
-                <Spinner /> Mengambil {progress.done.toLocaleString("id-ID")}/{progress.of.toLocaleString("id-ID")} ({pct}%)
+                <Spinner />
+                {progress.of ? `Mengambil ${progress.done.toLocaleString("id-ID")}/${progress.of.toLocaleString("id-ID")} (${pct}%)` : "Menyiapkan laporan…"}
               </span>
             </>
           ) : (
