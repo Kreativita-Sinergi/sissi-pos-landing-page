@@ -10,7 +10,12 @@ import {
 } from "lucide-react";
 import { ApiError, getJson, postJson } from "@/lib/sissiApi";
 
-type ApprovalKind = "void" | "refund" | "partial_refund";
+type ApprovalKind =
+  | "void"
+  | "refund"
+  | "partial_refund"
+  | "order_reduce"
+  | "order_cancel";
 type ApprovalStatus =
   "pending" | "approved" | "rejected" | "canceled" | "expired";
 
@@ -27,6 +32,7 @@ type ApprovalLink = {
   expires_at: string;
   status: ApprovalStatus;
   decided_by_name: string | null;
+  refund_amount?: number;
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -211,6 +217,11 @@ export function ApprovalDecision({ token }: { token: string }) {
         <p className="mt-2 font-mono text-[13px] font-semibold break-all text-[#525866]">
           Struk {d.receipt_no}
         </p>
+        {d.kind === "order_cancel" && (d.refund_amount ?? 0) > 0 && (
+          <p className="mt-2 text-[15px] font-semibold text-[#292e31]">
+            Uang yang dikembalikan: {rupiah(d.refund_amount ?? 0)}
+          </p>
+        )}
 
         <dl className="mt-6 flex flex-col gap-3 border-t border-[#e4e9e7] pt-5 text-[15px]">
           <Row label="Alasan" value={d.reason} />
