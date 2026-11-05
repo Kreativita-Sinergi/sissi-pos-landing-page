@@ -80,14 +80,51 @@ function asDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-/** Kompres lalu unggah foto; mengembalikan URL publiknya. */
+/**
+ * Logo struk (kontrak api.md "/uploads/images": sisi maks. 800 px, PNG transparan tetap PNG; pengolahan hitam-putih
+ * dilakukan aplikasi per printer). PNG → PNG (transparansi utuh), JPG/WebP → JPEG kualitas 80 berlatar putih.
+ */
+export async function compressLogo(file: File): Promise<{ blob: Blob; ext: "png" | "jpg" }> {
+  if (!ACCEPTED.includes(file.type)) throw new ApiError("Pilih logo JPG, PNG, atau WebP.", 0, "VALIDATION_ERROR");
+  if (file.type !== "image/png") return { blob: await compressPhoto(file), ext: "jpg" };
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new ApiError("Logo tidak bisa dibaca. Pilih berkas JPG, PNG, atau WebP lain.", 0, "VALIDATION_ERROR");
+  }
+  const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new ApiError("Browser tidak bisa memproses logo.", 0, "BAD_RESPONSE");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) throw new ApiError("Browser tidak bisa memproses logo.", 0, "BAD_RESPONSE");
+  if (blob.size > PHOTO_MAX_BYTES) throw new ApiError("Logo terlalu besar (maks. 2 MB). Coba gambar yang lebih sederhana.", 0, "VALIDATION_ERROR");
+  return { blob, ext: "png" };
+}
+
+/** Kompres lalu unggah foto produk; mengembalikan URL publiknya. */
 export async function uploadProductPhoto(file: File, signal?: AbortSignal): Promise<string> {
   const blob = await compressPhoto(file);
+  return uploadImage(blob, `${file.name.replace(/\.[^.]*$/, "").slice(0, 60) || "foto"}.jpg`, signal);
+}
+
+/** Kompres lalu unggah logo struk; mengembalikan URL publiknya. */
+export async function uploadReceiptLogo(file: File, signal?: AbortSignal): Promise<string> {
+  const { blob, ext } = await compressLogo(file);
+  return uploadImage(blob, `logo.${ext}`, signal);
+}
+
+/** Unggah gambar yang sudah diproses ke POST /owner/uploads/images; mengembalikan URL publiknya. */
+async function uploadImage(blob: Blob, filename: string, signal?: AbortSignal): Promise<string> {
   if (OWNER_MOCK) return asDataUrl(blob);
 
   const form = new FormData();
-  const base = file.name.replace(/\.[^.]*$/, "").slice(0, 60) || "foto";
-  form.append("file", blob, `${base}.jpg`);
+  form.append("file", blob, filename);
   const timeout = AbortSignal.timeout(TIMEOUT_MS);
   const sig = signal && typeof AbortSignal.any === "function" ? AbortSignal.any([timeout, signal]) : timeout;
 

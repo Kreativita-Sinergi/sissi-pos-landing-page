@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, Ban, ChevronDown, ChevronRight, History, MonitorSmartphone, PencilLine, Percent, ShieldAlert, Undo2, Wallet } from "lucide-react";
-import { ClearFiltersButton, FilterBar } from "@/components/admin/FilterMenu";
+import { ClearFiltersButton, FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import {
   Badge,
   cardClass,
@@ -471,13 +471,15 @@ async function loadSummary(base: ActivityQuery, signal: AbortSignal): Promise<Su
   };
 }
 
-function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
+/** Kartu ringkasan = pintasan filter Jenis (klik → daftar hanya jenis terkait, periode & outlet tetap). */
+function SummaryCards({ s, allOutlets, kindHref }: { s: Summary; allOutlets: boolean; kindHref: (kinds: ActivityKind[]) => string }) {
   const c = s.counts;
   const cancelled = c.void + c.refund;
   return (
     <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
       <StatCard
         label="Pembatalan & pengembalian"
+        href={kindHref(["void", "refund", "partial_refund"])}
         icon={<Ban size={14} aria-hidden />}
         value={cancelled}
         tone={cancelled > 0 ? "danger" : "neutral"}
@@ -491,6 +493,7 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
       />
       <StatCard
         label="Selisih kas kurang"
+        href={kindHref(["shift_closed"])}
         icon={<Wallet size={14} aria-hidden />}
         value={s.short.count > 0 ? `-${formatRupiah(s.short.amount)}` : "Tidak ada"}
         tone={s.short.count > 0 ? "danger" : "success"}
@@ -498,6 +501,7 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
       />
       <StatCard
         label="Diskon manual"
+        href={kindHref(["manual_discount", "discount_unapproved"])}
         icon={<Percent size={14} aria-hidden />}
         value={c.manual_discount}
         tone={c.discount_unapproved > 0 ? "danger" : "neutral"}
@@ -511,12 +515,14 @@ function SummaryCards({ s, allOutlets }: { s: Summary; allOutlets: boolean }) {
       />
       <StatCard
         label="Kas masuk / keluar"
+        href={kindHref(["cash_in", "cash_out"])}
         icon={<ArrowUpRight size={14} aria-hidden />}
         value={`${c.cash_in.toLocaleString("id-ID")} / ${c.cash_out.toLocaleString("id-ID")}`}
         hint={allOutlets ? `${c.new_device.toLocaleString("id-ID")} login dari perangkat baru` : "catatan kas laci"}
       />
       <StatCard
         label="Perubahan data"
+        href={kindHref(["change"])}
         icon={s.payment.count > 0 ? <ShieldAlert size={14} aria-hidden /> : <PencilLine size={14} aria-hidden />}
         value={c.change}
         tone={s.payment.count > 0 ? "warning" : "neutral"}
@@ -559,7 +565,12 @@ export function ActivityView() {
   const categories = useCategoryNames(!!data?.items.some((a) => a.kind === "change" && (a.changes ?? []).some((c) => c.field === "category_id")));
   const ctx: ChangeCtx = { categories };
   const filtered = kind.length > 0;
-  const toggle = (k: ActivityKind) => qs.update({ kind: kind.includes(k) ? kind.filter((x) => x !== k) : [...kind, k] });
+  const kindHref = (ks: ActivityKind[]) => {
+    const p = new URLSearchParams(qs.params.toString());
+    p.delete("page");
+    p.set("kind", ks.join(","));
+    return `/dasbor/aktivitas?${p}`;
+  };
 
   // Kelompokkan per tanggal (zona usaha) (data sudah urut terbaru).
   const groups: { day: string; items: ActivityItem[] }[] = [];
@@ -574,15 +585,23 @@ export function ActivityView() {
     <>
       <PageHeader
         title="Aktivitas"
-        description="Kejadian penting di kasir dan riwayat perubahan data: pembatalan, pengembalian dana, diskon manual, tutup kasir, kas masuk/keluar, login dari perangkat baru, serta siapa mengubah harga, produk, dan pengaturan."
+        description="Kejadian penting di kasir dan riwayat siapa mengubah harga, produk, dan pengaturan."
       />
       <FilterBar>
         <PeriodFilter from={from} to={to} preset={preset} onChange={period.setPeriod} />
+        {/* Jenis aktivitas: satu pilihan ganda (bukan 10 chip) — jumlah per jenis dari ringkasan. */}
+        <FilterSelect
+          label="Jenis"
+          multiple
+          options={kindOptions.map((k) => ({ value: k, label: ACTIVITY_KIND[k], count: counts?.[k] ?? null }))}
+          selected={kind}
+          onChange={(n) => qs.update({ kind: n.length ? n : null })}
+        />
         {filtered && <ClearFiltersButton onClick={() => qs.update({ kind: null })} />}
       </FilterBar>
 
       {summary.state.status === "error" ? null : summary.state.data ? (
-        <SummaryCards s={summary.state.data} allOutlets={allOutlets} />
+        <SummaryCards s={summary.state.data} allOutlets={allOutlets} kindHref={kindHref} />
       ) : (
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" role="status" aria-label="Memuat ringkasan">
           {Array.from({ length: 5 }, (_, i) => (
@@ -590,18 +609,6 @@ export function ActivityView() {
           ))}
         </div>
       )}
-
-      <div role="group" aria-label="Jenis aktivitas" className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-        <Chip on={!filtered} onClick={() => qs.update({ kind: null })}>
-          Semua
-        </Chip>
-        {kindOptions.map((k) => (
-          <Chip key={k} on={kind.includes(k)} onClick={() => toggle(k)}>
-            {ACTIVITY_KIND[k]}
-            {counts && <span className={`ml-1.5 tabular-nums ${counts[k] ? "" : "opacity-60"}`}>{counts[k].toLocaleString("id-ID")}</span>}
-          </Chip>
-        ))}
-      </div>
 
       {state.status === "error" && (
         <div className="mb-4">
@@ -776,19 +783,4 @@ function useCategoryNames(needed: boolean): Map<string, string> | null {
     };
   }, [needed, names]);
   return names;
-}
-
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-[13.5px] font-semibold whitespace-nowrap transition-colors ${
-        on ? "border-brand-primary/50 bg-brand-tint text-brand-ink" : "border-border-subtle bg-white text-text-body hover:border-border-active"
-      } ${focusRing}`}
-    >
-      {children}
-    </button>
-  );
 }

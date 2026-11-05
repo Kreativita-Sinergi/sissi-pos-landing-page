@@ -28,10 +28,11 @@ import { downloadCsv, slug } from "@/lib/owner/csv";
 import { exportRows } from "@/lib/owner/productImport";
 import type { BusinessType, SyncRecord } from "@/lib/owner/types";
 import { useOwner } from "../OwnerShell";
-import { ExportMenu } from "../ui";
+import { ExportMenu, PushNote } from "../ui";
 import { Check } from "./bits";
 import { BulkEdit } from "./BulkEdit";
 import { CategoriesPanel } from "./CategoriesPanel";
+import { activeSection, PRODUCT_SECTIONS, sectionOf, useSectionTitle } from "../sections";
 import { CsvImport, downloadTemplate, downloadXlsxTemplate } from "./CsvImport";
 import { DiscountsPanel } from "./DiscountsPanel";
 import { ModifiersPanel } from "./ModifiersPanel";
@@ -45,8 +46,8 @@ import { pushNewMaterial } from "./formParts";
 // Filter di URL: tab, q, cat, status, sort, order, page.
 
 const PER_PAGE = 50;
-type TabId = "produk" | "kategori" | "modifier" | "diskon";
-const TABS: TabId[] = ["produk", "kategori", "modifier", "diskon"];
+type TabId = (typeof PRODUCT_SECTIONS)[number]["id"];
+const ADD_LABEL: Record<Exclude<TabId, "produk">, string> = { kategori: "Tambah kategori", modifier: "Tambah modifier", diskon: "Tambah diskon" };
 type SortKey = "name" | "category" | "price" | "margin" | "updated";
 const SORT_KEYS: SortKey[] = ["name", "category", "price", "margin", "updated"];
 
@@ -57,9 +58,15 @@ export function ProductsView() {
   const catalog = useCatalog();
   const { state, reload, commit, refresh } = catalog;
   const data = state.data;
-  const tab = (TABS.includes(qs.get("tab") as TabId) ? qs.get("tab") : "produk") as TabId;
+  const tab = activeSection(PRODUCT_SECTIONS, qs.get("tab")) as TabId;
+  const section = sectionOf(PRODUCT_SECTIONS, tab);
+  useSectionTitle("Produk", PRODUCT_SECTIONS, tab);
   const [editor, setEditor] = useState<{ id: string | null; key: number } | null>(null);
   const [bulk, setBulk] = useState<string[] | null>(null);
+  // Dialog "Tambah …" untuk Kategori/Modifier/Diskon; terikat ke tab agar tidak terbawa saat pindah bagian.
+  const [creating, setCreating] = useState<{ tab: TabId; key: number } | null>(null);
+  const createKey = creating?.tab === tab ? creating.key : null;
+  const closeCreate = () => setCreating(null);
   const [importing, setImporting] = useState(false);
   // Kunci tabel: dinaikkan setelah edit massal selesai agar pilihan kosong lagi.
   const [tableKey, setTableKey] = useState(0);
@@ -85,15 +92,21 @@ export function ProductsView() {
   return (
     <>
       <PageHeader
-        title="Produk"
-        description="Kelola produk, kategori, modifier, dan diskon. Perubahan diterima perangkat kasir saat sinkron berikutnya."
+        title={section.label}
+        description={
+          <>
+            {section.description}
+            <PushNote />
+          </>
+        }
         actions={
           data && tab === "produk" ? (
             <>
-              <button type="button" className={btn.secondary} onClick={() => setImporting(true)}>
-                <Upload size={16} aria-hidden /> Impor Excel/CSV
+              <button type="button" className={btn.secondary} onClick={() => setImporting(true)} title="Impor produk dari Excel/CSV">
+                <Upload size={16} aria-hidden /> Impor
               </button>
               <ExportMenu
+                label="Ekspor"
                 items={[
                   { label: "Produk (CSV)", hint: `${data.products.length.toLocaleString("id-ID")} produk, format sama dengan impor`, onSelect: () => exportProducts(data, session.business.name, service), disabled: !data.products.length },
                   { label: "Template impor (Excel)", hint: "Produk, varian, bahan baku, resep, pilihan ekstra", onSelect: () => void downloadXlsxTemplate(service) },
@@ -104,6 +117,10 @@ export function ProductsView() {
                 <Plus size={16} aria-hidden /> Tambah produk
               </button>
             </>
+          ) : data && tab !== "produk" ? (
+            <button type="button" className={btn.primary} onClick={() => setCreating({ tab, key: Date.now() })}>
+              <Plus size={16} aria-hidden /> {ADD_LABEL[tab]}
+            </button>
           ) : undefined
         }
       />
@@ -112,12 +129,12 @@ export function ProductsView() {
         label="Bagian katalog"
         active={tab}
         onChange={(t) => qs.update({ tab: t === "produk" ? null : t, q: null, cat: null, status: null, sort: null, order: null })}
-        tabs={[
-          { id: "produk", label: "Produk", count: data?.products.length },
-          { id: "kategori", label: "Kategori", count: data?.categories.length },
-          { id: "modifier", label: "Modifier", count: data?.groups.length },
-          { id: "diskon", label: "Diskon", count: data?.discounts.length },
-        ]}
+        hideOnDesktop
+        tabs={PRODUCT_SECTIONS.map((s) => ({
+          id: s.id,
+          label: s.label,
+          count: { produk: data?.products.length, kategori: data?.categories.length, modifier: data?.groups.length, diskon: data?.discounts.length }[s.id],
+        }))}
       />
 
       {state.status === "error" && (
@@ -139,9 +156,20 @@ export function ProductsView() {
               onImport={() => setImporting(true)}
             />
           )}
-          {tab === "kategori" && <CategoriesPanel data={data} commit={commit} refresh={refresh} />}
-          {tab === "modifier" && <ModifiersPanel data={data} commit={commit} refresh={refresh} recipes={recipeSupport} />}
-          {tab === "diskon" && <DiscountsPanel data={data} commit={commit} />}
+          {tab === "kategori" && (
+            <CategoriesPanel
+              data={data}
+              commit={commit}
+              refresh={refresh}
+              creating={createKey}
+              onCreate={() => setCreating({ tab, key: Date.now() })}
+              onCreateClose={closeCreate}
+            />
+          )}
+          {tab === "modifier" && (
+            <ModifiersPanel data={data} commit={commit} refresh={refresh} recipes={recipeSupport} creating={createKey} onCreateClose={closeCreate} />
+          )}
+          {tab === "diskon" && <DiscountsPanel data={data} commit={commit} creating={createKey} onCreateClose={closeCreate} />}
           <p className="mt-4 flex flex-wrap items-center gap-1.5 text-[12.5px] text-text-muted">
             Data katalog dimuat saat halaman dibuka.
             <button type="button" onClick={reload} className={`inline-flex items-center gap-1 font-semibold text-brand-ink underline-offset-2 hover:underline ${focusRing}`}>

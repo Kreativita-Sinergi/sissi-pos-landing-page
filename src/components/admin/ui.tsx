@@ -36,7 +36,8 @@ export function PageHeader({
   back?: React.ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+    // Desktop: tombol aksi sejajar judul di kolom kanan; deskripsi panjang membungkus di kolom kiri.
+    <header className="mb-6 grid gap-x-6 gap-y-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
       <div className="min-w-0">
         {back}
         <h1 className="text-[22px] font-bold leading-tight tracking-tight text-text-heading sm:text-[24px]">{title}</h1>
@@ -578,14 +579,21 @@ export function Tabs<T extends string>({
   active,
   onChange,
   label,
+  hideOnDesktop,
 }: {
   tabs: { id: T; label: string; count?: number }[];
   active: T;
   onChange: (id: T) => void;
   label: string;
+  /** Sembunyikan di layar lebar (lg) saat bagian yang sama sudah tampil sebagai sub-menu sidebar. */
+  hideOnDesktop?: boolean;
 }) {
   return (
-    <div role="tablist" aria-label={label} className="-mx-4 mb-5 flex gap-1 overflow-x-auto border-b border-border-subtle px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+    <div
+      role="tablist"
+      aria-label={label}
+      className={`-mx-4 mb-5 flex gap-1 overflow-x-auto border-b border-border-subtle px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 ${hideOnDesktop ? "lg:hidden" : ""}`}
+    >
       {tabs.map((t) => {
         const on = t.id === active;
         return (

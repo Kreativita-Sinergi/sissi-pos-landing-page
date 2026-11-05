@@ -39,7 +39,7 @@ import type { SaleListItem, SyncRecord } from "@/lib/owner/types";
 import { zonedToday } from "@/lib/owner/tz";
 import { useOwner } from "./OwnerShell";
 import { formatStamp, SaleRowBadge, shownTotal } from "./parts";
-import { LockedCard, SyncNote } from "./ui";
+import { LockedCard, PushNote, SyncNote } from "./ui";
 import { CustomerCreditList } from "./credit/CustomerCredit";
 
 // Pelanggan (Gratis & Pro): daftar dari GET /owner/data/customers, tambah/ubah/hapus lewat POST /owner/changes.
@@ -188,7 +188,12 @@ export function CustomersView() {
     <>
       <PageHeader
         title="Pelanggan"
-        description="Data pelanggan dipakai bersama semua outlet dan perangkat kasir. Perubahan dari sini terkirim ke aplikasi saat perangkat sinkron."
+        description={
+          <>
+            Data pelanggan dipakai bersama semua outlet dan perangkat kasir.
+            <PushNote />
+          </>
+        }
         actions={
           <button type="button" className={btn.primary} onClick={() => setEditing("new")} disabled={!all}>
             <Plus size={17} aria-hidden /> Tambah pelanggan

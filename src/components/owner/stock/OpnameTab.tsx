@@ -29,6 +29,7 @@ import {
 import type { Change, StockRow } from "@/lib/owner/types";
 import { formatStamp } from "@/lib/owner/tz";
 import { Sheet } from "../catalog/bits";
+import { HeaderActions } from "../headerActions";
 import { useOwner } from "../OwnerShell";
 import { commitMessage, ItemCell, ItemPicker, OPNAME_STATUS, OutletPrompt, StatusBadge } from "./parts";
 import type { StockOps } from "./useStockOps";
@@ -59,14 +60,13 @@ export function OpnameTab({ ops }: { ops: StockOps }) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[14px] text-text-body">Hitung stok fisik di rak/gudang lalu posting — selisihnya otomatis menyesuaikan stok sistem.</p>
-        {outletId && (
+      {outletId && (
+        <HeaderActions>
           <button type="button" className={btn.primary} onClick={start}>
             <ClipboardCheck size={16} aria-hidden /> {running ? "Lanjutkan opname" : "Mulai opname"}
           </button>
-        )}
-      </div>
+        </HeaderActions>
+      )}
       {!outletId && (
         <div className="mb-4">
           <OutletPrompt action="memulai stok opname" />

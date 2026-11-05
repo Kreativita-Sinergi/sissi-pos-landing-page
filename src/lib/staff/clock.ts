@@ -140,7 +140,7 @@ export const STATUS_LABEL: Record<string, string> = {
   absent: "Alpa",
 };
 
-export const ROLE_LABEL: Record<string, string> = { cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan" };
+export const ROLE_LABEL: Record<string, string> = { cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan", waiter: "Pelayan" };
 
 /** `next` hanya boleh path relatif di bawah /karyawan (bukan halaman masuk) — mencegah open redirect. */
 export function safeStaffNext(next: string | null | undefined): string {

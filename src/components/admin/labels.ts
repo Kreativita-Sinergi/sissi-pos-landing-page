@@ -108,6 +108,8 @@ export const ROLES: Record<string, string> = {
   owner: "Pemilik",
   cashier: "Kasir",
   kitchen: "Dapur",
+  staff: "Karyawan",
+  waiter: "Pelayan",
 };
 
 export const DEVICE_MODES: Record<string, string> = {

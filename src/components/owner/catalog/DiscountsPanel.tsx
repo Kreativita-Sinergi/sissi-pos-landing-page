@@ -39,11 +39,23 @@ export function discountValue(d: Pick<Discount, "type" | "value">): string {
   return d.type === "percent" ? `${(d.value / 100).toLocaleString("id-ID", { maximumFractionDigits: 2 })}%` : formatRupiah(d.value);
 }
 
-export function DiscountsPanel({ data, commit }: { data: CatalogData; commit: (changes: Change[]) => Promise<CommitOutcome> }) {
+export function DiscountsPanel({
+  data,
+  commit,
+  creating,
+  onCreateClose,
+}: {
+  data: CatalogData;
+  commit: (changes: Change[]) => Promise<CommitOutcome>;
+  /** Kunci editor diskon baru dari tombol "Tambah diskon" di kepala halaman (null = tertutup). */
+  creating: number | null;
+  onCreateClose: () => void;
+}) {
   const toast = useToast();
   const [editing, setEditing] = useState<{ id: string | null; key: number } | null>(null);
   const [deleting, setDeleting] = useState<Discount | null>(null);
   const [busy, setBusy] = useState(false);
+  const open = editing ?? (creating !== null ? { id: null, key: creating } : null);
   const list = [...data.discounts].sort((a, b) => Number(b.is_active) - Number(a.is_active) || byName(a, b));
   const [now] = useState(() => Date.now());
 
@@ -62,15 +74,17 @@ export function DiscountsPanel({ data, commit }: { data: CatalogData; commit: (c
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13.5px] text-text-body">Diskon otomatis langsung terpasang di kasir; diskon lain dipilih kasir saat transaksi.</p>
-        <button type="button" className={btn.primary} onClick={() => setEditing({ id: null, key: Date.now() })}>
-          <Plus size={16} aria-hidden /> Diskon
-        </button>
-      </div>
       <section className={`${cardClass} overflow-hidden`}>
         {list.length === 0 ? (
-          <EmptyState icon={<Tag size={22} aria-hidden />} title="Belum ada diskon">
+          <EmptyState
+            icon={<Tag size={22} aria-hidden />}
+            title="Belum ada diskon"
+            action={
+              <button type="button" className={btn.primary} onClick={() => setEditing({ id: null, key: Date.now() })}>
+                <Plus size={16} aria-hidden /> Tambah diskon
+              </button>
+            }
+          >
             Buat diskon persen atau nominal, untuk seluruh nota atau produk tertentu.
           </EmptyState>
         ) : (
@@ -107,7 +121,18 @@ export function DiscountsPanel({ data, commit }: { data: CatalogData; commit: (c
         )}
       </section>
 
-      {editing && <DiscountEditor key={editing.key} discountId={editing.id} data={data} commit={commit} onClose={() => setEditing(null)} />}
+      {open && (
+        <DiscountEditor
+          key={open.key}
+          discountId={open.id}
+          data={data}
+          commit={commit}
+          onClose={() => {
+            setEditing(null);
+            onCreateClose();
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleting}

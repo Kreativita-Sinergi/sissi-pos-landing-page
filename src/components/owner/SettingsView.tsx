@@ -9,6 +9,7 @@ import {
   btn,
   cardClass,
   ErrorBlock,
+  errorMessage,
   Field,
   focusRing,
   formatRupiah,
@@ -16,9 +17,12 @@ import {
   inputClass,
   PageHeader,
   SkeletonList,
+  Spinner,
   Switch,
+  Tabs,
   useLoad,
 } from "@/components/admin/ui";
+import { useQueryState } from "@/components/admin/filters";
 import { newId, pullAll } from "@/lib/owner/api";
 import { hasFeature, saveRecord } from "@/lib/owner/records";
 import {
@@ -37,7 +41,10 @@ import {
   readAttendance,
   readLoyalty,
   readReceipt,
+  LOGO_STYLES,
+  type LogoStyle,
   readReceiptLogo,
+  readReceiptLogoStyle,
   readReceiptPaper,
   readRounding,
   readServiceFee,
@@ -51,7 +58,9 @@ import {
   TIMEZONE_CHOICES,
   type TimezoneChoice,
   type TransactionSettings,
+  withReceiptLogo,
 } from "@/lib/owner/settings";
+import { deleteUploadedPhoto, PHOTO_ACCEPT, uploadReceiptLogo } from "@/lib/owner/upload";
 import type { SyncRecord } from "@/lib/owner/types";
 import { zoneLabel } from "@/lib/owner/tz";
 import { ChipGroup, EditSection, NumberInput, Segmented, useDraft, useSaver } from "./editing";
@@ -59,11 +68,17 @@ import { PaymentMethodsSection } from "./PaymentMethodsSection";
 import { ORDER_TYPES, WEEKDAYS } from "./labels";
 import { useOwner } from "./OwnerShell";
 import { Select } from "./Select";
-import { LockedCard } from "./ui";
+import { LockedCard, PushNote } from "./ui";
+import { activeSection, sectionOf, SETTINGS_SECTIONS, useSectionTitle } from "./sections";
 
 // Pengaturan: per outlet (`outlets` — nama/alamat, pajak, biaya layanan, pembulatan, struk, transaksi, metode
 // pembayaran dengan konfirmasi password) dan per usaha (`business_settings` — loyalti, aturan absensi). Setiap bagian disimpan
 // sendiri dengan seluruh field record + `base_updated_at`; kunci pengaturan yang tidak diedit tetap utuh.
+// Bagian dikelompokkan ke sub-menu (?tab=, lihat SETTINGS_SECTIONS). Semua kelompok tetap ter-mount (disembunyikan
+// dengan kelas `hidden`) agar draf yang belum disimpan tidak hilang saat pindah sub-menu.
+
+type SettingsTab = (typeof SETTINGS_SECTIONS)[number]["id"];
+const OUTLET_TABS: readonly SettingsTab[] = ["outlet", "biaya", "transaksi"];
 
 type Rec = SyncRecord & { settings?: unknown; name?: string; address?: string };
 
@@ -91,87 +106,90 @@ export function SettingsView() {
   const credit = hasFeature(session.subscription, "credit");
   const staff = hasFeature(session.subscription, "staff");
 
-  const toc = [
-    ...(effectiveId
-      ? [
-          ["outlet", "Outlet"],
-          ["pajak", "Pajak"],
-          ["biaya-layanan", "Biaya layanan"],
-          ["pembulatan", "Pembulatan"],
-          ["struk", "Struk"],
-          ["transaksi", "Transaksi"],
-          ["pembayaran", "Pembayaran"],
-        ]
-      : []),
-    ["zona-waktu", "Zona waktu"],
-    ["loyalti", "Loyalti"],
-    ["absensi", "Absensi"],
-  ];
+  const qs = useQueryState();
+  const tab = activeSection(SETTINGS_SECTIONS, qs.get("tab")) as SettingsTab;
+  const section = sectionOf(SETTINGS_SECTIONS, tab);
+  useSectionTitle("Pengaturan", SETTINGS_SECTIONS, tab);
+  const outletTab = OUTLET_TABS.includes(tab);
+  const group = (id: SettingsTab) => `${tab === id ? "flex" : "hidden"} flex-col gap-5`;
+  const onBiz = (r: SyncRecord) => biz.setData(r as Rec);
 
   return (
     <>
       <PageHeader
-        title="Pengaturan"
-        description="Perubahan terkirim ke semua perangkat kasir saat sinkron. Aplikasi yang sedang offline memakai pengaturan lama sampai tersambung."
+        title={section.label}
+        description={
+          <>
+            {section.description}
+            {outletTab ? (rec?.name ? ` · ${rec.name}` : "") : ` ${session.business.name}`}.
+            <PushNote />
+          </>
+        }
+      />
+      <Tabs<SettingsTab>
+        label="Bagian pengaturan"
+        hideOnDesktop
+        tabs={SETTINGS_SECTIONS.map(({ id, label }) => ({ id, label }))}
+        active={tab}
+        onChange={(t) => qs.update({ tab: t === SETTINGS_SECTIONS[0].id ? null : t })}
       />
 
-      <nav aria-label="Bagian pengaturan" className="-mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-        {toc.map(([id, label]) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            className={`inline-flex min-h-8 shrink-0 items-center rounded-full border border-border-subtle bg-white px-3 text-[13px] font-medium text-text-body hover:border-border-active hover:text-text-heading ${focusRing}`}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
-
-      <h2 className="mb-3 text-[17px] font-bold text-text-heading">Pengaturan outlet</h2>
-      {!effectiveId ? (
-        <OutletChooser />
-      ) : outlets.state.status === "error" && !outlets.state.data ? (
-        <ErrorBlock error={outlets.state.error} onRetry={outlets.reload} />
-      ) : !outlets.state.data ? (
-        <SkeletonList rows={4} label="Memuat pengaturan outlet" />
-      ) : !rec ? (
-        <ErrorBlock error={new Error("Outlet tidak ditemukan")} onRetry={outlets.reload} />
-      ) : (
-        <div className="flex flex-col gap-5">
-          <OutletInfoSection rec={rec} onRecord={setOutlet} />
-          <TaxesSection rec={rec} onRecord={setOutlet} />
-          <ServiceFeeSection rec={rec} onRecord={setOutlet} />
-          <RoundingSection rec={rec} onRecord={setOutlet} />
-          <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} />
-          <TransactionSection rec={rec} onRecord={setOutlet} credit={credit} />
-          <PaymentMethodsSection rec={rec} onRecord={setOutlet} />
-        </div>
-      )}
-
-      <h2 className="mt-8 mb-1 text-[17px] font-bold text-text-heading">Pengaturan usaha</h2>
-      <p className="mb-3 text-[13.5px] text-text-body">Berlaku untuk semua outlet {session.business.name}.</p>
-      {biz.state.status === "error" && biz.state.data === undefined ? (
-        <ErrorBlock error={biz.state.error} onRetry={biz.reload} />
-      ) : biz.state.data === undefined ? (
-        <SkeletonList rows={3} label="Memuat pengaturan usaha" />
-      ) : (
-        <div className="flex flex-col gap-5">
-          <TimezoneSection rec={biz.state.data} businessId={session.business.id} onRecord={(r) => biz.setData(r as Rec)} />
-          <LoyaltySection rec={biz.state.data} businessId={session.business.id} onRecord={(r) => biz.setData(r as Rec)} />
-          {staff ? (
-            <AttendanceSection rec={biz.state.data} businessId={session.business.id} onRecord={(r) => biz.setData(r as Rec)} />
-          ) : (
-            <div id="absensi" className="scroll-mt-20">
-              <LockedCard title="Aturan absensi">Atur jam kerja, toleransi terlambat, dan hari libur untuk absensi & gaji karyawan dengan paket Pro.</LockedCard>
+      <div className={outletTab ? "" : "hidden"}>
+        {!effectiveId ? (
+          <OutletChooser tab={tab} />
+        ) : outlets.state.status === "error" && !outlets.state.data ? (
+          <ErrorBlock error={outlets.state.error} onRetry={outlets.reload} />
+        ) : !outlets.state.data ? (
+          <SkeletonList rows={4} label="Memuat pengaturan outlet" />
+        ) : !rec ? (
+          <ErrorBlock error={new Error("Outlet tidak ditemukan")} onRetry={outlets.reload} />
+        ) : (
+          <>
+            <div className={group("outlet")}>
+              <OutletInfoSection rec={rec} onRecord={setOutlet} />
+              <ReceiptSection rec={rec} onRecord={setOutlet} businessName={session.business.name} outlets={outlets.state.data} />
             </div>
-          )}
-        </div>
-      )}
+            <div className={group("biaya")}>
+              <TaxesSection rec={rec} onRecord={setOutlet} />
+              <ServiceFeeSection rec={rec} onRecord={setOutlet} />
+              <RoundingSection rec={rec} onRecord={setOutlet} />
+            </div>
+            <div className={group("transaksi")}>
+              <TransactionSection rec={rec} onRecord={setOutlet} credit={credit} />
+              <PaymentMethodsSection rec={rec} onRecord={setOutlet} />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className={outletTab ? "hidden" : ""}>
+        {biz.state.status === "error" && biz.state.data === undefined ? (
+          <ErrorBlock error={biz.state.error} onRetry={biz.reload} />
+        ) : biz.state.data === undefined ? (
+          <SkeletonList rows={3} label="Memuat pengaturan usaha" />
+        ) : (
+          <>
+            <div className={group("usaha")}>
+              <TimezoneSection rec={biz.state.data} businessId={session.business.id} onRecord={onBiz} />
+              <LoyaltySection rec={biz.state.data} businessId={session.business.id} onRecord={onBiz} />
+            </div>
+            <div className={group("absensi")}>
+              {staff ? (
+                <AttendanceSection rec={biz.state.data} businessId={session.business.id} onRecord={onBiz} />
+              ) : (
+                <div id="absensi">
+                  <LockedCard title="Aturan absensi">Atur jam kerja, toleransi terlambat, dan hari libur untuk absensi & gaji karyawan dengan paket Pro.</LockedCard>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
 
-function OutletChooser() {
+function OutletChooser({ tab }: { tab: SettingsTab }) {
   const { session } = useOwner();
   return (
     <section className={`${cardClass} p-4 sm:p-5`} id="outlet">
@@ -183,7 +201,7 @@ function OutletChooser() {
         {session.outlets.map((o) => (
           <li key={o.id}>
             <Link
-              href={`/dasbor/pengaturan?outlet=${encodeURIComponent(o.id)}`}
+              href={`/dasbor/pengaturan?${tab === SETTINGS_SECTIONS[0].id ? "" : `tab=${tab}&`}outlet=${encodeURIComponent(o.id)}`}
               className={`flex min-h-12 items-center gap-3 rounded-[12px] border border-border-subtle px-3.5 py-2.5 hover:border-border-active ${focusRing}`}
             >
               <Store size={18} aria-hidden className="shrink-0 text-text-muted" />
@@ -479,13 +497,21 @@ function RoundingSection({ rec, onRecord }: OutletProps) {
 
 // ——— Outlet: struk ———
 
-function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { businessName: string }) {
+type ReceiptDraft = Receipt & { logo_url: string; logo_style: LogoStyle };
+const readReceiptDraft = (settings: unknown): ReceiptDraft => ({
+  ...readReceipt(settings),
+  logo_url: readReceiptLogo(settings),
+  logo_style: readReceiptLogoStyle(settings),
+});
+
+function ReceiptSection({ rec, onRecord, businessName, outlets }: OutletProps & { businessName: string; outlets: Rec[] }) {
   const uid = useId();
   const settings = settingsOf(rec);
-  const { draft, setDraft, dirty, reset } = useDraft<Receipt>(readReceipt(settings));
+  const { draft, setDraft, dirty, reset } = useDraft<ReceiptDraft>(readReceiptDraft(settings));
   const saver = useSaver(onRecord);
-  const set = <K extends keyof Receipt>(k: K, v: Receipt[K]) => setDraft({ ...draft, [k]: v });
-  const logoUrl = readReceiptLogo(settings);
+  const set = <K extends keyof ReceiptDraft>(k: K, v: ReceiptDraft[K]) => setDraft({ ...draft, [k]: v });
+  const savedLogo = readReceiptLogo(settings);
+  const logoUrl = draft.logo_url;
   // Preset dari aplikasi (huruf kecil / kertas kecil / Lainnya) hanya ditampilkan bila ukurannya belum diubah di sini.
   const savedPaper = readReceiptPaper(settings);
   const appPaper = savedPaper && draft.paper_mm === readReceipt(settings).paper_mm ? savedPaper : null;
@@ -501,16 +527,20 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
         reset();
         saver.clearError();
       }}
-      onSave={() =>
-        saver.run(
+      onSave={async () => {
+        const replaced = savedLogo && savedLogo !== draft.logo_url ? savedLogo : null;
+        await saver.run(
           () =>
             saveRecord("outlets", rec.id, rec, {
+              // mergeReceipt menyebar seluruh draf → logo_url & logo_style ikut tertulis.
               settings: mergeReceipt(settings, draft),
             }),
           "Pengaturan struk disimpan.",
-          (r) => setDraft(readReceipt(settingsOf(r as Rec)))
-        )
-      }
+          (r) => setDraft(readReceiptDraft(settingsOf(r as Rec)))
+        );
+        // Logo lama yang diganti/dihapus: hapus berkasnya (best effort; server menolak bila masih dipakai outlet lain).
+        if (replaced) void deleteUploadedPhoto(replaced);
+      }}
     >
       <div className="grid gap-5 lg:grid-cols-[1fr_auto]">
         <div className="flex min-w-0 flex-col gap-4">
@@ -552,18 +582,131 @@ function ReceiptSection({ rec, onRecord, businessName }: OutletProps & { busines
               Ukuran bawaan outlet; kertas tiap printer diatur di aplikasi.
             </p>
           </div>
+          <ReceiptLogo
+            url={draft.logo_url}
+            style={draft.logo_style}
+            onChange={(logo_url) => setDraft({ ...draft, logo_url, show_logo: logo_url ? true : draft.show_logo })}
+            onStyle={(v) => set("logo_style", v)}
+          />
           <Switch
             id={`${uid}-logo`}
             label="Tampilkan logo"
-            description={logoUrl ? "Logo toko dicetak hitam-putih di atas struk. Ganti logo dari aplikasi (Pengaturan › Struk)." : "Belum ada logo. Unggah logo dari aplikasi (Pengaturan › Struk)."}
+            description={logoUrl ? "Logo dicetak hitam-putih di atas struk." : "Belum ada logo. Unggah logo di atas."}
             checked={draft.show_logo}
             onChange={(v) => set("show_logo", v)}
           />
+          {!dirty && savedLogo && <ApplyLogoToOutlets rec={rec} outlets={outlets} onRecord={onRecord} />}
           <Switch id={`${uid}-rate`} label="Tampilkan tarif pajak" description="Mis. “PB1 10%” alih-alih “PB1”." checked={draft.show_tax_rate} onChange={(v) => set("show_tax_rate", v)} />
         </div>
         <ReceiptPreview receipt={draft} logoUrl={logoUrl} outletName={String(rec.name ?? "")} address={String(rec.address ?? "")} businessName={businessName} taxes={readTaxes(settings)} />
       </div>
     </EditSection>
+  );
+}
+
+const LOGO_STYLE_LABEL: Record<LogoStyle, string> = { auto: "Otomatis", threshold: "Garis tegas", dither: "Foto (arsir)" };
+const LOGO_STYLE_HINT: Record<LogoStyle, string> = {
+  auto: "Aplikasi memilih cara terbaik untuk printer.",
+  threshold: "Untuk logo teks atau garis: hitam-putih tegas.",
+  dither: "Untuk logo bergambar/foto: gradasi jadi titik-titik.",
+};
+
+/** Unggah/ganti/hapus logo struk (draf; tersimpan lewat tombol Simpan bagian Struk). */
+function ReceiptLogo({ url, style, onChange, onStyle }: { url: string; style: LogoStyle; onChange: (url: string) => void; onStyle: (v: LogoStyle) => void }) {
+  const uid = useId();
+  const input = React.useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onChange(await uploadReceiptLogo(file));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  };
+  return (
+    <div>
+      <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Logo</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border-subtle bg-white">
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL unggahan API (host dinamis)
+            <img src={url} alt="Logo struk" className="max-h-full max-w-full object-contain" />
+          ) : (
+            <Store size={22} aria-hidden className="text-text-muted" />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input ref={input} id={`${uid}-file`} type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(e) => void pick(e.target.files?.[0])} />
+          <button type="button" className={btn.secondary} disabled={busy} onClick={() => input.current?.click()}>
+            {busy && <Spinner />} {url ? "Ganti logo" : "Unggah logo"}
+          </button>
+          {url && (
+            <button type="button" className={`${btn.ghost} hover:text-danger`} disabled={busy} onClick={() => onChange("")}>
+              <Trash2 size={16} aria-hidden /> Hapus
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="mt-1.5 text-[12.5px] text-text-muted">JPG, PNG, atau WebP. PNG berlatar transparan paling rapi di struk. Diperkecil otomatis ke 800 px.</p>
+      {error && (
+        <p role="alert" className="mt-1.5 text-[13px] text-danger">
+          {error}
+        </p>
+      )}
+      {url && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Cara cetak logo</p>
+          <Segmented label="Cara cetak logo" value={style} onChange={onStyle} options={LOGO_STYLES.map((v) => ({ value: v, label: LOGO_STYLE_LABEL[v] }))} />
+          <p className="mt-1.5 text-[12.5px] text-text-muted">{LOGO_STYLE_HINT[style]}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Salin logo tersimpan outlet ini (URL + cara cetak) ke outlet lain yang logonya berbeda. */
+function ApplyLogoToOutlets({ rec, outlets, onRecord }: { rec: Rec; outlets: Rec[]; onRecord: (r: SyncRecord) => void }) {
+  const toast = useToast();
+  const [busy, setBusy] = React.useState(false);
+  const logo = { logo_url: readReceiptLogo(settingsOf(rec)), logo_style: readReceiptLogoStyle(settingsOf(rec)) };
+  const others = outlets.filter(
+    (o) => o.id !== rec.id && !o.deleted_at && (readReceiptLogo(settingsOf(o)) !== logo.logo_url || readReceiptLogoStyle(settingsOf(o)) !== logo.logo_style)
+  );
+  if (!others.length) return null;
+  const run = async () => {
+    setBusy(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const o of others) {
+      try {
+        const r = await saveRecord("outlets", o.id, o, { settings: withReceiptLogo(settingsOf(o), logo) });
+        if (r.record) onRecord(r.record);
+        if (r.status === "applied") ok++;
+        else failed.push(String(o.name ?? "outlet"));
+      } catch {
+        failed.push(String(o.name ?? "outlet"));
+      }
+    }
+    setBusy(false);
+    if (ok) toast.success(`Logo dipakai di ${ok.toLocaleString("id-ID")} outlet lain.`);
+    if (failed.length) toast.error(`Gagal menyimpan logo di: ${failed.join(", ")}. Coba lagi.`);
+  };
+  return (
+    <div className="rounded-[10px] bg-bg-muted px-3 py-2.5 text-[13px] text-text-body">
+      <p>
+        {others.length.toLocaleString("id-ID")} outlet lain memakai logo berbeda atau belum punya logo.
+      </p>
+      <button type="button" className={`${btn.secondary} mt-2`} disabled={busy} onClick={() => void run()}>
+        {busy && <Spinner />} Pakai logo ini di semua outlet
+      </button>
+    </div>
   );
 }
 
@@ -706,7 +849,8 @@ function TransactionSection({ rec, onRecord, credit }: OutletProps & { credit: b
           </p>
         )}
       </div>
-      <Switch id={`${uid}-pin`} label="PIN pemilik untuk membatalkan" description="Void & refund oleh kasir butuh PIN pemilik." checked={draft.pin_for_void} onChange={(v) => set("pin_for_void", v)} />
+      <Switch id={`${uid}-pin-edit`} label="PIN pemilik untuk ubah/batal pesanan berjalan" description="Mengurangi item yang sudah dikirim ke dapur atau membatalkan pesanan yang belum dibayar." checked={draft.pin_for_order_edit} onChange={(v) => set("pin_for_order_edit", v)} />
+      <Switch id={`${uid}-pin`} label="PIN pemilik untuk batal & refund transaksi" description="Membatalkan atau me-refund transaksi yang sudah dibayar di Riwayat." checked={draft.pin_for_void} onChange={(v) => set("pin_for_void", v)} />
       <Switch
         id={`${uid}-blind`}
         label="Tutup kasir tanpa melihat angka sistem"

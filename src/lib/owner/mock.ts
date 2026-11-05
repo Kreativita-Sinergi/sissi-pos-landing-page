@@ -791,6 +791,17 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       };
     },
 
+    async salesPdf() {
+      await guard();
+      // Mode tiruan: PDF kosong minimal sebagai pengganti (server sungguhan membuat laporan lengkap).
+      const objs = ["<</Type/Catalog/Pages 2 0 R>>", "<</Type/Pages/Kids[3 0 R]/Count 1>>", "<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]>>"];
+      let out = "%PDF-1.4\n";
+      const offs = objs.map((o, i) => ((out += `${i + 1} 0 obj\n${o}\nendobj\n`), out.length - `${i + 1} 0 obj\n${o}\nendobj\n`.length));
+      const xref = out.length;
+      out += `xref\n0 4\n0000000000 65535 f \n${offs.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<</Size 4/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`;
+      return new Blob([out], { type: "application/pdf" });
+    },
+
     async salesReport(q) {
       const s = await guard();
       checkOutlet(q.outlet_id);

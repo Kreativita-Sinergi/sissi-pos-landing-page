@@ -40,6 +40,7 @@ import { useOwner } from "../OwnerShell";
 import { Select } from "../Select";
 import { commitMessage, ItemCell, ItemPicker, OutletPrompt, PO_STATUS, StatusBadge } from "./parts";
 import type { Lookups, StockOps } from "./useStockOps";
+import { HeaderActions } from "../headerActions";
 
 // Pembelian / PO (`PurchasesScreen`, `PurchaseOrderFormScreen`, `PurchaseOrderView` aplikasi): draf → dipesan → terima
 // (boleh sebagian; gerakan `in` ber-`ref_id` = PO & `unit_cost`, catatan = nomor PO, rata-rata bergerak `avg_cost`
@@ -70,16 +71,13 @@ export function PurchaseTab({ ops }: { ops: StockOps }) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-[640px] text-[14px] text-text-body">
-          Buat PO ke supplier, kirim lewat WhatsApp, lalu catat barang yang diterima — stok & harga rata-rata ikut diperbarui.
-        </p>
-        {outletId && (
+      {outletId && (
+        <HeaderActions>
           <button type="button" className={btn.primary} onClick={() => setForm({ po: null })}>
             <Plus size={16} aria-hidden /> PO baru
           </button>
-        )}
-      </div>
+        </HeaderActions>
+      )}
       {!outletId && (
         <div className="mb-4">
           <OutletPrompt action="membuat PO" />

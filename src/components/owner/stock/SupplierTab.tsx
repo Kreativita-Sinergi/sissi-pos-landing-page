@@ -12,6 +12,7 @@ import { newId } from "@/lib/owner/api";
 import type { WritableEntity } from "@/lib/owner/types";
 import { commitMessage } from "./parts";
 import type { StockOps } from "./useStockOps";
+import { HeaderActions } from "../headerActions";
 
 // Supplier (`SuppliersScreen` aplikasi): daftar kontak pemasok untuk PO — tambah, ubah, hapus (PO lama tetap tersimpan),
 // chat WhatsApp. Berlaku untuk seluruh usaha (bukan per outlet).
@@ -55,11 +56,13 @@ export function SupplierTab({ ops }: { ops: StockOps }) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <SearchBox id="supplier-search" label="Cari supplier" placeholder="Cari supplier" value={q} onSearch={(v) => qs.update({ q: v || null }, "replace")} className="sm:w-[300px]" />
+      <HeaderActions>
         <button type="button" className={btn.primary} onClick={() => setEditing({ s: null })}>
           <Plus size={16} aria-hidden /> Supplier baru
         </button>
+      </HeaderActions>
+      <div className="mb-4">
+        <SearchBox id="supplier-search" label="Cari supplier" placeholder="Cari supplier" value={q} onSearch={(v) => qs.update({ q: v || null }, "replace")} className="sm:w-[300px]" />
       </div>
       <section className={`${cardClass} overflow-hidden`}>
         {list.length === 0 ? (

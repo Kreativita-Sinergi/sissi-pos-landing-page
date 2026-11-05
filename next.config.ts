@@ -31,6 +31,9 @@ const nextConfig: NextConfig = {
       { source: "/karyawan/:path*", headers: ownerHeaders },
       // Undangan karyawan: kode sekali pakai ada di URL → jangan diindeks/di-cache, jangan bocor lewat Referer.
       { source: "/undangan/:path*", headers: adminHeaders.map((h) => (h.key === "Referrer-Policy" ? { ...h, value: "no-referrer" } : h)) },
+      // Persetujuan pemilik lewat email: token rahasia di URL + tombol Setujui tanpa login → sama seperti undangan
+      // (tidak di-cache, tidak bocor lewat Referer, tidak bisa dibingkai situs lain untuk clickjacking).
+      { source: "/setujui/:path*", headers: adminHeaders.map((h) => (h.key === "Referrer-Policy" ? { ...h, value: "no-referrer" } : h)) },
     ];
   },
   turbopack: {

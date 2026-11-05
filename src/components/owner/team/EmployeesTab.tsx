@@ -11,7 +11,7 @@ import { Avatar, type TeamCtx } from "./shared";
 
 // Tab Karyawan — cermin `employees_tab.dart`: ringkasan, cari, daftar (nama, peran, hari ini, PIN, gaji).
 
-const ROLE_ORDER: Record<string, number> = { owner: 0, cashier: 1, kitchen: 2, staff: 3 };
+const ROLE_ORDER: Record<string, number> = { owner: 0, cashier: 1, kitchen: 2, waiter: 3, staff: 4 };
 
 /** Keadaan hari ini (`todayStateOf`). */
 function todayState(row: Attendance | undefined): { label: string; tone: "neutral" | "success" | "brand" | "danger" | "warning" } {

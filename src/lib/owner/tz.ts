@@ -134,3 +134,11 @@ export function formatDayLong(day: string): string {
   if (Number.isNaN(d.getTime())) return day;
   return new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(d);
 }
+
+/** "2026-11-05" → "Kam, 5 Nov 2026" (tanggal kalender, tanpa geser zona). */
+export function dayLabel(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(y, m - 1, d))
+  );
+}

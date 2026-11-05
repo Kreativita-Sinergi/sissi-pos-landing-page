@@ -28,12 +28,12 @@ type InviteInfo = {
   purpose: "invite" | "reset_password";
   business_name: string;
   employee_name: string;
-  role: "cashier" | "kitchen" | "staff" | string;
+  role: "cashier" | "kitchen" | "staff" | "waiter" | string;
   phone_masked: string;
   expires_at: string;
 };
 
-const ROLE_LABEL: Record<string, string> = { cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan", owner: "Pemilik" };
+const ROLE_LABEL: Record<string, string> = { cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan", waiter: "Pelayan", owner: "Pemilik" };
 
 type Loaded = { kind: "ok"; info: InviteInfo } | { kind: "invalid" } | { kind: "unavailable" };
 

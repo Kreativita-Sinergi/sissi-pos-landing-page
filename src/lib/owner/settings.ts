@@ -43,7 +43,10 @@ export type TransactionSettings = {
   order_types: OrderType[] | null;
   queue_number: boolean;
   allow_credit: boolean;
+  /** PIN pemilik untuk batal & refund transaksi yang sudah dibayar. */
   pin_for_void: boolean;
+  /** PIN pemilik untuk ubah/batal pesanan berjalan; tidak ada di data = mengikuti `pin_for_void` (2026-11-05). */
+  pin_for_order_edit: boolean;
   /** Efektif: kasir menutup tanpa melihat angka sistem (lihat [readTransaction]). */
   blind_close: boolean;
   require_customer_name: boolean;
@@ -93,9 +96,11 @@ export function readReceipt(settings: unknown): Receipt {
 }
 
 // ——— Struk: logo & ukuran kertas (2026-10-21, kontrak "Struk satu sumber: logo & ukuran kertas") ———
-// Logo diunggah & diolah hitam-putih di aplikasi; ukuran kertas yang dipakai mencetak = milik printer di aplikasi.
-// Web hanya menampilkan `logo_url` dan preset `paper`, tidak pernah menulis `logo_url`/`logo_style` (server
-// menggabung `receipt` per kunci; web mengirim objek tersimpan + bagian yang diedit, jadi kunci itu tetap utuh).
+// Logo bisa diunggah dari aplikasi ATAU web (2026-11-05, POST /owner/uploads/images); pengolahan hitam-putih tetap di
+// aplikasi per printer menurut `logo_style`. Ukuran kertas yang dipakai mencetak = milik printer di aplikasi.
+// `readReceipt` sengaja tidak memuat logo: form struk web menambahkan `logo_url`/`logo_style` sendiri (lihat
+// ReceiptLogo) sehingga kunci itu hanya ikut ditulis bila form memuatnya; tanpa itu nilai tersimpan tetap utuh (server
+// menggabung `receipt` per kunci; web mengirim objek tersimpan + bagian yang diedit).
 
 export type PaperSpec = { preset: string; columns: number; dots: number; font: "a" | "b" };
 
@@ -146,6 +151,19 @@ export function readReceiptPaper(settings: unknown): PaperSpec | null {
 /** URL logo struk tersimpan ("" = tanpa logo). */
 export const readReceiptLogo = (settings: unknown): string => str(obj(obj(settings).receipt).logo_url).trim();
 
+export type LogoStyle = "auto" | "threshold" | "dither";
+export const LOGO_STYLES: LogoStyle[] = ["auto", "threshold", "dither"];
+/** Cara app mengubah logo jadi hitam-putih; nilai lain dibaca `auto` (sama dengan app). */
+export function readReceiptLogoStyle(settings: unknown): LogoStyle {
+  const v = str(obj(obj(settings).receipt).logo_style);
+  return (LOGO_STYLES as string[]).includes(v) ? (v as LogoStyle) : "auto";
+}
+
+/** Pasang logo (URL + gaya) ke `settings` outlet lain tanpa menyentuh kunci struk lainnya ("pakai di semua outlet"). */
+export function withReceiptLogo(settings: unknown, logo: { logo_url: string; logo_style: LogoStyle }): Obj {
+  return mergeSection(settings, "receipt", { logo_url: logo.logo_url, logo_style: logo.logo_style });
+}
+
 /**
  * Bagian struk diedit web → objek `settings` baru. Kunci `receipt` yang tidak dikenal web (logo_url, logo_style,
  * merchant_copy, …) tetap utuh. Bila web mengubah ukuran 58↔80 sehingga keluarga `paper` tidak cocok lagi, `paper`
@@ -173,6 +191,7 @@ export function readTransaction(settings: unknown): TransactionSettings {
     queue_number: bool(s.queue_number, false),
     allow_credit: bool(s.allow_credit, false),
     pin_for_void: bool(s.pin_for_void, true),
+    pin_for_order_edit: bool(s.pin_for_order_edit, bool(s.pin_for_void, true)),
     // Tutup buta aktif bawaan untuk kasir (keputusan pemilik 2026-10-22): aktif bila `blind_close` dinyalakan
     // (app/web lama) atau pemilik belum pernah mengizinkan lewat `show_expected_cash`. Disimpan keduanya agar
     // app lama (hanya membaca `blind_close`) ikut sejalan.

@@ -51,6 +51,8 @@ export interface OwnerApi {
   salesReport(q: RangeQuery, signal?: AbortSignal): Promise<SalesReport>;
   outletsReport(q: { from?: string; to?: string }, signal?: AbortSignal): Promise<OutletsReport>;
   sales(q: SalesQuery, signal?: AbortSignal): Promise<SalesPage>;
+  /** PDF "Laporan Penjualan" dari server (filter sama dengan `sales`, tanpa page/per_page). */
+  salesPdf(q: SalesQuery, signal?: AbortSignal): Promise<Blob>;
   sale(id: string, signal?: AbortSignal): Promise<SaleDetail>;
   shifts(q: ShiftsQuery, signal?: AbortSignal): Promise<ShiftsPage>;
   shift(id: string, signal?: AbortSignal): Promise<ShiftDetail>;
@@ -150,7 +152,10 @@ async function call<T>(
     // Bukan JSON (mis. halaman galat proxy).
   }
   if (res.ok && json?.success) return { data: json.data as T, meta: json.meta };
+  throw failure(res, json, opts.skipAuthRedirect);
+}
 
+function failure(res: Response, json: BaseResponse<unknown> | null, skipAuthRedirect?: boolean): ApiError {
   const error = new ApiError(
     json?.message || "Terjadi kesalahan. Coba lagi sebentar lagi.",
     res.status,
@@ -158,8 +163,48 @@ async function call<T>(
     json?.error?.details ?? [],
     retryAfterOf(res.headers.get("Retry-After"))
   );
-  if (res.status === 401 && !opts.skipAuthRedirect) unauthorizedHandler?.();
-  throw error;
+  if (res.status === 401 && !skipAuthRedirect) unauthorizedHandler?.();
+  return error;
+}
+
+/** Jalur + query untuk PDF Laporan Penjualan: query `GET /owner/sales` tanpa page/per_page. */
+export function salesPdfPath(q: SalesQuery): string {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { page, per_page, ...rest } = q;
+  return `/reports/sales.pdf${qs(rest)}`;
+}
+
+/** GET berkas PDF (cookie sesi + header CSRF sama seperti `call`); galat = base response JSON. */
+async function callPdf(path: string, signal?: AbortSignal): Promise<Blob> {
+  // PDF dibuat di server (bisa lebih lama dari GET biasa).
+  const timeout = AbortSignal.timeout(60_000);
+  const sig = signal && typeof AbortSignal.any === "function" ? AbortSignal.any([timeout, signal]) : timeout;
+  let res: Response;
+  try {
+    res = await fetch(`${OWNER_BASE}${path}`, {
+      method: "GET",
+      headers: { Accept: "application/pdf, application/json", "X-Sissi-Owner": "1" },
+      credentials: "include",
+      cache: "no-store",
+      signal: sig,
+    });
+  } catch (err) {
+    if (signal?.aborted) throw new ApiError("Permintaan dibatalkan.", 0, "ABORTED");
+    const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+    throw new ApiError(
+      isTimeout ? "Server tidak merespons. Coba lagi sebentar lagi." : "Tidak dapat terhubung ke server.",
+      0,
+      isTimeout ? "TIMEOUT" : "NETWORK_ERROR"
+    );
+  }
+  if (res.ok && (res.headers.get("Content-Type") ?? "").includes("application/pdf")) return res.blob();
+  let json: BaseResponse<unknown> | null = null;
+  try {
+    json = (await res.json()) as BaseResponse<unknown>;
+  } catch {
+    // Bukan JSON.
+  }
+  throw failure(res, json);
 }
 
 /** Query string dari objek; nilai kosong dibuang, larik digabung koma. */
@@ -206,6 +251,7 @@ const httpApi: OwnerApi = {
       summary: r.meta?.summary ?? { count: items.length, total: items.reduce((a, s) => a + s.total, 0) },
     };
   },
+  salesPdf: (q, signal) => callPdf(salesPdfPath(q), signal),
   sale: async (id, signal) => (await call<SaleDetail>("GET", `/sales/${enc(id)}`, { signal })).data,
   shifts: async (q, signal) => {
     const page = q.page ?? 1;

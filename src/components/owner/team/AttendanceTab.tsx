@@ -76,7 +76,7 @@ export function AttendanceTab({
           onChange={onView}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/dasbor/pengaturan#absensi" className={btn.ghost}>
+          <Link href="/dasbor/pengaturan?tab=absensi" className={btn.ghost}>
             <Clock size={16} aria-hidden /> Aturan jam kerja
           </Link>
           <button type="button" className={btn.primary} onClick={() => onManual(null, null)}>

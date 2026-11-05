@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { Boxes, Info } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { HeaderActionsProvider, HeaderActionsSlot } from "../headerActions";
+import { Boxes, Download, Info } from "lucide-react";
 import { ClearFiltersButton, FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import { SearchBox, useQueryState } from "@/components/admin/filters";
 import {
@@ -29,6 +30,7 @@ import type { StockRow } from "@/lib/owner/types";
 import { useOwner } from "../OwnerShell";
 import { SyncNote } from "../ui";
 import { StockOpsPanel, type OpsTab } from "../stock/StockOpsPanel";
+import { activeSection, sectionOf, STOCK_SECTIONS, useSectionTitle } from "../sections";
 
 // Stok (Gratis & Pro). Tab di URL (`?tab=`): Stok saat ini (GET /owner/stock?outlet_id= — produk ber-"Lacak stok" per
 // varian dan bahan baku; qty & min_stock mili-satuan → /1000, maks. 3 desimal; filter q, kind, low=1, page) · Opname ·
@@ -50,36 +52,41 @@ const LEVEL_RANK: Record<Level, number> = { out: 0, low: 1, ok: 2 };
 
 type Tab = "stock" | OpsTab;
 
-const TABS: { id: Tab; label: string; hint: string }[] = [
-  { id: "stock", label: "Stok saat ini", hint: "Stok saat ini" },
-  { id: "opname", label: "Opname", hint: "Cocokkan stok fisik & sistem" },
-  { id: "po", label: "Pembelian", hint: "Pesanan pembelian (PO) ke supplier" },
-  { id: "transfer", label: "Transfer", hint: "Pindahkan stok antar outlet" },
-  { id: "supplier", label: "Supplier", hint: "Kontak pemasok untuk PO" },
-];
-
 export function StockView() {
   const { outlet, session } = useOwner();
   const qs = useQueryState();
-  const raw = qs.get("tab");
-  const tab: Tab = TABS.some((t) => t.id === raw) ? (raw as Tab) : "stock";
+  const tab = activeSection(STOCK_SECTIONS, qs.get("tab")) as Tab;
   const scope = outlet ? outlet.name : session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? session.business.name);
-  const hint = TABS.find((t) => t.id === tab)!.hint;
-  return (
+  const section = sectionOf(STOCK_SECTIONS, tab);
+  useSectionTitle("Stok", STOCK_SECTIONS, tab);
+  // Tombol aksi tab operasi (Mulai opname, PO baru, …) dipasang ke kepala halaman lewat portal (headerActions.tsx).
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  // Kepala + Tabs; aksi kepala (mis. Ekspor CSV) diisi bagian yang memegang datanya.
+  const header = (actions?: React.ReactNode) => (
     <>
-      <PageHeader title="Stok" description={<>{hint} · {tab === "supplier" ? session.business.name : scope}</>} />
+      <PageHeader title={section.label} description={<>{section.description} · {tab === "supplier" ? session.business.name : scope}</>} actions={actions} />
       <Tabs<Tab>
         label="Menu stok"
-        tabs={TABS.map(({ id, label }) => ({ id, label }))}
+        hideOnDesktop
+        tabs={STOCK_SECTIONS.map(({ id, label }) => ({ id, label }))}
         active={tab}
         onChange={(t) => qs.update({ tab: t === "stock" ? null : t, doc: null, q: null, po: null, kind: null, low: null })}
       />
-      {tab === "stock" ? <CurrentStockTab /> : <StockOpsPanel tab={tab} />}
+    </>
+  );
+  return tab === "stock" ? (
+    <CurrentStockTab header={header} />
+  ) : (
+    <>
+      {header(<HeaderActionsSlot ref={setSlot} />)}
+      <HeaderActionsProvider value={slot}>
+        <StockOpsPanel tab={tab} />
+      </HeaderActionsProvider>
     </>
   );
 }
 
-function CurrentStockTab() {
+function CurrentStockTab({ header }: { header: (actions?: React.ReactNode) => React.ReactNode }) {
   const { outletId, outlet, session } = useOwner();
   const qs = useQueryState();
   const q = qs.get("q").slice(0, 80);
@@ -136,7 +143,11 @@ function CurrentStockTab() {
 
   return (
     <>
-
+      {header(
+        <button type="button" className={btn.secondary} onClick={exportCsv} disabled={!filtered.length} title="Ekspor daftar stok sesuai filter">
+          <Download size={16} aria-hidden /> Ekspor CSV
+        </button>
+      )}
       {state.status === "error" && (
         <div className="mb-4">
           <ErrorBlock error={state.error} onRetry={reload} />
@@ -193,9 +204,6 @@ function CurrentStockTab() {
               onChange={(n) => qs.update({ kind: n[0] ?? null })}
             />
             {filteredActive && <ClearFiltersButton onClick={() => qs.clear(["outlet"])} />}
-            <button type="button" className={`${btn.secondary} sm:ml-auto`} onClick={exportCsv} disabled={!filtered.length}>
-              Ekspor CSV
-            </button>
           </FilterBar>
 
           <LoadingBar active={state.status === "loading"} />
@@ -274,8 +282,8 @@ function CurrentStockTab() {
           )}
           <div className="mt-4 space-y-3">
             <Notice tone="info" icon={<Info size={16} aria-hidden />}>
-              Stok dihitung dari semua pergerakan stok yang sudah sinkron{outlet ? " di outlet ini" : " di semua outlet"}. Catat opname, pembelian (PO), dan transfer
-              lewat tab di atas; penyesuaian stok satu barang ada di form produk.
+              Stok dihitung dari semua pergerakan stok yang sudah sinkron{outlet ? " di outlet ini" : " di semua outlet"}. Opname, pembelian (PO), dan transfer
+              dicatat di menunya masing-masing; penyesuaian stok satu barang ada di form produk.
             </Notice>
             <SyncNote />
           </div>

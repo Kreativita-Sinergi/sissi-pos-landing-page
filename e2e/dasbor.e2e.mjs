@@ -8,7 +8,7 @@
 //
 // Setiap tes membersihkan data yang dibuatnya (nama berawalan "E2E "). Sisa dari run gagal sebelumnya dihapus di awal.
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -532,6 +532,55 @@ test("produk: unggah foto (PNG kecil) tersimpan", async () => {
   }
 });
 
+test("produk: sub-menu sidebar, judul tab browser, & tambah kategori lewat dialog", async () => {
+  const name = `${PREFIX}Kategori ${RUN}`;
+  const subActive = () => page.evaluate(() => document.querySelector('aside a[aria-current="page"]')?.innerText.trim() ?? null);
+  try {
+    await go("/dasbor/produk");
+    // Desktop (1366 px): bagian tampil sebagai sub-menu sidebar; Tabs di halaman disembunyikan.
+    eq(await subActive(), "Produk", "sub-menu aktif bawaan");
+    assert(await page.$eval('main [role="tablist"]', (el) => el.offsetParent === null), "Tabs halaman masih tampil di desktop");
+
+    await click("Kategori", { within: "aside", selector: "a" });
+    await page.waitForFunction(() => new URL(location.href).searchParams.get("tab") === "kategori");
+    await page.waitForFunction(() => document.querySelector("main h1")?.innerText.trim() === "Kategori");
+    eq(await subActive(), "Kategori", "sub-menu aktif setelah diklik");
+    await poll(async () => (await page.title()) === "Kategori · Produk · Dasbor Sissi", `judul tab browser tidak mengikuti sub-menu (${await page.title()})`);
+
+    // Induk = tombol buka/tutup.
+    await click("Produk", { within: "aside", selector: "button" });
+    await page.waitForFunction(() => !document.querySelector('aside a[aria-current="page"]'));
+    await click("Produk", { within: "aside", selector: "button" });
+    await page.waitForFunction(() => !!document.querySelector('aside a[aria-current="page"]'));
+
+    await click("Tambah kategori", { within: "main" });
+    await waitDialog("Tambah kategori");
+    await fill("Nama kategori", name, { within: "dialog" });
+    await click("Tambah kategori", { within: "dialog", selector: "button[type=submit]" });
+    await waitDialogClosed("Tambah kategori");
+    await waitText(name, { root: "main" });
+    await poll(async () => (await api.live("categories")).some((c) => c.name === name), "kategori baru tidak tersimpan");
+
+    // Urutkan: turunkan satu posisi → sort_order = indeks baru (sama dengan reorderCategories aplikasi).
+    const order = () => page.$$eval("main ul > li p.truncate", (els) => els.map((e) => e.innerText.trim()));
+    const at = (await order()).indexOf(name);
+    assert(at >= 0, "kategori baru tidak ada di daftar");
+    if (at < (await order()).length - 1) {
+      await click(`Turunkan ${name}`, { within: "main" });
+      await page.waitForFunction((n, i) => [...document.querySelectorAll("main ul > li p.truncate")].map((e) => e.innerText.trim()).indexOf(n) === i, {}, name, at + 1);
+      await poll(async () => (await api.live("categories")).find((c) => c.name === name)?.sort_order === at + 1, "urutan kategori tidak tersimpan");
+    }
+
+    // Judul sub-bagian tidak tertahan setelah pindah halaman.
+    await click("Pelanggan", { within: "aside", selector: "a" });
+    await page.waitForFunction(() => location.pathname === "/dasbor/pelanggan");
+    await poll(async () => (await page.title()) === "Pelanggan · Dasbor Sissi", `judul tab tertahan setelah pindah halaman (${await page.title()})`);
+  } finally {
+    const left = (await api.live("categories")).filter((c) => c.name === name);
+    await api.remove("categories", left.map((c) => c.id));
+  }
+});
+
 test("pelanggan: tambah → ubah → hapus", async () => {
   const name = `${PREFIX}Pelanggan ${RUN}`;
   const byName = async () => (await api.pull("customers")).find((c) => c.name === name) ?? null;
@@ -562,6 +611,72 @@ test("pelanggan: tambah → ubah → hapus", async () => {
   } finally {
     const left = (await api.live("customers")).filter((c) => c.name === name);
     await api.remove("customers", left.map((c) => c.id));
+  }
+});
+
+test("pengaturan: sub-menu menampilkan satu kelompok & draf tetap ada saat pindah sub-menu", async () => {
+  const outlet = (await api.live("outlets")).sort((a, b) => (a.name < b.name ? -1 : 1))[0];
+  const sel = 'textarea[id$="-footer"]';
+  const visible = (q) => page.$eval(q, (el) => el.offsetParent !== null).catch(() => false);
+  await go(`/dasbor/pengaturan?outlet=${outlet.id}`);
+  await page.waitForSelector(sel, { visible: true });
+  assert(!(await visible("#pajak")), "kelompok Pajak tampil di sub-menu Outlet & struk");
+  const before = await page.$eval(sel, (e) => e.value);
+  const draft = `${before} draf-e2e-${RUN}`;
+  await fillSel(sel, draft);
+
+  await click("Pajak & biaya", { within: "aside", selector: "a" });
+  await page.waitForSelector("#pajak", { visible: true });
+  assert(!(await visible(sel)), "kelompok Outlet & struk masih tampil di sub-menu Pajak & biaya");
+  await poll(async () => (await page.title()) === "Pajak & biaya · Pengaturan · Dasbor Sissi", `judul tab browser (${await page.title()})`);
+
+  await click("Outlet & struk", { within: "aside", selector: "a" });
+  await page.waitForSelector(sel, { visible: true });
+  eq(await page.$eval(sel, (e) => e.value), draft, "draf yang belum disimpan hilang setelah pindah sub-menu");
+  // Buang draf (tanpa menyimpan) agar navigasi berikutnya tidak tertahan peringatan beforeunload.
+  await click("Batalkan", { within: "#struk" });
+  await poll(async () => (await page.$eval(sel, (e) => e.value)) === before, "Batalkan tidak mengembalikan teks bawah struk");
+});
+
+test("navigasi tablet: laci menu di lebar 820 px", async () => {
+  await page.setViewport({ width: 820, height: 1180 });
+  try {
+    await go("/dasbor");
+    assert(!(await page.$eval("aside", (el) => el.offsetParent !== null)), "sidebar desktop tampil di tablet");
+    await click("Buka menu");
+    await page.waitForSelector("dialog[open] nav");
+    await click("Tim", { within: "dialog", selector: "button" });
+    await click("Jadwal", { within: "dialog", selector: "a" });
+    await page.waitForFunction(() => location.pathname === "/dasbor/tim" && new URL(location.href).searchParams.get("tab") === "jadwal");
+    await page.waitForFunction(() => !document.querySelector("dialog[open]"));
+    await page.waitForFunction(() => document.querySelector("main h1")?.innerText.trim() === "Jadwal");
+    // Esc menutup laci.
+    await click("Buka menu");
+    await page.waitForSelector("dialog[open] nav");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector("dialog[open]"));
+  } finally {
+    await page.setViewport({ width: 1366, height: 900 });
+  }
+});
+
+test("navigasi HP: laci menu membuka sub-menu dan tertutup setelah memilih", async () => {
+  await page.setViewport({ width: 390, height: 844 });
+  try {
+    await go("/dasbor/produk");
+    assert(!(await page.$eval("aside", (el) => el.offsetParent !== null)), "sidebar desktop tampil di HP");
+    await click("Buka menu");
+    await page.waitForSelector("dialog[open] nav");
+    await click("Stok", { within: "dialog", selector: "button" });
+    await click("Opname", { within: "dialog", selector: "a" });
+    await page.waitForFunction(() => location.pathname === "/dasbor/stok" && new URL(location.href).searchParams.get("tab") === "opname");
+    await page.waitForFunction(() => !document.querySelector("dialog[open]"));
+    await page.waitForFunction(() => document.querySelector("main h1")?.innerText.trim() === "Opname");
+    eq(await page.$eval("header p", (el) => el.innerText.trim()), "Stok", "label halaman di kepala HP");
+    // Di HP, Tabs halaman tetap tampil.
+    assert(await page.$eval('main [role="tablist"]', (el) => el.offsetParent !== null), "Tabs halaman tidak tampil di HP");
+  } finally {
+    await page.setViewport({ width: 1366, height: 900 });
   }
 });
 
@@ -597,16 +712,83 @@ test("pengaturan: simpan teks bawah struk lalu kembalikan", async () => {
   }
 });
 
-test("aktivitas memuat ringkasan & chip Perubahan data", async () => {
+test("pengaturan: unggah logo struk dari web, tersimpan, ikut di PDF, lalu kembalikan", async () => {
+  const outlet = (await api.live("outlets")).sort((a, b) => (a.name < b.name ? -1 : 1))[0];
+  const original = { logo_url: outlet.settings?.receipt?.logo_url ?? "", logo_style: outlet.settings?.receipt?.logo_style ?? "auto" };
+  const logoOf = async () => (await api.live("outlets")).find((o) => o.id === outlet.id)?.settings?.receipt ?? {};
+  try {
+    await go(`/dasbor/pengaturan?outlet=${outlet.id}`);
+    const input = await page.waitForSelector("#struk input[type=file]");
+    await input.uploadFile(globalThis.__pngPath);
+    await page.waitForFunction((old) => {
+      const img = document.querySelector('#struk img[alt="Logo struk"]');
+      return img && img.getAttribute("src") && img.getAttribute("src") !== old;
+    }, {}, original.logo_url);
+    await click("Garis tegas", { within: "#struk" });
+    await submitFormOf("#struk input[type=file]");
+    await poll(async () => {
+      const r = await logoOf();
+      return /\/files\/[^/]+\/[^/]+\.png$/.test(r.logo_url ?? "") && r.logo_url !== original.logo_url && r.logo_style === "threshold";
+    }, "logo struk tidak tersimpan");
+
+
+    // PDF dibuat server (logo struk outlet terpilih ikut di kepala): web hanya mengunduh hasilnya.
+    const dir = globalThis.__downloads;
+    for (const f of readdirSync(dir)) rmSync(join(dir, f), { force: true });
+    const cdp = await page.createCDPSession();
+    await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
+    await go(`/dasbor/transaksi?outlet=${outlet.id}`);
+    await click("Ekspor", { within: "main" });
+    await waitDialog("Ekspor transaksi");
+    const req = page.waitForRequest((r) => r.url().includes("/owner/reports/sales.pdf"), { timeout: 15000 });
+    await click("Unduh PDF", { within: "dialog", partial: true });
+    eq(new URL((await req).url()).searchParams.get("outlet_id"), outlet.id, "PDF diminta dengan outlet terpilih");
+    await waitDialogClosed("Ekspor transaksi");
+    let file;
+    await poll(async () => (file = readdirSync(dir).find((f) => f.endsWith(".pdf") && !f.endsWith(".crdownload"))) !== undefined, "PDF tidak terunduh");
+    const logoPdf = readFileSync(join(dir, file));
+    if (process.env.E2E_PDF_OUT) writeFileSync(process.env.E2E_PDF_OUT, logoPdf);
+    eq(logoPdf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
+  } finally {
+    const cur = (await api.live("outlets")).find((o) => o.id === outlet.id);
+    const r = cur.settings?.receipt ?? {};
+    if ((r.logo_url ?? "") !== original.logo_url || (r.logo_style ?? "auto") !== original.logo_style) {
+      const settings = { ...cur.settings, receipt: { ...r, ...original } };
+      await api.upsert("outlets", cur.id, { settings }, cur.updated_at);
+    }
+    // Pull sinkron menahan record yang baru berubah beberapa detik (jeda commit di syncapi); tunggu sampai outlet ini
+    // terlihat lagi agar tes berikutnya (yang menarik outlets) tidak kehilangan record.
+    await poll(async () => (await api.live("outlets")).some((o) => o.id === outlet.id), "outlet belum terlihat lagi di pull");
+  }
+});
+
+test("aktivitas memuat ringkasan & filter Jenis: Perubahan data", async () => {
   await go("/dasbor/aktivitas");
   await waitText("Perubahan data", { root: "main" });
   await page.waitForFunction(() => !document.querySelector('[aria-label="Memuat ringkasan"]'));
   assert(!(await hasText("Coba lagi", "main")), "ada blok galat di Aktivitas");
-  await click("Perubahan data", { within: "[aria-label='Jenis aktivitas']", partial: true });
+  await click("Jenis", { within: "main", partial: true, selector: "button" });
+  await click("Perubahan data", { partial: true, selector: "[role=option]" });
+  await click("Selesai");
   await page.waitForFunction(() => new URL(location.href).searchParams.get("kind") === "change");
   await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
   const kinds = await page.$$eval("main li[data-kind]", (els) => [...new Set(els.map((e) => e.dataset.kind))]);
   assert(kinds.every((k) => k === "change"), `hanya entri perubahan data (${kinds.join(",")})`);
+});
+
+test("aktivitas: kartu ringkasan menjadi pintasan filter Jenis", async () => {
+  const day = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(d);
+  const from = day(new Date(Date.now() - 29 * 86_400_000));
+  await go(`/dasbor/aktivitas?from=${from}&to=${day(new Date())}`);
+  await page.waitForFunction(() => !document.querySelector('[aria-label="Memuat ringkasan"]'));
+  await click("Kas masuk / keluar", { within: "main", partial: true, selector: "a" });
+  await page.waitForFunction(() => new URL(location.href).searchParams.get("kind") === "cash_in,cash_out");
+  eq(await page.evaluate(() => new URL(location.href).searchParams.get("from")), from, "periode tetap setelah klik kartu");
+  await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
+  const kinds = await page.$$eval("main li[data-kind]", (els) => [...new Set(els.map((e) => e.dataset.kind))]);
+  assert(kinds.every((k) => k === "cash_in" || k === "cash_out"), `hanya entri kas (${kinds.join(",")})`);
+  await waitText("Jenis:", { root: "main" });
+  assert(!(await hasText("Jenis: Semua", "main")), "filter Jenis tidak ikut berubah");
 });
 
 // ——— Nomor 14: outlet, QRIS (konfirmasi password), batal transaksi, kas shift ———
@@ -636,7 +818,7 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kemb
   const before = (await api.pull("outlets")).find((o) => o.id === outletId);
   const name = `E2E QRIS ${RUN}`;
   try {
-    await go(`/dasbor/pengaturan?outlet=${outletId}`);
+    await go(`/dasbor/pengaturan?tab=transaksi&outlet=${outletId}`);
     await page.waitForSelector("#pembayaran", { visible: true });
     await waitText("Ini mengubah tujuan uang pelanggan", { root: "#pembayaran" });
     if (!(await page.$("#pembayaran input[id$='-merchant']"))) await click("QRIS", { within: "#pembayaran", selector: "label" });
@@ -668,12 +850,40 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kemb
   }
 });
 
+test("transaksi: ekspor PDF lewat dialog (diunduh dari server dengan filter aktif)", async () => {
+  const dir = globalThis.__downloads;
+  for (const f of readdirSync(dir)) rmSync(join(dir, f), { force: true });
+  const cdp = await page.createCDPSession();
+  await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
+  await go("/dasbor/transaksi");
+  await click("Ekspor", { within: "main" });
+  await waitDialog("Ekspor transaksi");
+  await waitText("transaksi", { root: "dialog[open]" });
+  const req = page.waitForRequest((r) => r.url().includes("/owner/reports/sales.pdf"), { timeout: 15000 });
+  await click("Unduh PDF", { within: "dialog", partial: true });
+  const u = new URL((await req).url());
+  assert(u.searchParams.get("from") && u.searchParams.get("to"), "PDF diminta dengan periode aktif");
+  assert(!u.searchParams.has("page") && !u.searchParams.has("per_page"), "tanpa page/per_page");
+  await waitDialogClosed("Ekspor transaksi");
+  let file = null;
+  await poll(async () => {
+    file = readdirSync(dir).find((f) => f.endsWith(".pdf") && !f.endsWith(".crdownload"));
+    return !!file && existsSync(join(dir, file));
+  }, "berkas PDF tidak terunduh");
+  assert(/-transaksi-\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\.pdf$/.test(file), `nama berkas: ${file}`);
+  const buf = readFileSync(join(dir, file));
+  eq(buf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
+  assert(buf.length > 1000, "PDF tidak kosong");
+  // Simpan salinan untuk diperiksa manual: E2E_PDF_OUT=/jalur/laporan.pdf npm run e2e
+  if (process.env.E2E_PDF_OUT) writeFileSync(process.env.E2E_PDF_OUT, buf);
+});
+
 test("transaksi: batalkan (void) transaksi lunas dari detail", async () => {
   await ensureLoggedIn();
   // Data demo diisi ulang sesi utama; pembatalan ini memang tidak bisa diurungkan.
   const list = await api.get("/owner/sales?status=paid&per_page=20");
   const sale = list.find((s) => s.payment_method === "qris") ?? list.find((s) => s.payment_method === "cash") ?? list[0];
-  assert(sale, "ada transaksi lunas untuk diuji");
+  assert(sale, "ada transaksi lunas untuk diuji — data demo mungkin basi (>7 hari): jalankan `go run ./cmd/devseed --reset` di sissi-pos-service");
   await go(`/dasbor/transaksi/${sale.id}`);
   await click("Batalkan transaksi", { within: "main" });
   await waitDialog(`Batalkan transaksi · ${sale.receipt_no}`);
@@ -698,7 +908,7 @@ test("transaksi: batalkan (void) transaksi lunas dari detail", async () => {
 test("shift: catat kas keluar pada shift yang sedang buka", async () => {
   await ensureLoggedIn();
   const open = await api.get("/owner/shifts?status=open&per_page=5");
-  assert(open.length, "ada shift buka di data demo");
+  assert(open.length, "ada shift buka di data demo — data demo mungkin basi (>7 hari): jalankan `go run ./cmd/devseed --reset` di sissi-pos-service");
   const shift = open[0];
   const note = `E2E ${RUN}`;
   await go(`/dasbor/shift/${shift.id}`);
@@ -721,6 +931,7 @@ test("shift: catat kas keluar pada shift yang sedang buka", async () => {
 test("shift: daftar menandai hitungan server berbeda (bila ada)", async () => {
   await ensureLoggedIn();
   const rows = await api.get("/owner/shifts?per_page=100&status=closed");
+  assert(rows.length, "ada shift tutup di data demo — data demo mungkin basi (>7 hari): jalankan `go run ./cmd/devseed --reset` di sissi-pos-service");
   const bad = rows.find((r) => r.expected_mismatch);
   await go("/dasbor/shift?status=closed");
   await page.waitForSelector("main table");
@@ -741,7 +952,7 @@ test("keluar: konfirmasi Keluar kembali ke halaman masuk", async () => {
 // ——— Main ———
 
 async function cleanupLeftovers() {
-  for (const entity of ["products", "customers"]) {
+  for (const entity of ["products", "customers", "categories"]) {
     const rows = (await api.live(entity)).filter((r) => typeof r.name === "string" && r.name.startsWith(PREFIX));
     if (rows.length) {
       console.log(`  (membersihkan ${rows.length} ${entity} sisa run sebelumnya)`);
@@ -756,6 +967,7 @@ async function main() {
   const png = join(fixtures, "foto-e2e.png");
   writeFileSync(png, makePng(64, 64, [240, 120, 40]));
   globalThis.__pngPath = png;
+  globalThis.__downloads = mkdtempSync(join(fixtures, "unduhan-"));
 
   try {
     await api.login();
