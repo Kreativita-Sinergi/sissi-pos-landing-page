@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
 import { ConfirmDialog, Modal } from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/admin/toast";
 import { btn, cardClass, EmptyState, errorMessage, Field, iconBtn, inputClass, Spinner } from "@/components/admin/ui";
@@ -10,8 +10,9 @@ import type { Change } from "@/lib/owner/types";
 import { reportOutcome } from "./bits";
 import type { CatalogData, CommitOutcome } from "./useCatalog";
 
-// Kategori: tambah, ganti nama, hapus — sama dengan aplikasi (`categories_screen.dart`). Kategori baru dikirim hanya
-// dengan nama (sort_order bawaan server 0, seperti aplikasi); urutan tidak diubah dari web (aplikasi juga tidak bisa).
+// Kategori: tambah, ganti nama, hapus, urutkan — sama dengan aplikasi (`categories_screen.dart`). Kategori baru dikirim
+// hanya dengan nama (sort_order bawaan server 0, seperti aplikasi). Urutkan = `reorderCategories` aplikasi: indeks
+// daftar baru menjadi `sort_order`, hanya baris yang berubah dikirim (satu commit).
 // Hapus kategori di server mengosongkan category_id produknya (produk TIDAK ikut terhapus) → produk ditarik ulang.
 // Tambah kategori lewat dialog kecil yang dibuka tombol "Tambah kategori" di kepala halaman (`creating` dari ProductsView).
 
@@ -92,6 +93,14 @@ export function CategoriesPanel({
     else if (r) setEditing({ ...editing, error: resultFieldErrors(r.out.results[0]).name ?? r.out.results[0]?.message });
   }
 
+  async function move(index: number, delta: -1 | 1) {
+    const next = [...list];
+    const [c] = next.splice(index, 1);
+    next.splice(index + delta, 0, c);
+    const changes = next.flatMap((cat, i) => (cat.sort_order === i ? [] : [editChange("categories", cat, { sort_order: i })]));
+    if (changes.length) await run("order", changes, "Urutan kategori disimpan.");
+  }
+
   async function remove() {
     if (!deleting) return;
     const r = await run(`del-${deleting.id}`, [deleteChange("categories", deleting)], `Kategori "${deleting.name}" dihapus.`);
@@ -122,7 +131,7 @@ export function CategoriesPanel({
           </EmptyState>
         ) : (
           <ul className="divide-y divide-border-subtle">
-            {list.map((c) => {
+            {list.map((c, i) => {
               const isEditing = editing?.id === c.id;
               const n = counts.get(c.id) ?? 0;
               return (
@@ -161,6 +170,26 @@ export function CategoriesPanel({
                         <p className="truncate text-[14px] font-semibold">{c.name}</p>
                         <p className="text-[12.5px] text-text-muted">{n.toLocaleString("id-ID")} produk</p>
                       </div>
+                      <button
+                        type="button"
+                        className={iconBtn}
+                        onClick={() => move(i, -1)}
+                        disabled={i === 0 || !!busy}
+                        aria-label={`Naikkan ${c.name}`}
+                        title="Naikkan"
+                      >
+                        <ArrowUp size={16} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className={iconBtn}
+                        onClick={() => move(i, 1)}
+                        disabled={i === list.length - 1 || !!busy}
+                        aria-label={`Turunkan ${c.name}`}
+                        title="Turunkan"
+                      >
+                        <ArrowDown size={16} aria-hidden />
+                      </button>
                       <button type="button" className={iconBtn} onClick={() => setEditing({ id: c.id, name: c.name })} aria-label={`Ganti nama ${c.name}`} title="Ganti nama">
                         <Pencil size={16} aria-hidden />
                       </button>
@@ -175,7 +204,7 @@ export function CategoriesPanel({
           </ul>
         )}
       </section>
-      <p className="text-[12.5px] text-text-muted">Urutan di sini sama dengan urutan tab kategori di kasir. Kategori baru diberi urutan awal (sama dengan aplikasi).</p>
+      <p className="text-[12.5px] text-text-muted">Urutan di sini sama dengan urutan tab kategori di kasir; ubah dengan tombol panah. Kategori baru diberi urutan awal (sama dengan aplikasi).</p>
 
       <Modal open={creating !== null} title="Tambah kategori" onClose={closeAdd} dismissible={busy !== "add"}>
         {creating !== null && (

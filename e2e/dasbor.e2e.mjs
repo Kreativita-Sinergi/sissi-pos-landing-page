@@ -561,6 +561,16 @@ test("produk: sub-menu sidebar, judul tab browser, & tambah kategori lewat dialo
     await waitText(name, { root: "main" });
     await poll(async () => (await api.live("categories")).some((c) => c.name === name), "kategori baru tidak tersimpan");
 
+    // Urutkan: turunkan satu posisi → sort_order = indeks baru (sama dengan reorderCategories aplikasi).
+    const order = () => page.$$eval("main ul > li p.truncate", (els) => els.map((e) => e.innerText.trim()));
+    const at = (await order()).indexOf(name);
+    assert(at >= 0, "kategori baru tidak ada di daftar");
+    if (at < (await order()).length - 1) {
+      await click(`Turunkan ${name}`, { within: "main" });
+      await page.waitForFunction((n, i) => [...document.querySelectorAll("main ul > li p.truncate")].map((e) => e.innerText.trim()).indexOf(n) === i, {}, name, at + 1);
+      await poll(async () => (await api.live("categories")).find((c) => c.name === name)?.sort_order === at + 1, "urutan kategori tidak tersimpan");
+    }
+
     // Judul sub-bagian tidak tertahan setelah pindah halaman.
     await click("Pelanggan", { within: "aside", selector: "a" });
     await page.waitForFunction(() => location.pathname === "/dasbor/pelanggan");
