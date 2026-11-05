@@ -23,7 +23,7 @@ import { zonedDay, zonedHHMM, zoneOffsetMs, zonedToday } from "./tz";
 // ——— Tipe record ———
 
 /** `staff` = Karyawan (absen saja): tanpa akses POS; PIN opsional hanya untuk absen (api.md "Peran `staff` & jabatan"). */
-export type Role = "owner" | "cashier" | "kitchen" | "staff";
+export type Role = "owner" | "cashier" | "kitchen" | "staff" | "waiter";
 export type PayType = "none" | "daily" | "monthly" | "hourly";
 export type AttendanceStatus = "ontime" | "late" | "permit" | "sick" | "leave" | "absent";
 export type SlipStatus = "draft" | "issued" | "paid";
@@ -180,7 +180,7 @@ export const isPaid = (c: PayrollConfig | null): c is PayrollConfig => !!c && c.
 
 /** Record `employees` → Employee; `pin_hash` dibuang di sini (tidak pernah disimpan di state). */
 export function toEmployee(r: SyncRecord): Employee {
-  const role: Role = r.role === "owner" || r.role === "kitchen" || r.role === "staff" ? r.role : "cashier";
+  const role: Role = r.role === "owner" || r.role === "kitchen" || r.role === "staff" || r.role === "waiter" ? r.role : "cashier";
   const access = PERSONAL_ACCESS.includes(r.personal_access as PersonalAccess) ? (r.personal_access as PersonalAccess) : "staff_space";
   return {
     id: r.id,
@@ -568,10 +568,13 @@ export function payslipNumber(periodStart: string, employeeId: string): string {
 
 // ——— Label (app_id.arb / team_labels.dart) ———
 
-export const ROLE_LABEL: Record<Role, string> = { owner: "Pemilik", cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan (absen saja)" };
+export const ROLE_LABEL: Record<Role, string> = { owner: "Pemilik", cashier: "Kasir", kitchen: "Dapur", staff: "Karyawan (absen saja)", waiter: "Pelayan" };
 
-/** Pilihan jabatan umum (disusun klien; hanya mengisi `job_title` teks). "Lainnya" = ketik sendiri. */
-export const JOB_TITLE_PRESETS = ["CS", "Pelayan", "Barista", "Kurir", "Admin", "Kebersihan", "Keamanan"] as const;
+/**
+ * Pilihan jabatan umum (disusun klien; hanya mengisi `job_title` teks). "Lainnya" = ketik sendiri.
+ * "Pelayan" bukan jabatan lagi — sudah jadi peran `waiter`; jabatan lama tetap tersimpan apa adanya.
+ */
+export const JOB_TITLE_PRESETS = ["CS", "Barista", "Kurir", "Admin", "Kebersihan", "Keamanan"] as const;
 export const JOB_TITLE_MAX = 40;
 
 /** `job_title` → string ter-trim atau `null` (kosong/spasi = null, cermin server). */
@@ -591,7 +594,7 @@ export const ACCESS_LABEL: Record<PersonalAccess, string> = {
 export const ACCESS_HINT: Record<PersonalAccess, string> = {
   none: "Karyawan hanya memakai PIN di perangkat toko. Sesi di HP pribadinya dihentikan.",
   staff_space: "Dari HP pribadi hanya absen, riwayat absen, slip gaji, dan pengajuan izin miliknya.",
-  full: "Dari HP pribadi bisa bekerja sesuai tugasnya (kasir/dapur) di outlet yang dipilih.",
+  full: "Dari HP pribadi bisa bekerja sesuai tugasnya (kasir/dapur/pelayan) di outlet yang dipilih.",
 };
 
 /** Keadaan akun HP pribadi karyawan (untuk daftar & lembar ubah). */
@@ -617,6 +620,7 @@ export const ROLE_HINT: Record<Role, string> = {
   owner: "Pemilik: semua menu, termasuk produk, laporan, tim, dan pengaturan.",
   cashier: "Kasir: transaksi, pesanan, riwayat, pelanggan, dan absen.",
   kitchen: "Dapur: layar dapur dan pesanan.",
+  waiter: "Mencatat pesanan meja & mengirim ke dapur. Tidak menerima pembayaran.",
   staff: "Karyawan (absen saja): tanpa akses kasir. Absen, slip gaji, dan pengajuan dari HP pribadi (Ruang Karyawan), atau absen dengan PIN di perangkat toko lewat Tim › Absen.",
 };
 export const PAY_TYPE_LABEL: Record<PayType, string> = { monthly: "Bulanan", daily: "Harian", hourly: "Per jam", none: "Tidak digaji" };

@@ -1,7 +1,7 @@
 // Tipe web karyawan (absen). Kontrak: sissi-pos-service/docs/api.md "Absen karyawan lewat web (2026-11-02)".
 import type { AttendanceSource, AttendanceVia } from "../attendanceVia";
 
-export type StaffRole = "cashier" | "kitchen" | "staff";
+export type StaffRole = "cashier" | "kitchen" | "staff" | "waiter";
 
 export type StaffUser = { id: string; name: string; role: StaffRole | string; job_title: string | null };
 export type StaffBusiness = { id: string; name: string; timezone: string };

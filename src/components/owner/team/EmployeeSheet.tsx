@@ -170,7 +170,7 @@ function EmployeeForm({
   const isSelf = !!current && current.id === selfId;
   const others = ctx.data.employees.filter((e) => e.id !== current?.id);
   const outlets = ctx.data.outlets;
-  // Peran Dapur hanya untuk usaha kuliner / fitur dapur outlet aktif (cermin `kitchenRole` app).
+  // Peran Dapur & Pelayan hanya untuk usaha kuliner / fitur dapur outlet aktif (cermin `kitchenRole` app).
   const kitchenRole = businessType === "culinary" ? outlets.length === 0 || outlets.some((o) => o.kitchen !== false) : outlets.some((o) => o.kitchen === true);
 
   const update = (patch: Partial<typeof f>) => {
@@ -292,6 +292,8 @@ function EmployeeForm({
   const roles: { value: Role; label: string }[] = [
     { value: "cashier", label: ROLE_LABEL.cashier },
     ...(kitchenRole || f.role === "kitchen" ? [{ value: "kitchen" as Role, label: ROLE_LABEL.kitchen }] : []),
+    // Pelayan lama tetap terlihat perannya walau gerbang mati.
+    ...(kitchenRole || f.role === "waiter" ? [{ value: "waiter" as Role, label: ROLE_LABEL.waiter }] : []),
     { value: "staff", label: ROLE_LABEL.staff },
     { value: "owner", label: ROLE_LABEL.owner },
   ];
@@ -355,7 +357,7 @@ function EmployeeForm({
         <p className="mt-1.5 text-[13px] text-text-muted">{isSelf ? "Kamu tidak dapat mengubah peranmu sendiri." : ROLE_HINT[f.role]}</p>
         {errors.role && <p className="mt-1 text-[13px] text-danger">{errors.role}</p>}
         {!kitchenRole && !isSelf && (
-          <p className="mt-1 text-[12.5px] text-text-muted">Peran Dapur tersedia untuk usaha kuliner atau bila fitur dapur outlet diaktifkan.</p>
+          <p className="mt-1 text-[12.5px] text-text-muted">Peran Dapur & Pelayan tersedia untuk usaha kuliner atau bila fitur dapur outlet diaktifkan.</p>
         )}
       </div>
       <div>
@@ -419,12 +421,14 @@ function EmployeeForm({
       <section className={cardClass} aria-labelledby={`${id}-pin-title`}>
         <div className="border-b border-border-subtle px-4 py-3">
           <h3 id={`${id}-pin-title`} className="text-[14px] font-semibold text-text-heading">
-            {f.role === "staff" ? "PIN absen" : "PIN kasir"}
+            {f.role === "staff" ? "PIN absen" : f.role === "waiter" ? "PIN pelayan" : "PIN kasir"}
           </h3>
           <p className="mt-0.5 text-[13px] text-text-muted">
             {f.role === "staff"
               ? "PIN hanya untuk absen di perangkat toko — tidak membuka kasir."
-              : "6 digit untuk membuka kasir terkunci, absen, dan menyetujui pembatalan (pemilik)."}
+              : f.role === "waiter"
+                ? "6 digit untuk membuka tampilan pelayan (meja & pesanan) dan absen di perangkat toko."
+                : "6 digit untuk membuka kasir terkunci, absen, dan menyetujui pembatalan (pemilik)."}
           </p>
         </div>
         <div className="flex items-center justify-between gap-3 px-4 py-3">
