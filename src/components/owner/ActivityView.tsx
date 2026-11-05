@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, Ban, ChevronDown, ChevronRight, History, MonitorSmartphone, PencilLine, Percent, ShieldAlert, Undo2, Wallet } from "lucide-react";
-import { ClearFiltersButton, FilterBar } from "@/components/admin/FilterMenu";
+import { ClearFiltersButton, FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import {
   Badge,
   cardClass,
@@ -559,7 +559,6 @@ export function ActivityView() {
   const categories = useCategoryNames(!!data?.items.some((a) => a.kind === "change" && (a.changes ?? []).some((c) => c.field === "category_id")));
   const ctx: ChangeCtx = { categories };
   const filtered = kind.length > 0;
-  const toggle = (k: ActivityKind) => qs.update({ kind: kind.includes(k) ? kind.filter((x) => x !== k) : [...kind, k] });
 
   // Kelompokkan per tanggal (zona usaha) (data sudah urut terbaru).
   const groups: { day: string; items: ActivityItem[] }[] = [];
@@ -574,10 +573,18 @@ export function ActivityView() {
     <>
       <PageHeader
         title="Aktivitas"
-        description="Kejadian penting di kasir dan riwayat perubahan data: pembatalan, pengembalian dana, diskon manual, tutup kasir, kas masuk/keluar, login dari perangkat baru, serta siapa mengubah harga, produk, dan pengaturan."
+        description="Kejadian penting di kasir dan riwayat siapa mengubah harga, produk, dan pengaturan."
       />
       <FilterBar>
         <PeriodFilter from={from} to={to} preset={preset} onChange={period.setPeriod} />
+        {/* Jenis aktivitas: satu pilihan ganda (bukan 10 chip) — jumlah per jenis dari ringkasan. */}
+        <FilterSelect
+          label="Jenis"
+          multiple
+          options={kindOptions.map((k) => ({ value: k, label: ACTIVITY_KIND[k], count: counts?.[k] ?? null }))}
+          selected={kind}
+          onChange={(n) => qs.update({ kind: n.length ? n : null })}
+        />
         {filtered && <ClearFiltersButton onClick={() => qs.update({ kind: null })} />}
       </FilterBar>
 
@@ -590,18 +597,6 @@ export function ActivityView() {
           ))}
         </div>
       )}
-
-      <div role="group" aria-label="Jenis aktivitas" className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-        <Chip on={!filtered} onClick={() => qs.update({ kind: null })}>
-          Semua
-        </Chip>
-        {kindOptions.map((k) => (
-          <Chip key={k} on={kind.includes(k)} onClick={() => toggle(k)}>
-            {ACTIVITY_KIND[k]}
-            {counts && <span className={`ml-1.5 tabular-nums ${counts[k] ? "" : "opacity-60"}`}>{counts[k].toLocaleString("id-ID")}</span>}
-          </Chip>
-        ))}
-      </div>
 
       {state.status === "error" && (
         <div className="mb-4">
@@ -776,19 +771,4 @@ function useCategoryNames(needed: boolean): Map<string, string> | null {
     };
   }, [needed, names]);
   return names;
-}
-
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 text-[13.5px] font-semibold whitespace-nowrap transition-colors ${
-        on ? "border-brand-primary/50 bg-brand-tint text-brand-ink" : "border-border-subtle bg-white text-text-body hover:border-border-active"
-      } ${focusRing}`}
-    >
-      {children}
-    </button>
-  );
 }

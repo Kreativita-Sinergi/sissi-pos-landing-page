@@ -680,12 +680,14 @@ test("pengaturan: simpan teks bawah struk lalu kembalikan", async () => {
   }
 });
 
-test("aktivitas memuat ringkasan & chip Perubahan data", async () => {
+test("aktivitas memuat ringkasan & filter Jenis: Perubahan data", async () => {
   await go("/dasbor/aktivitas");
   await waitText("Perubahan data", { root: "main" });
   await page.waitForFunction(() => !document.querySelector('[aria-label="Memuat ringkasan"]'));
   assert(!(await hasText("Coba lagi", "main")), "ada blok galat di Aktivitas");
-  await click("Perubahan data", { within: "[aria-label='Jenis aktivitas']", partial: true });
+  await click("Jenis", { within: "main", partial: true, selector: "button" });
+  await click("Perubahan data", { partial: true, selector: "[role=option]" });
+  await click("Selesai");
   await page.waitForFunction(() => new URL(location.href).searchParams.get("kind") === "change");
   await page.waitForFunction(() => !document.querySelector('main [aria-busy="true"]'));
   const kinds = await page.$$eval("main li[data-kind]", (els) => [...new Set(els.map((e) => e.dataset.kind))]);
