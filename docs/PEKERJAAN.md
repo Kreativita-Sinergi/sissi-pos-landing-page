@@ -37,6 +37,12 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   `GET /owner/reports/sales` bila tanpa filter tambahan (= halaman Laporan); dengan filter metode/status/kasir/cari
   dihitung dari transaksi yang cocok (`summaryFromRows`, rumus sama; tanpa rincian diskon/pajak). PDF **tanpa daftar
   per transaksi** (pemilik 2026-11-05: PDF = laporan ringkas, daftar → CSV maks. 5.000 baris).
+- **PDF = laporan yang menjelaskan** (pemilik 2026-11-05): "Kesimpulan periode ini" & "Saran" dibuat dengan **aturan
+  tetap** di `src/lib/owner/salesInsights.ts` (bukan AI; tiap kalimat bisa ditelusuri ke angka di laporan, diuji di
+  `tests/salesPdf.test.mjs`). Data penting tetap ditampilkan (produk terlaris, pola hari & jam, outlet, kasir, metode,
+  jenis pesanan, rincian penjualan, per hari). Rata-rata per hari mengecualikan hari ini yang masih berjalan; produk
+  "jarang laku" hanya produk menu (bukan item cepat) yang terjual ≤ 10% dari produk terlaris. Produk & jam/hari ramai
+  ikut kunci paket `insights` (Gratis → catatan di PDF).
 
 - **Sub-bagian halaman = sub-menu sidebar** (desktop ≥1024 px), satu sumber di `src/components/owner/sections.ts`
   (Produk, Stok, Tim, Pengaturan). Di HP/tablet bagian yang sama tampil sebagai `Tabs` di halaman. Angka di tab
@@ -50,6 +56,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-05 · PDF Laporan Penjualan berisi analisis** (Claude Opus 5.5): kesimpulan & saran otomatis, produk
+  terlaris, grafik batang hari & jam, perbandingan outlet, jenis pesanan. Tes unit 8 + e2e isi PDF.
 - **2026-11-05 · Ekspor PDF Transaksi** (Claude Opus 5.5): `src/lib/owner/salesPdf.ts` (ringkasan, rincian uang, per
   metode bayar, per kasir, per hari/jam, nomor halaman; daftar per transaksi lewat CSV),
   `SalesExport.tsx` (dialog PDF/CSV). Tes: `tests/salesPdf.test.mjs` (5), e2e unduh PDF (berkas valid + isi).

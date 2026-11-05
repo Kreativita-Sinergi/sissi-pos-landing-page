@@ -800,7 +800,7 @@ test("pengaturan: ubah nama merchant QRIS lewat konfirmasi kata sandi, lalu kemb
   }
 });
 
-test("transaksi: ekspor PDF lewat dialog (ringkasan, per kasir, tanpa daftar)", async () => {
+test("transaksi: ekspor PDF lewat dialog (kesimpulan, saran, produk, pola waktu, tanpa daftar)", async () => {
   const dir = globalThis.__downloads;
   const cdp = await page.createCDPSession();
   await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
@@ -818,7 +818,7 @@ test("transaksi: ekspor PDF lewat dialog (ringkasan, per kasir, tanpa daftar)", 
   const buf = readFileSync(join(dir, file));
   eq(buf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
   const text = buf.toString("latin1");
-  for (const part of ["Laporan Transaksi", "Ringkasan", "Per kasir", "gunakan Ekspor CSV", "Halaman 1 dari"]) {
+  for (const part of ["Laporan Penjualan", "Kesimpulan periode ini", "Saran", "Produk terlaris", "Kapan pelanggan paling ramai", "Kinerja kasir", "Perbandingan outlet", "Rincian penjualan", "gunakan Ekspor CSV", "Halaman 1 dari"]) {
     assert(text.includes(part), `PDF memuat "${part}"`);
   }
   assert(!text.includes("No. struk"), "PDF tidak memuat daftar per transaksi");

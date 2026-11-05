@@ -5,7 +5,9 @@ import "./support/tsResolve.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-const { summaryFromRows, summaryFromReport, dayLabel } = await import("../src/lib/owner/salesPdf.ts");
+const { summaryFromRows, summaryFromReport, withOutlets, dayLabel } = await import("../src/lib/owner/salesPdf.ts");
+const { buildInsights } = await import("../src/lib/owner/salesInsights.ts");
+const { zonedToday } = await import("../src/lib/owner/tz.ts");
 const { setOwnerZone } = await import("../src/lib/owner/tz.ts");
 setOwnerZone("Asia/Jakarta");
 
@@ -38,7 +40,7 @@ test("rows: penjualan = lunas + kasbon sesudah refund sebagian; batal terpisah; 
       sale({ id: "e", total: 15_000, status: "refunded" }),
       sale({ id: "f", total: 99_000, status: "open" }),
     ],
-    false
+    { from: "2026-10-30", to: "2026-11-05" }
   );
   assert.equal(s.source, "rows");
   assert.equal(s.transactions, 3);
@@ -55,23 +57,28 @@ test("rows: penjualan = lunas + kasbon sesudah refund sebagian; batal terpisah; 
     { name: "Budi", count: 1, revenue: 20_000, average: 20_000, cancelled: 1 },
   ]);
   assert.deepEqual(s.perPeriod, [{ label: dayLabel("2026-11-05"), count: 3, revenue: 90_000 }]);
+  // 2026-11-05 = Kamis (indeks 3); 03:00Z = 10.00 WIB.
+  assert.equal(s.perWeekday[3], 3);
+  assert.equal(s.perHour[10], 3);
+  assert.equal(s.peakHour, 10);
 });
 
 test("rows: periode satu hari → per jam di zona usaha", () => {
-  const s = summaryFromRows([sale({ id: "a", total: 10_000, at: "2026-11-05T02:30:00Z" }), sale({ id: "b", total: 5_000, at: "2026-11-05T02:59:00Z" })], true);
+  const s = summaryFromRows([sale({ id: "a", total: 10_000, at: "2026-11-05T02:30:00Z" }), sale({ id: "b", total: 5_000, at: "2026-11-05T02:59:00Z" })], { from: "2026-11-05", to: "2026-11-05" });
   assert.equal(s.hourly, true);
   assert.deepEqual(s.perPeriod, [{ label: "09.00", count: 2, revenue: 15_000 }]);
 });
 
 test("rows: kosong → nol tanpa bagi nol", () => {
-  const s = summaryFromRows([], false);
+  const s = summaryFromRows([], { from: "2026-11-01", to: "2026-11-07" });
   assert.equal(s.transactions, 0);
   assert.equal(s.average, 0);
   assert.deepEqual(s.perCashier, []);
+  assert.equal(s.perHour, null);
+  assert.deepEqual(buildInsights(s), { conclusions: ["Belum ada penjualan pada periode ini."], suggestions: [] });
 });
 
-test("report: kasir urut penjualan, metode nol dibuang, ember jam berlabel HH.00", () => {
-  const s = summaryFromReport({
+const REPORT = () => ({
     from: "2026-11-05",
     to: "2026-11-05",
     days: 1,
@@ -109,7 +116,12 @@ test("report: kasir urut penjualan, metode nol dibuang, ember jam berlabel HH.00
     per_hour: null,
     per_weekday: null,
     peak_hour: null,
-  });
+    peak_weekday: null,
+    locked: [],
+});
+
+test("report: kasir urut penjualan, metode nol dibuang, ember jam berlabel HH.00", () => {
+  const s = summaryFromReport(REPORT());
   assert.deepEqual(s.perMethod.map((m) => m.method), ["qris", "cash"]);
   assert.deepEqual(s.perCashier.map((c) => c.name), ["B", "A"]);
   assert.deepEqual(s.perPeriod, [{ label: "09.00", count: 2, revenue: 100 }]);
@@ -118,4 +130,115 @@ test("report: kasir urut penjualan, metode nol dibuang, ember jam berlabel HH.00
 
 test("dayLabel: tanggal kalender tanpa geser zona", () => {
   assert.match(dayLabel("2026-11-05"), /5 Nov 2026/);
+});
+
+const RICH = () => ({
+  ...REPORT(),
+  // Senin 2026-10-19 .. Minggu 2026-10-25 (masa lalu: "hari ini" tidak ikut).
+  from: "2026-10-19",
+  to: "2026-10-25",
+  hourly: false,
+  buckets: [5, 1, 4, 4, 6, 10, 10].map((count, i) => ({ start: `2026-10-${19 + i}`, revenue: count * 25_000, count })),
+  revenue: 1_000_000,
+  transactions: 40,
+  average: 25_000,
+  discounts: 150_000,
+  net_items: 800_000,
+  gross_profit: 300_000,
+  items_sold: 100,
+  items_without_cost: 2,
+  previous: { from: "2026-10-26", to: "2026-11-01", revenue: 1_250_000, transactions: 50 },
+  growth_percent: -20,
+  credit: { outstanding: 75_000, count: 3 },
+  cancelled: { count: 4, amount: 100_000 },
+  per_method: [
+    { method: "cash", amount: 700_000 },
+    { method: "qris", amount: 300_000 },
+  ],
+  cashiers: [
+    { cashier_id: "1", name: "Rani", count: 25, revenue: 750_000, average: 30_000, cancelled: 3 },
+    { cashier_id: "2", name: "Budi", count: 20, revenue: 400_000, average: 20_000, cancelled: 1 },
+  ],
+  order_types: [
+    { order_type: "dine_in", count: 30, revenue: 700_000 },
+    { order_type: "takeaway", count: 10, revenue: 300_000 },
+  ],
+  products: [
+    { key: "a", name: "Kopi Susu", variant_name: null, is_custom: false, quantity: 50, revenue: 500_000 },
+    { key: "b", name: "Americano", variant_name: null, is_custom: false, quantity: 20, revenue: 200_000 },
+    { key: "c", name: "Croissant", variant_name: null, is_custom: false, quantity: 15, revenue: 150_000 },
+    { key: "d", name: "Teh", variant_name: "Dingin", is_custom: false, quantity: 8, revenue: 64_000 },
+    { key: "e", name: "Roti", variant_name: null, is_custom: false, quantity: 5, revenue: 50_000 },
+    { key: "f", name: "Matcha", variant_name: null, is_custom: false, quantity: 2, revenue: 36_000 },
+    { key: "custom:es batu", name: "Tambahan es batu", variant_name: null, is_custom: true, quantity: 1, revenue: 2_000 },
+  ],
+  products_total: 7,
+  // Sen..Min: akhir pekan ramai, Selasa sepi.
+  per_weekday: [5, 1, 4, 4, 6, 10, 10],
+  per_hour: [0, 0, 0, 0, 0, 0, 0, 2, 3, 4, 2, 1, 8, 9, 3, 0, 2, 3, 3, 0, 0, 0, 0, 0],
+  peak_hour: 13,
+  peak_weekday: 5,
+});
+
+test("insights: kesimpulan memuat produk, kasir, hari, jam, metode, laba, pembatalan, outlet, jenis pesanan", () => {
+  const s = withOutlets(summaryFromReport(RICH()), {
+    from: "2026-10-19",
+    to: "2026-10-25",
+    outlets: [
+      { outlet_id: "1", name: "Dago", status: "open", revenue: 900_000, transactions: 38, average: 23_684, gross_profit: null, cancelled_count: 4, credit_outstanding: 0, share_percent: 90 },
+      { outlet_id: "2", name: "Setiabudi", status: "open", revenue: 100_000, transactions: 2, average: 50_000, gross_profit: null, cancelled_count: 0, credit_outstanding: 0, share_percent: 10 },
+      { outlet_id: "3", name: "Bandara", status: "open", revenue: 0, transactions: 0, average: 0, gross_profit: null, cancelled_count: 0, credit_outstanding: 0, share_percent: 0 },
+    ],
+    total: { revenue: 1_000_000, transactions: 40, average: 25_000, gross_profit: null, cancelled_count: 4, credit_outstanding: 0 },
+  });
+  const { conclusions, suggestions } = buildInsights(s);
+  const all = conclusions.join("\n");
+  assert.match(all, /turun 20% dibanding periode sebelumnya \(Rp1\.250\.000\)/);
+  assert.match(all, /Produk paling laris: Kopi Susu, terjual 50 porsi senilai Rp500\.000 \(50% dari semua item terjual\)/);
+  assert.match(all, /Tiga produk teratas \(Kopi Susu, Americano, Croissant\) menyumbang 85%/);
+  assert.match(all, /Kasir dengan penjualan tertinggi: Rani, Rp750\.000/);
+  assert.match(all, /Hari teramai: Sabtu/);
+  assert.match(all, /Akhir pekan \d+% lebih ramai dari hari kerja/);
+  assert.match(all, /Jam tersibuk 13\.00–14\.00; rentang 12\.00–14\.00 menyumbang 43% transaksi/);
+  assert.match(all, /Tunai jadi metode bayar terbanyak \(70% nominal\)/);
+  assert.match(all, /Laba kotor Rp300\.000 \(margin 38% dari pendapatan bersih\)/);
+  assert.match(all, /4 transaksi dibatalkan atau dikembalikan senilai Rp100\.000 \(9,1% dari transaksi\)/);
+  assert.match(all, /Outlet dengan penjualan tertinggi: Dago/);
+  assert.match(all, /Makan di tempat paling banyak|paling banyak \(70% penjualan/);
+
+  const tips = suggestions.join("\n");
+  assert.match(tips, /Jaga stok Kopi Susu/);
+  assert.match(tips, /Matcha \(2\), Roti \(5\) paling jarang terjual/);
+  assert.doesNotMatch(tips, /es batu/, "item cepat tidak disebut jarang laku");
+  assert.match(tips, /Rata-rata transaksi Rani \(Rp30\.000\) 50% lebih tinggi dari Budi/);
+  assert.match(tips, /Selasa paling sepi/);
+  assert.match(tips, /Siapkan kasir, barista, dan bahan sebelum 11\.00/);
+  assert.match(tips, /Tunai masih 70% pembayaran/);
+  assert.match(tips, /2 baris penjualan belum punya harga modal/);
+  assert.match(tips, /Rasio pembatalan 9,1% cukup tinggi, terbanyak oleh Rani \(3\)/);
+  assert.match(tips, /Diskon mencapai 15% dari penjualan/);
+  assert.match(tips, /kasbon belum lunas Rp75\.000 dari 3 transaksi/);
+  assert.match(tips, /Penjualan turun 20%/);
+  assert.match(tips, /Bandara tidak mencatat transaksi/);
+});
+
+test("insights: paket terkunci (produk & pola waktu null) tetap memberi kesimpulan dasar tanpa galat", () => {
+  const s = summaryFromReport({ ...RICH(), products: null, products_total: null, per_hour: null, per_weekday: null, peak_hour: null, peak_weekday: null, locked: ["insights"] });
+  assert.equal(s.insightsLocked, true);
+  const { conclusions } = buildInsights(s);
+  assert.ok(conclusions.some((c) => c.startsWith("Penjualan periode ini")));
+  assert.ok(!conclusions.some((c) => c.includes("Produk paling laris")));
+  assert.ok(!conclusions.some((c) => c.includes("Jam tersibuk")));
+});
+
+test("insights: hari ini yang masih berjalan tidak ikut rata-rata hari", () => {
+  const today = zonedToday();
+  const [y, m, d] = today.split("-").map(Number);
+  const days = Array.from({ length: 8 }, (_, i) => new Date(Date.UTC(y, m - 1, d - 7 + i)).toISOString().slice(0, 10));
+  // 7 hari penuh ramai (20), hari ini baru 1 transaksi.
+  const buckets = days.map((day) => ({ start: day, revenue: 0, count: day === today ? 1 : 20 }));
+  const s = summaryFromReport({ ...RICH(), from: days[0], to: today, buckets });
+  const { conclusions, suggestions } = buildInsights(s);
+  assert.ok(conclusions.some((c) => c.includes("hari ini belum dihitung")));
+  assert.ok(!suggestions.some((t) => t.includes("paling sepi")), "hari ini tidak dianggap hari sepi");
 });

@@ -91,6 +91,7 @@ export function SalesView() {
             extraFilters={extraFilters}
             businessName={session.business.name}
             outletLabel={outlet?.name ?? (session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? "-"))}
+            compareOutlets={!outlet && session.outlets.length > 1}
             periodLabel={from === to ? dayLabel(from) : `${periodTitle(from, to, preset)} (${dayLabel(from)} - ${dayLabel(to)})`}
             filenameBase={`${slug(session.business.name)}-${slug(outlet?.name ?? "semua-outlet")}-transaksi-${from}_${to}`}
           />

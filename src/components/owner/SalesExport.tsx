@@ -6,7 +6,7 @@ import { Modal } from "@/components/admin/ConfirmDialog";
 import { btn, errorMessage, Notice, Spinner } from "@/components/admin/ui";
 import { ownerApi } from "@/lib/owner/api";
 import { csvDateTime, downloadCsv } from "@/lib/owner/csv";
-import { buildSalesPdf, summaryFromReport, summaryFromRows } from "@/lib/owner/salesPdf";
+import { buildSalesPdf, summaryFromReport, summaryFromRows, withOutlets } from "@/lib/owner/salesPdf";
 import { zoneLabel } from "@/lib/owner/tz";
 import type { SaleListItem, SalesQuery } from "@/lib/owner/types";
 import { refundedTotalOf } from "@/lib/owner/saleRefunds";
@@ -27,6 +27,7 @@ export function SalesExport({
   businessName,
   outletLabel,
   periodLabel,
+  compareOutlets,
   filenameBase,
 }: {
   total: number;
@@ -37,6 +38,8 @@ export function SalesExport({
   businessName: string;
   outletLabel: string;
   periodLabel: string;
+  /** "Semua outlet" dengan > 1 outlet → PDF memuat perbandingan outlet. */
+  compareOutlets: boolean;
   filenameBase: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -89,24 +92,31 @@ export function SalesExport({
         // Tanpa filter tambahan: cukup laporan server (= halaman Laporan), satu permintaan.
         // Dengan filter tambahan: ringkasan dihitung dari transaksi yang cocok, jadi ambil sampai CSV_LIMIT.
         const fromReport = extraFilters.length === 0;
-        let report = null;
+        const api = await ownerApi();
+        const range = { from: query.from ?? "", to: query.to ?? "" };
         let rows: SaleListItem[] = [];
+        let summary;
         if (fromReport) {
           setProgress({ done: 0, of: 0 });
-          report = await (await ownerApi()).salesReport({ from: query.from, to: query.to, outlet_id: query.outlet_id }, ctrl.signal);
+          const [report, outlets] = await Promise.all([
+            api.salesReport({ from: query.from, to: query.to, outlet_id: query.outlet_id }, ctrl.signal),
+            compareOutlets ? api.outletsReport({ from: query.from, to: query.to }, ctrl.signal) : null,
+          ]);
+          summary = summaryFromReport(report);
+          if (outlets) summary = withOutlets(summary, outlets);
         } else {
           rows = await fetchRows(CSV_LIMIT, ctrl.signal);
+          summary = summaryFromRows(rows, range);
         }
-        const hourly = query.from === query.to;
         const blob = await buildSalesPdf({
           businessName,
           outletLabel,
           periodLabel,
           filters: extraFilters,
-          summary: report ? summaryFromReport(report) : summaryFromRows(rows, hourly),
+          summary,
           summarizedCount: rows.length,
           total,
-          partialSummary: !report && total > rows.length,
+          partialSummary: !fromReport && total > rows.length,
           generatedAt: new Date(),
         });
         downloadBlob(blob, `${filenameBase}.pdf`);
@@ -129,8 +139,8 @@ export function SalesExport({
     {
       id: "pdf",
       icon: <FileText size={20} aria-hidden />,
-      title: "PDF — laporan siap dibaca",
-      body: "Ringkasan, per metode bayar, per kasir, dan per hari. Untuk daftar per transaksi, pilih CSV.",
+      title: "PDF — laporan & analisis",
+      body: "Kesimpulan & saran, produk terlaris, jam & hari ramai, kasir, outlet, metode bayar, dan rincian penjualan. Untuk daftar per transaksi, pilih CSV.",
     },
     {
       id: "csv",
