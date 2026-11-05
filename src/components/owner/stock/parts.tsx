@@ -50,9 +50,13 @@ export function OutletPrompt({ action }: { action: string }) {
   const qs = useQueryState();
   const id = useId();
   return (
-    <Notice tone="info" icon={<Store size={16} aria-hidden />}>
+    // Ikon di dalam baris (bukan prop `icon` Notice) agar sejajar tengah dengan teks & Select yang lebih tinggi.
+    <Notice tone="info">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span id={id}>Pilih outlet untuk {action}.</span>
+        <span className="flex items-center gap-3">
+          <Store size={16} aria-hidden className="shrink-0" />
+          <span id={id}>Pilih outlet untuk {action}.</span>
+        </span>
         <Select
           aria-labelledby={id}
           className="w-full sm:w-[240px]"
