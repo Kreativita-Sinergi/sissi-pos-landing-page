@@ -16,6 +16,7 @@ import type { OwnerOutlet, OwnerSession } from "@/lib/owner/types";
 import { setOwnerZone } from "@/lib/owner/tz";
 import { ApiError } from "@/lib/sissiApi";
 import { planLabel } from "./labels";
+import { activeSection, sectionHref, SUB_SECTIONS } from "./sections";
 
 // Kerangka dasbor pemilik: memeriksa sesi (GET /owner/auth/me) sebelum menampilkan halaman,
 // mengarahkan ke /masuk?next=… saat 401, navigasi samping (desktop) / tab atas (HP), pemilih outlet
@@ -103,6 +104,9 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
+  // Buka/tutup sub-menu sidebar. Pilihan pengguna berlaku selama halaman aktif sama; pindah halaman →
+  // kembali ke bawaan (hanya halaman aktif yang terbuka).
+  const [navOpen, setNavOpen] = useState<{ at: string | undefined; open: Record<string, boolean> }>({ at: undefined, open: {} });
 
   // Navigasi penuh (bukan router.replace): Next menyimpan pohon rute yang ditinggalkan beserta state-nya, sehingga
   // halaman login lama (tombol masih "Memeriksa…") atau shell sesi lama muncul kembali. Sama dengan StaffShell.
@@ -186,6 +190,9 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
   const match = NAV.map((n) => n.href)
     .filter((h) => (h === "/dasbor" ? pathname === "/dasbor" : pathname === h || pathname.startsWith(`${h}/`)))
     .sort((a, b) => b.length - a.length)[0];
+  const openMap = navOpen.at === match ? navOpen.open : {};
+  const isNavOpen = (href: string) => openMap[href] ?? href === match;
+  const toggleNav = (href: string) => setNavOpen({ at: match, open: { ...openMap, [href]: !isNavOpen(href) } });
   const plan = planLabel(session.subscription);
   const { business, user } = session;
 
@@ -218,20 +225,55 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
                   <div className="flex flex-col gap-0.5">
                     {g.items.map(({ href, label, icon: Icon }) => {
                       const active = href === match;
+                      const subs = SUB_SECTIONS[href];
+                      const itemClass = `relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
+                        active && !subs
+                          ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
+                          : active
+                            ? "font-semibold text-brand-ink hover:bg-bg-muted"
+                            : "text-text-body hover:bg-bg-muted hover:text-text-heading"
+                      } ${focusRing}`;
+                      if (!subs) {
+                        return (
+                          <Link key={href} href={withOutlet(href)} aria-current={active ? "page" : undefined} className={itemClass}>
+                            <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
+                            {label}
+                          </Link>
+                        );
+                      }
+                      // Induk ber-sub-menu = tombol buka/tutup; di HP/tablet bagian ini tampil sebagai Tabs di halaman.
+                      const open = isNavOpen(href);
+                      const current = active ? activeSection(subs, params.get("tab")) : undefined;
+                      const subId = `nav-sub-${href.split("/").pop()}`;
                       return (
-                        <Link
-                          key={href}
-                          href={withOutlet(href)}
-                          aria-current={active ? "page" : undefined}
-                          className={`relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
-                            active
-                              ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
-                              : "text-text-body hover:bg-bg-muted hover:text-text-heading"
-                          } ${focusRing}`}
-                        >
-                          <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
-                          {label}
-                        </Link>
+                        <React.Fragment key={href}>
+                          <button type="button" aria-expanded={open} aria-controls={subId} onClick={() => toggleNav(href)} className={`${itemClass} w-full text-left`}>
+                            <Icon size={18} aria-hidden strokeWidth={active ? 2.25 : 2} />
+                            <span className="flex-1">{label}</span>
+                            <ChevronDown size={16} aria-hidden className={`shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+                          </button>
+                          {open && (
+                            <div id={subId} className="mb-1 flex flex-col gap-0.5">
+                              {subs.map((s) => {
+                                const on = s.id === current;
+                                return (
+                                  <Link
+                                    key={s.id}
+                                    href={withOutlet(sectionHref(href, subs, s.id))}
+                                    aria-current={on ? "page" : undefined}
+                                    className={`relative flex min-h-9 items-center rounded-[10px] pr-3 pl-[42px] text-[13.5px] transition-colors ${
+                                      on
+                                        ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
+                                        : "font-medium text-text-body hover:bg-bg-muted hover:text-text-heading"
+                                    } ${focusRing}`}
+                                  >
+                                    {s.label}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </div>

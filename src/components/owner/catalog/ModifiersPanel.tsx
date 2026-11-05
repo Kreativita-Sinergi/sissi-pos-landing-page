@@ -40,16 +40,22 @@ export function ModifiersPanel({
   commit,
   refresh,
   recipes = null,
+  creating,
+  onCreateClose,
 }: {
   data: CatalogData;
   commit: (changes: Change[]) => Promise<CommitOutcome>;
   refresh: (keys: ("products" | "discounts")[]) => Promise<void>;
   recipes?: RecipeSupport;
+  /** Kunci editor grup baru dari tombol "Tambah modifier" di kepala halaman (null = tertutup). */
+  creating: number | null;
+  onCreateClose: () => void;
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState<{ id: string | null; key: number } | null>(null);
   const [deleting, setDeleting] = useState<ModifierGroup | null>(null);
   const [busy, setBusy] = useState(false);
+  const open = editing ?? (creating !== null ? { id: null, key: creating } : null);
   const groups = [...data.groups].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "id"));
   const usage = new Map<string, number>();
   for (const p of data.products) for (const g of p.modifier_group_ids ?? []) usage.set(g, (usage.get(g) ?? 0) + 1);
@@ -70,15 +76,17 @@ export function ModifiersPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13.5px] text-text-body">Pilihan tambahan saat memesan, mis. tingkat gula atau topping. Pasang ke produk lewat panel produk.</p>
-        <button type="button" className={btn.primary} onClick={() => setEditing({ id: null, key: Date.now() })}>
-          <Plus size={16} aria-hidden /> Tambah grup modifier
-        </button>
-      </div>
       {groups.length === 0 ? (
         <section className={cardClass}>
-          <EmptyState icon={<ListPlus size={22} aria-hidden />} title="Belum ada grup modifier">
+          <EmptyState
+            icon={<ListPlus size={22} aria-hidden />}
+            title="Belum ada grup modifier"
+            action={
+              <button type="button" className={btn.primary} onClick={() => setEditing({ id: null, key: Date.now() })}>
+                <Plus size={16} aria-hidden /> Tambah modifier
+              </button>
+            }
+          >
             Contoh: &quot;Tingkat gula&quot; dengan opsi Normal, Kurang, Tanpa gula.
           </EmptyState>
         </section>
@@ -113,7 +121,19 @@ export function ModifiersPanel({
         </div>
       )}
 
-      {editing && <GroupEditor key={editing.key} groupId={editing.id} data={data} commit={commit} recipes={recipes} onClose={() => setEditing(null)} />}
+      {open && (
+        <GroupEditor
+          key={open.key}
+          groupId={open.id}
+          data={data}
+          commit={commit}
+          recipes={recipes}
+          onClose={() => {
+            setEditing(null);
+            onCreateClose();
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleting}

@@ -19,6 +19,7 @@ import { ManualAttendanceDialog, type ManualTarget } from "./team/ManualAttendan
 import { PayrollDialog } from "./team/PayrollDialog";
 import { PayrollTab } from "./team/PayrollTab";
 import { PayslipSheet } from "./team/PayslipSheet";
+import { activeSection, sectionOf, TEAM_SECTIONS, useSectionTitle } from "./sections";
 import { ScheduleTab } from "./team/ScheduleTab";
 import type { TeamCtx } from "./team/shared";
 import { LockedCard, SyncNote } from "./ui";
@@ -31,15 +32,16 @@ import { LockedCard, SyncNote } from "./ui";
 // URL: ?tab=karyawan|kehadiran|jadwal|pengajuan|gaji, ?bulan=YYYY-MM, ?lihat=riwayat, ?karyawan=<id> (filter riwayat),
 // ?saring=semua (pengajuan; bawaan Menunggu). Rute push `leave_request` = /tim?tab=pengajuan.
 
-type TabId = "karyawan" | "kehadiran" | "jadwal" | "pengajuan" | "gaji";
-const TABS: TabId[] = ["karyawan", "kehadiran", "jadwal", "pengajuan", "gaji"];
+type TabId = (typeof TEAM_SECTIONS)[number]["id"];
 
 export function TeamView() {
   const { session, outletId } = useOwner();
   const toast = useToast();
   const qs = useQueryState();
   const staff = hasFeature(session.subscription, "staff");
-  const tab = (TABS.includes(qs.get("tab") as TabId) ? qs.get("tab") : "karyawan") as TabId;
+  const tab = activeSection(TEAM_SECTIONS, qs.get("tab")) as TabId;
+  const section = sectionOf(TEAM_SECTIONS, tab);
+  useSectionTitle("Tim", TEAM_SECTIONS, tab);
   const thisMonth = zonedToday().slice(0, 7);
   const month = recentMonths().includes(qs.get("bulan")) ? qs.get("bulan") : thisMonth;
   const view = qs.get("lihat") === "riwayat" ? "history" : "today";
@@ -77,8 +79,8 @@ export function TeamView() {
   return (
     <>
       <PageHeader
-        title="Tim"
-        description="Kelola karyawan, PIN kasir, kehadiran, jadwal shift, pengajuan izin, dan gaji. Perubahan diterima perangkat kasir saat sinkron berikutnya."
+        title={section.label}
+        description={section.description}
         actions={
           tab === "karyawan" && data ? (
             <button type="button" className={btn.primary} onClick={() => setEmployee({ id: null, key: Date.now() })}>
@@ -92,13 +94,12 @@ export function TeamView() {
         label="Bagian tim"
         active={tab}
         onChange={(t) => qs.update({ tab: t === "karyawan" ? null : t, karyawan: null, saring: null })}
-        tabs={[
-          { id: "karyawan", label: "Karyawan", count: data?.employees.length },
-          { id: "kehadiran", label: "Kehadiran" },
-          { id: "jadwal", label: "Jadwal" },
-          { id: "pengajuan", label: "Pengajuan", count: staff && pendingLeaves > 0 ? pendingLeaves : undefined },
-          { id: "gaji", label: "Gaji" },
-        ]}
+        hideOnDesktop
+        tabs={TEAM_SECTIONS.map((s) => ({
+          id: s.id,
+          label: s.label,
+          count: s.id === "karyawan" ? data?.employees.length : s.id === "pengajuan" && staff && pendingLeaves > 0 ? pendingLeaves : undefined,
+        }))}
       />
 
       {state.status === "error" && (

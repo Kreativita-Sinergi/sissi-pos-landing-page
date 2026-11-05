@@ -29,6 +29,7 @@ import type { StockRow } from "@/lib/owner/types";
 import { useOwner } from "../OwnerShell";
 import { SyncNote } from "../ui";
 import { StockOpsPanel, type OpsTab } from "../stock/StockOpsPanel";
+import { activeSection, sectionOf, STOCK_SECTIONS, useSectionTitle } from "../sections";
 
 // Stok (Gratis & Pro). Tab di URL (`?tab=`): Stok saat ini (GET /owner/stock?outlet_id= — produk ber-"Lacak stok" per
 // varian dan bahan baku; qty & min_stock mili-satuan → /1000, maks. 3 desimal; filter q, kind, low=1, page) · Opname ·
@@ -50,27 +51,20 @@ const LEVEL_RANK: Record<Level, number> = { out: 0, low: 1, ok: 2 };
 
 type Tab = "stock" | OpsTab;
 
-const TABS: { id: Tab; label: string; hint: string }[] = [
-  { id: "stock", label: "Stok saat ini", hint: "Stok saat ini" },
-  { id: "opname", label: "Opname", hint: "Cocokkan stok fisik & sistem" },
-  { id: "po", label: "Pembelian", hint: "Pesanan pembelian (PO) ke supplier" },
-  { id: "transfer", label: "Transfer", hint: "Pindahkan stok antar outlet" },
-  { id: "supplier", label: "Supplier", hint: "Kontak pemasok untuk PO" },
-];
-
 export function StockView() {
   const { outlet, session } = useOwner();
   const qs = useQueryState();
-  const raw = qs.get("tab");
-  const tab: Tab = TABS.some((t) => t.id === raw) ? (raw as Tab) : "stock";
+  const tab = activeSection(STOCK_SECTIONS, qs.get("tab")) as Tab;
   const scope = outlet ? outlet.name : session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? session.business.name);
-  const hint = TABS.find((t) => t.id === tab)!.hint;
+  const section = sectionOf(STOCK_SECTIONS, tab);
+  useSectionTitle("Stok", STOCK_SECTIONS, tab);
   return (
     <>
-      <PageHeader title="Stok" description={<>{hint} · {tab === "supplier" ? session.business.name : scope}</>} />
+      <PageHeader title={section.label} description={<>{section.description} · {tab === "supplier" ? session.business.name : scope}</>} />
       <Tabs<Tab>
         label="Menu stok"
-        tabs={TABS.map(({ id, label }) => ({ id, label }))}
+        hideOnDesktop
+        tabs={STOCK_SECTIONS.map(({ id, label }) => ({ id, label }))}
         active={tab}
         onChange={(t) => qs.update({ tab: t === "stock" ? null : t, doc: null, q: null, po: null, kind: null, low: null })}
       />

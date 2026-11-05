@@ -532,6 +532,45 @@ test("produk: unggah foto (PNG kecil) tersimpan", async () => {
   }
 });
 
+test("produk: sub-menu sidebar, judul tab browser, & tambah kategori lewat dialog", async () => {
+  const name = `${PREFIX}Kategori ${RUN}`;
+  const subActive = () => page.evaluate(() => document.querySelector('aside a[aria-current="page"]')?.innerText.trim() ?? null);
+  try {
+    await go("/dasbor/produk");
+    // Desktop (1366 px): bagian tampil sebagai sub-menu sidebar; Tabs di halaman disembunyikan.
+    eq(await subActive(), "Produk", "sub-menu aktif bawaan");
+    assert(await page.$eval('main [role="tablist"]', (el) => el.offsetParent === null), "Tabs halaman masih tampil di desktop");
+
+    await click("Kategori", { within: "aside", selector: "a" });
+    await page.waitForFunction(() => new URL(location.href).searchParams.get("tab") === "kategori");
+    await page.waitForFunction(() => document.querySelector("main h1")?.innerText.trim() === "Kategori");
+    eq(await subActive(), "Kategori", "sub-menu aktif setelah diklik");
+    await poll(async () => (await page.title()) === "Kategori · Produk · Dasbor Sissi", `judul tab browser tidak mengikuti sub-menu (${await page.title()})`);
+
+    // Induk = tombol buka/tutup.
+    await click("Produk", { within: "aside", selector: "button" });
+    await page.waitForFunction(() => !document.querySelector('aside a[aria-current="page"]'));
+    await click("Produk", { within: "aside", selector: "button" });
+    await page.waitForFunction(() => !!document.querySelector('aside a[aria-current="page"]'));
+
+    await click("Tambah kategori", { within: "main" });
+    await waitDialog("Tambah kategori");
+    await fill("Nama kategori", name, { within: "dialog" });
+    await click("Tambah kategori", { within: "dialog", selector: "button[type=submit]" });
+    await waitDialogClosed("Tambah kategori");
+    await waitText(name, { root: "main" });
+    await poll(async () => (await api.live("categories")).some((c) => c.name === name), "kategori baru tidak tersimpan");
+
+    // Judul sub-bagian tidak tertahan setelah pindah halaman.
+    await click("Pelanggan", { within: "aside", selector: "a" });
+    await page.waitForFunction(() => location.pathname === "/dasbor/pelanggan");
+    await poll(async () => (await page.title()) === "Pelanggan · Dasbor Sissi", `judul tab tertahan setelah pindah halaman (${await page.title()})`);
+  } finally {
+    const left = (await api.live("categories")).filter((c) => c.name === name);
+    await api.remove("categories", left.map((c) => c.id));
+  }
+});
+
 test("pelanggan: tambah → ubah → hapus", async () => {
   const name = `${PREFIX}Pelanggan ${RUN}`;
   const byName = async () => (await api.pull("customers")).find((c) => c.name === name) ?? null;
@@ -741,7 +780,7 @@ test("keluar: konfirmasi Keluar kembali ke halaman masuk", async () => {
 // ——— Main ———
 
 async function cleanupLeftovers() {
-  for (const entity of ["products", "customers"]) {
+  for (const entity of ["products", "customers", "categories"]) {
     const rows = (await api.live(entity)).filter((r) => typeof r.name === "string" && r.name.startsWith(PREFIX));
     if (rows.length) {
       console.log(`  (membersihkan ${rows.length} ${entity} sisa run sebelumnya)`);
