@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Boxes, Info } from "lucide-react";
+import { Boxes, Download, Info } from "lucide-react";
 import { ClearFiltersButton, FilterBar, FilterSelect } from "@/components/admin/FilterMenu";
 import { SearchBox, useQueryState } from "@/components/admin/filters";
 import {
@@ -58,9 +58,10 @@ export function StockView() {
   const scope = outlet ? outlet.name : session.outlets.length > 1 ? "Semua outlet" : (session.outlets[0]?.name ?? session.business.name);
   const section = sectionOf(STOCK_SECTIONS, tab);
   useSectionTitle("Stok", STOCK_SECTIONS, tab);
-  return (
+  // Kepala + Tabs; aksi kepala (mis. Ekspor CSV) diisi bagian yang memegang datanya.
+  const header = (actions?: React.ReactNode) => (
     <>
-      <PageHeader title={section.label} description={<>{section.description} · {tab === "supplier" ? session.business.name : scope}</>} />
+      <PageHeader title={section.label} description={<>{section.description} · {tab === "supplier" ? session.business.name : scope}</>} actions={actions} />
       <Tabs<Tab>
         label="Menu stok"
         hideOnDesktop
@@ -68,12 +69,19 @@ export function StockView() {
         active={tab}
         onChange={(t) => qs.update({ tab: t === "stock" ? null : t, doc: null, q: null, po: null, kind: null, low: null })}
       />
-      {tab === "stock" ? <CurrentStockTab /> : <StockOpsPanel tab={tab} />}
+    </>
+  );
+  return tab === "stock" ? (
+    <CurrentStockTab header={header} />
+  ) : (
+    <>
+      {header()}
+      <StockOpsPanel tab={tab} />
     </>
   );
 }
 
-function CurrentStockTab() {
+function CurrentStockTab({ header }: { header: (actions?: React.ReactNode) => React.ReactNode }) {
   const { outletId, outlet, session } = useOwner();
   const qs = useQueryState();
   const q = qs.get("q").slice(0, 80);
@@ -130,7 +138,11 @@ function CurrentStockTab() {
 
   return (
     <>
-
+      {header(
+        <button type="button" className={btn.secondary} onClick={exportCsv} disabled={!filtered.length} title="Ekspor daftar stok sesuai filter">
+          <Download size={16} aria-hidden /> Ekspor CSV
+        </button>
+      )}
       {state.status === "error" && (
         <div className="mb-4">
           <ErrorBlock error={state.error} onRetry={reload} />
@@ -187,9 +199,6 @@ function CurrentStockTab() {
               onChange={(n) => qs.update({ kind: n[0] ?? null })}
             />
             {filteredActive && <ClearFiltersButton onClick={() => qs.clear(["outlet"])} />}
-            <button type="button" className={`${btn.secondary} sm:ml-auto`} onClick={exportCsv} disabled={!filtered.length}>
-              Ekspor CSV
-            </button>
           </FilterBar>
 
           <LoadingBar active={state.status === "loading"} />
@@ -268,8 +277,8 @@ function CurrentStockTab() {
           )}
           <div className="mt-4 space-y-3">
             <Notice tone="info" icon={<Info size={16} aria-hidden />}>
-              Stok dihitung dari semua pergerakan stok yang sudah sinkron{outlet ? " di outlet ini" : " di semua outlet"}. Catat opname, pembelian (PO), dan transfer
-              lewat tab di atas; penyesuaian stok satu barang ada di form produk.
+              Stok dihitung dari semua pergerakan stok yang sudah sinkron{outlet ? " di outlet ini" : " di semua outlet"}. Opname, pembelian (PO), dan transfer
+              dicatat di menunya masing-masing; penyesuaian stok satu barang ada di form produk.
             </Notice>
             <SyncNote />
           </div>
