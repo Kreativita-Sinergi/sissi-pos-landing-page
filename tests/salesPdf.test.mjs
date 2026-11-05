@@ -5,7 +5,7 @@ import "./support/tsResolve.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-const { summaryFromRows, summaryFromReport, withOutlets, dayLabel } = await import("../src/lib/owner/salesPdf.ts");
+const { summaryFromRows, summaryFromReport, withOutlets, withPrevious, groupProducts, dayLabel } = await import("../src/lib/owner/salesPdf.ts");
 const { buildInsights } = await import("../src/lib/owner/salesInsights.ts");
 const { zonedToday } = await import("../src/lib/owner/tz.ts");
 const { setOwnerZone } = await import("../src/lib/owner/tz.ts");
@@ -53,8 +53,8 @@ test("rows: penjualan = lunas + kasbon sesudah refund sebagian; batal terpisah; 
     { method: "credit", amount: 20_000 },
   ]);
   assert.deepEqual(s.perCashier, [
-    { name: "Rani", count: 2, revenue: 70_000, average: 35_000, cancelled: 1 },
-    { name: "Budi", count: 1, revenue: 20_000, average: 20_000, cancelled: 1 },
+    { id: "c1", name: "Rani", count: 2, revenue: 70_000, average: 35_000, cancelled: 1 },
+    { id: "c2", name: "Budi", count: 1, revenue: 20_000, average: 20_000, cancelled: 1 },
   ]);
   assert.deepEqual(s.perPeriod, [{ label: dayLabel("2026-11-05"), count: 3, revenue: 90_000 }]);
   // 2026-11-05 = Kamis (indeks 3); 03:00Z = 10.00 WIB.
@@ -75,7 +75,7 @@ test("rows: kosong → nol tanpa bagi nol", () => {
   assert.equal(s.average, 0);
   assert.deepEqual(s.perCashier, []);
   assert.equal(s.perHour, null);
-  assert.deepEqual(buildInsights(s), { conclusions: ["Belum ada penjualan pada periode ini."], suggestions: [] });
+  assert.deepEqual(buildInsights(s), { conclusions: [{ theme: "Penjualan", text: "Belum ada penjualan pada periode ini." }], suggestions: [] });
 });
 
 const REPORT = () => ({
@@ -192,7 +192,8 @@ test("insights: kesimpulan memuat produk, kasir, hari, jam, metode, laba, pembat
     total: { revenue: 1_000_000, transactions: 40, average: 25_000, gross_profit: null, cancelled_count: 4, credit_outstanding: 0 },
   });
   const { conclusions, suggestions } = buildInsights(s);
-  const all = conclusions.join("\n");
+  const all = conclusions.map((c) => c.text).join("\n");
+  assert.ok(conclusions.every((c) => typeof c.theme === "string"), "setiap kesimpulan bertema");
   assert.match(all, /turun 20% dibanding periode sebelumnya \(Rp1\.250\.000\)/);
   assert.match(all, /Produk paling laris: Kopi Susu, terjual 50 porsi senilai Rp500\.000 \(50% dari semua item terjual\)/);
   assert.match(all, /Tiga produk teratas \(Kopi Susu, Americano, Croissant\) menyumbang 85%/);
@@ -226,9 +227,10 @@ test("insights: paket terkunci (produk & pola waktu null) tetap memberi kesimpul
   const s = summaryFromReport({ ...RICH(), products: null, products_total: null, per_hour: null, per_weekday: null, peak_hour: null, peak_weekday: null, locked: ["insights"] });
   assert.equal(s.insightsLocked, true);
   const { conclusions } = buildInsights(s);
-  assert.ok(conclusions.some((c) => c.startsWith("Penjualan periode ini")));
-  assert.ok(!conclusions.some((c) => c.includes("Produk paling laris")));
-  assert.ok(!conclusions.some((c) => c.includes("Jam tersibuk")));
+  const texts = conclusions.map((c) => c.text);
+  assert.ok(texts.some((c) => c.startsWith("Penjualan periode ini")));
+  assert.ok(!texts.some((c) => c.includes("Produk paling laris")));
+  assert.ok(!texts.some((c) => c.includes("Jam tersibuk")));
 });
 
 test("insights: hari ini yang masih berjalan tidak ikut rata-rata hari", () => {
@@ -239,6 +241,50 @@ test("insights: hari ini yang masih berjalan tidak ikut rata-rata hari", () => {
   const buckets = days.map((day) => ({ start: day, revenue: 0, count: day === today ? 1 : 20 }));
   const s = summaryFromReport({ ...RICH(), from: days[0], to: today, buckets });
   const { conclusions, suggestions } = buildInsights(s);
-  assert.ok(conclusions.some((c) => c.includes("hari ini belum dihitung")));
+  assert.ok(conclusions.some((c) => c.text.includes("hari ini belum dihitung")));
   assert.ok(!suggestions.some((t) => t.includes("paling sepi")), "hari ini tidak dianggap hari sepi");
+});
+
+test("produk digabung per nama: varian/ukuran dijumlah", () => {
+  const g = groupProducts([
+    { key: "k/reg", name: "Kopi Susu", variant_name: "Reguler", is_custom: false, quantity: 300, revenue: 7_000_000 },
+    { key: "k/lg", name: "Kopi Susu", variant_name: "Large", is_custom: false, quantity: 116, revenue: 3_400_000 },
+    { key: "c", name: "Cappuccino", variant_name: null, is_custom: false, quantity: 110, revenue: 3_100_000 },
+  ]);
+  assert.deepEqual(g[0], { name: "Kopi Susu", quantity: 416, revenue: 10_400_000, variants: 2, isCustom: false });
+  const s = summaryFromReport({ ...RICH(), items_sold: 526, products: [
+    { key: "k/reg", name: "Kopi Susu", variant_name: "Reguler", is_custom: false, quantity: 300, revenue: 7_000_000 },
+    { key: "k/lg", name: "Kopi Susu", variant_name: "Large", is_custom: false, quantity: 116, revenue: 3_400_000 },
+    { key: "c", name: "Cappuccino", variant_name: null, is_custom: false, quantity: 110, revenue: 3_100_000 },
+  ], products_total: 3 });
+  const texts = buildInsights(s).conclusions.map((c) => c.text).join("\n");
+  assert.match(texts, /Produk paling laris: Kopi Susu \(semua varian\), terjual 416 porsi senilai Rp10\.400\.000 \(79% dari semua item terjual\)/);
+});
+
+test("tren periode lalu: produk naik/turun, kasir, rata-rata per transaksi", () => {
+  const now = summaryFromReport({ ...RICH(), revenue: 1_100_000, transactions: 40, average: 27_500, previous: { from: "2026-10-12", to: "2026-10-18", revenue: 1_000_000, transactions: 50 }, growth_percent: 10 });
+  const prev = { ...RICH(), products: [
+    { key: "a", name: "Kopi Susu", variant_name: null, is_custom: false, quantity: 30, revenue: 300_000 },
+    { key: "b", name: "Americano", variant_name: null, is_custom: false, quantity: 40, revenue: 400_000 },
+    { key: "c", name: "Croissant", variant_name: null, is_custom: false, quantity: 14, revenue: 140_000 },
+    { key: "f", name: "Matcha", variant_name: null, is_custom: false, quantity: 3, revenue: 54_000 },
+  ], products_total: 4, cashiers: [
+    { cashier_id: "1", name: "Rani", count: 20, revenue: 500_000, average: 25_000, cancelled: 0 },
+    { cashier_id: "2", name: "Budi", count: 20, revenue: 380_000, average: 19_000, cancelled: 0 },
+  ] };
+  const s = withPrevious(now, prev);
+  assert.equal(s.previous.productsComplete, true);
+  const { conclusions, suggestions } = buildInsights(s);
+  const all = conclusions.map((c) => c.text).join("\n");
+  // Kopi Susu 30 → 50 (+67%); Americano 40 → 20 (-50%); Matcha basis 3 < 10 → diabaikan.
+  assert.match(all, /Naik paling tinggi: Kopi Susu, 50 porsi \(\+67% dari 30 di periode lalu\)/);
+  assert.match(all, /Turun paling dalam: Americano, 20 porsi \(-50% dari 40 di periode lalu\)/);
+  assert.doesNotMatch(all, /Matcha.*periode lalu/);
+  assert.match(suggestions.join("\n"), /Penjualan Americano turun 50% dari periode lalu/);
+  // Rani 500.000 → 750.000 (+50%); Budi 380.000 → 400.000 (+5%, di bawah ambang).
+  assert.match(all, /Dibanding periode lalu: penjualan Rani naik 50%\./);
+  // Rata-rata 20.000 → 27.500 (+38%).
+  assert.match(all, /Rata-rata belanja per transaksi naik 38% \(Rp20\.000 menjadi Rp27\.500\)/);
+  const themes = new Set(conclusions.map((c) => c.theme));
+  for (const t of ["Penjualan", "Produk", "Waktu ramai", "Tim & outlet", "Pembayaran & lainnya"]) assert.ok(themes.has(t), `tema ${t}`);
 });

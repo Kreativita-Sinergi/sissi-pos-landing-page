@@ -13,8 +13,8 @@
 //   tidak ada di daftar transaksi sehingga tidak ditampilkan.
 import type { OutletsReport, ProductSales, SaleListItem, SalesReport } from "./types";
 import { netTotalOf } from "./saleRefunds";
-import { formatDateTime, zonedDay, zonedHour, zoneLabel } from "./tz";
-import { buildInsights } from "./salesInsights";
+import { formatDateTime, zonedDay, zonedHour, zoneLabel, zonedToday } from "./tz";
+import { buildInsights, THEMES } from "./salesInsights";
 import { labelOf, METHODS, orderTypeLabel, WEEKDAYS_SHORT } from "@/components/owner/labels";
 
 const COUNTED = new Set(["paid", "unpaid", "partial"]);
@@ -45,7 +45,18 @@ export type SalesSummary = {
   /** Produk terlaris & jam/hari ramai terkunci paket. */
   insightsLocked: boolean;
   perMethod: { method: string; amount: number }[];
-  perCashier: { name: string; count: number; revenue: number; average: number; cancelled: number }[];
+  perCashier: { id: string; name: string; count: number; revenue: number; average: number; cancelled: number }[];
+  /** Rata-rata per transaksi periode sebelumnya (null bila tidak ada transaksi / filter tambahan). */
+  prevAverage: number | null;
+  /** Pembanding per produk & per kasir dari laporan periode sebelumnya (withPrevious); null bila tidak diambil. */
+  previous: {
+    /** Per varian (`key`) dan per nama produk (semua varian). */
+    productsByKey: Map<string, number>;
+    productsByName: Map<string, number>;
+    /** Daftar produk periode lalu lengkap (≤ 100) → produk yang tidak ada berarti 0. */
+    productsComplete: boolean;
+    cashiers: Map<string, number>;
+  } | null;
   perPeriod: { label: string; count: number; revenue: number }[];
   /** Jumlah transaksi per tanggal (kosong bila periode satu hari) — dasar rata-rata per hari di kesimpulan. */
   days: { day: string; count: number }[];
@@ -55,6 +66,42 @@ export type SalesSummary = {
   outlets: { name: string; revenue: number; transactions: number; average: number; share: number; cancelled: number }[];
   hourly: boolean;
 };
+
+/** Tambahkan pembanding per produk (jumlah terjual) & per kasir (penjualan) dari laporan periode sebelumnya. */
+export function withPrevious(s: SalesSummary, prev: SalesReport): SalesSummary {
+  const byKey = new Map<string, number>();
+  const byName = new Map<string, number>();
+  for (const p of prev.products ?? []) {
+    byKey.set(p.key, (byKey.get(p.key) ?? 0) + p.quantity);
+    byName.set(p.name, (byName.get(p.name) ?? 0) + p.quantity);
+  }
+  return {
+    ...s,
+    previous: {
+      productsByKey: byKey,
+      productsByName: byName,
+      productsComplete: prev.products !== null && prev.products_total !== null && prev.products_total <= prev.products.length,
+      cashiers: new Map(prev.cashiers.map((c) => [c.cashier_id, c.revenue])),
+    },
+  };
+}
+
+/** Produk digabung per nama (semua varian/ukuran), urut jumlah terjual turun. */
+export function groupProducts(products: ProductSales[]): { name: string; quantity: number; revenue: number; variants: number; isCustom: boolean }[] {
+  const map = new Map<string, { name: string; quantity: number; revenue: number; variants: number; isCustom: boolean }>();
+  for (const p of products) {
+    const g = map.get(p.name) ?? { name: p.name, quantity: 0, revenue: 0, variants: 0, isCustom: p.is_custom };
+    g.quantity += p.quantity;
+    g.revenue += p.revenue;
+    g.variants++;
+    map.set(p.name, g);
+  }
+  return [...map.values()].sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue);
+}
+
+/** Perubahan persen (bulat) atau null bila pembanding 0. */
+export const changePct = (now: number, before: number | undefined | null): number | null =>
+  before ? Math.round(((now - before) / before) * 100) : null;
 
 /** Tambahkan perbandingan outlet dari GET /owner/reports/outlets (outlet tanpa transaksi tetap ditampilkan). */
 export function withOutlets(s: SalesSummary, r: OutletsReport): SalesSummary {
@@ -117,7 +164,9 @@ export function summaryFromReport(r: SalesReport): SalesSummary {
     peakHour: r.peak_hour,
     insightsLocked: r.locked.includes("insights"),
     perMethod: r.per_method.filter((m) => m.amount !== 0).sort((a, b) => b.amount - a.amount),
-    perCashier: [...r.cashiers].sort((a, b) => b.revenue - a.revenue),
+    perCashier: [...r.cashiers].sort((a, b) => b.revenue - a.revenue).map((c) => ({ id: c.cashier_id, name: c.name, count: c.count, revenue: c.revenue, average: c.average, cancelled: c.cancelled })),
+    prevAverage: r.previous.transactions > 0 ? Math.round(r.previous.revenue / r.previous.transactions) : null,
+    previous: null,
     perPeriod: r.buckets.map((b) => ({ label: r.hourly ? `${b.start.slice(11, 13)}.00` : dayLabel(b.start.slice(0, 10)), count: b.count, revenue: b.revenue })),
     days: r.hourly ? [] : r.buckets.map((b) => ({ day: b.start.slice(0, 10), count: b.count })),
     orderTypes: r.order_types.filter((o) => o.count > 0).map((o) => ({ orderType: o.order_type, count: o.count, revenue: o.revenue })).sort((a, b) => b.revenue - a.revenue),
@@ -133,12 +182,12 @@ export function summaryFromRows(rows: SaleListItem[], range: { from: string; to:
   let revenue = 0;
   const cancelled = { count: 0, amount: 0 };
   const methods = new Map<string, number>();
-  const cashiers = new Map<string, { name: string; count: number; revenue: number; cancelled: number }>();
+  const cashiers = new Map<string, { id: string; name: string; count: number; revenue: number; cancelled: number }>();
   const periods = new Map<string, { count: number; revenue: number }>();
   const perHour = Array<number>(24).fill(0);
   const perWeekday = Array<number>(7).fill(0);
   for (const s of rows) {
-    const c = cashiers.get(s.cashier_id) ?? { name: s.cashier_name, count: 0, revenue: 0, cancelled: 0 };
+    const c = cashiers.get(s.cashier_id) ?? { id: s.cashier_id, name: s.cashier_name, count: 0, revenue: 0, cancelled: 0 };
     cashiers.set(s.cashier_id, c);
     if (CANCELLED.has(s.status)) {
       cancelled.count++;
@@ -189,6 +238,8 @@ export function summaryFromRows(rows: SaleListItem[], range: { from: string; to:
       .filter((c) => c.count || c.cancelled)
       .map((c) => ({ ...c, average: c.count ? Math.round(c.revenue / c.count) : 0 }))
       .sort((a, b) => b.revenue - a.revenue),
+    prevAverage: null,
+    previous: null,
     perPeriod: [...periods]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => ({ label: hourly ? k : dayLabel(k), ...v })),
@@ -208,6 +259,8 @@ export type SalesPdfInput = {
   summary: SalesSummary;
   /** Total transaksi yang cocok dengan filter (meta.total). */
   total: number;
+  /** Logo usaha (data URL PNG/JPEG) untuk kepala laporan; null = tanpa logo. */
+  logo?: { dataUrl: string; width: number; height: number } | null;
   /** Jumlah transaksi yang dipakai menghitung ringkasan "rows" (untuk catatan ringkasan sebagian). */
   summarizedCount: number;
   /** Ringkasan "rows" hanya dari sebagian transaksi (melebihi batas ambil). */
@@ -303,6 +356,42 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
     }
     y = cy + 4;
   };
+  /** Kotak kesimpulan per tema: judul kotak, lalu sub-judul tema + butir kalimat. */
+  const themedBox = (title: string, groups: { theme: string; items: string[] }[], fill: RGB, accent: RGB) => {
+    const used = groups.filter((g) => g.items.length);
+    if (!used.length) return;
+    doc.setFont("helvetica", "normal").setFontSize(9.5);
+    const blocks = used.map((g) => ({ theme: g.theme, lines: g.items.map((t) => doc.splitTextToSize(t, CW - 12) as string[]) }));
+    const bodyH = blocks.reduce((a, b) => a + 6 + b.lines.reduce((x, l) => x + l.length * 4.4 + 1.6, 0), 0);
+    ensure(Math.min(bodyH + 12, 90));
+    if (y + bodyH + 12 <= H - 16) doc.setFillColor(...fill).roundedRect(M, y, CW, bodyH + 12, 2.5, 2.5, "F");
+    doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(...accent).text(title, M + 5, y + 7);
+    let cy = y + 13;
+    for (const b of blocks) {
+      if (cy + 10 > H - 16) {
+        doc.addPage();
+        cy = M + 4;
+      }
+      doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(...MUTED).text(b.theme.toUpperCase(), M + 5, cy);
+      cy += 4.8;
+      doc.setFont("helvetica", "normal").setFontSize(9.5).setTextColor(...INK);
+      for (const lines of b.lines) {
+        if (cy + lines.length * 4.4 > H - 16) {
+          doc.addPage();
+          cy = M + 4;
+        }
+        doc.setFillColor(...accent).circle(M + 6.2, cy - 1.2, 0.8, "F");
+        doc.text(lines, M + 9, cy);
+        cy += lines.length * 4.4 + 1.6;
+      }
+      cy += 1.2;
+    }
+    y = cy + 3;
+  };
+  const vsPrev = (now: number, before: number | undefined | null) => {
+    const c = changePct(now, before);
+    return c === null ? (before === 0 ? "baru" : "-") : `${c > 0 ? "+" : ""}${c}%`;
+  };
   /** Grafik batang horizontal: label kiri, batang, nilai kanan; batang tertinggi diberi warna utama. */
   const bars = (items: { label: string; value: number; text: string }[]) => {
     const max = Math.max(...items.map((i) => i.value), 1);
@@ -326,8 +415,20 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
   // ——— Kepala ———
   doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(...INK).text("Laporan Penjualan", M, y + 4);
   doc.setFont("helvetica", "normal").setFontSize(11).setTextColor(...MUTED).text(input.businessName, M, y + 10.5);
+  if (input.logo) {
+    // Muat dalam kotak 32 × 14 mm di kanan atas, rasio dijaga.
+    const k = Math.min(32 / input.logo.width, 14 / input.logo.height);
+    const lw = input.logo.width * k;
+    const lh = input.logo.height * k;
+    try {
+      doc.addImage(input.logo.dataUrl, W - M - lw, y + 12 - lh, lw, lh);
+    } catch {
+      // Gambar tidak dikenali jsPDF → laporan tetap dibuat tanpa logo.
+    }
+  }
   doc.setDrawColor(...BRAND).setLineWidth(0.8).line(M, y + 14, W - M, y + 14);
   y += 19;
+  const ongoing = s.to === zonedToday();
   autoTable(doc, {
     startY: y,
     margin: { left: M, right: M },
@@ -336,9 +437,10 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
     columnStyles: { 0: { cellWidth: 22, textColor: MUTED } },
     body: [
       ["Outlet", input.outletLabel],
-      ["Periode", input.periodLabel],
+      ["Periode", ongoing ? `${input.periodLabel} · hari ini masih berjalan` : input.periodLabel],
       ["Filter", input.filters.length ? input.filters.join(" · ") : "Tanpa filter tambahan"],
       ["Dibuat", `${formatDateTime(input.generatedAt.toISOString())} ${zoneLabel()}`],
+      ["Catatan", "Hanya transaksi dari perangkat kasir yang sudah sinkron; transaksi yang dibuat saat offline masuk setelah perangkat tersambung internet."],
     ],
   });
   y = lastY() + 5;
@@ -348,7 +450,7 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
     s.growthPercent === null ? "" : s.growthPercent === 0 ? "sama dgn periode lalu" : `${s.growthPercent > 0 ? "+" : "-"}${Math.abs(s.growthPercent)}% vs periode lalu`;
   const kpis: [string, string, string][] = [
     ["Penjualan", rp(s.revenue), growth],
-    ["Transaksi", num(s.transactions), `rata-rata ${rp(s.average)}`],
+    ["Transaksi", num(s.transactions), `rata-rata ${rp(s.average)}${s.prevAverage ? ` (${vsPrev(s.average, s.prevAverage)})` : ""}`],
     s.grossProfit !== null ? ["Laba kotor", rp(s.grossProfit), s.money?.netItems ? `margin ${Math.round((s.grossProfit / s.money.netItems) * 100)}%` : ""] : ["Item terjual", s.itemsSold !== null ? num(s.itemsSold) : "-", ""],
     ["Dibatalkan", num(s.cancelled.count), rp(s.cancelled.amount)],
   ];
@@ -374,7 +476,12 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
   y = lastY() + 6;
 
   // ——— Kesimpulan & saran ———
-  bulletBox("Kesimpulan periode ini", insights.conclusions, TINT, BRAND);
+  themedBox(
+    "Kesimpulan periode ini",
+    THEMES.map((theme) => ({ theme, items: insights.conclusions.filter((c) => c.theme === theme).map((c) => c.text) })),
+    TINT,
+    BRAND
+  );
   bulletBox("Saran", insights.suggestions, GREEN_TINT, GREEN);
   if (insights.suggestions.length) note("Saran dibuat otomatis dari pola data penjualan periode ini sebagai bahan pertimbangan, bukan nasihat keuangan.");
   if (s.insightsLocked) note("Produk terlaris serta jam & hari ramai tersedia di paket Pro (atur langganan lewat aplikasi Sissi).");
@@ -389,24 +496,29 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
   // ——— Produk terlaris ———
   const products = (s.products ?? []).filter((p) => p.quantity > 0);
   if (products.length) {
-    doc.addPage();
-    y = M + 2;
-    heading("Produk terlaris");
+    y += 2;
+    heading("Produk terlaris", 70);
     const top = products.slice(0, 10);
+    const prev = s.previous;
     table(
-      ["#", "Produk", "Terjual", "Penjualan", "Porsi item"],
+      ["#", "Produk", "Terjual", ...(prev ? ["vs lalu"] : []), "Penjualan", "Porsi item"],
       top.map((p, i) => [
         String(i + 1),
         p.variant_name ? `${p.name} (${p.variant_name})` : p.name,
         num(p.quantity),
+        ...(prev ? [vsPrev(p.quantity, prev.productsByKey.get(p.key) ?? (prev.productsComplete ? 0 : null))] : []),
         rp(p.revenue),
         s.itemsSold ? `${Math.round((p.quantity / s.itemsSold) * 100)}%` : "-",
       ]),
-      [0, 2, 3, 4],
-      { 0: 9, 2: 20, 3: 30, 4: 22 }
+      prev ? [0, 2, 3, 4, 5] : [0, 2, 3, 4],
+      prev ? { 0: 9, 2: 18, 3: 18, 4: 28, 5: 20 } : { 0: 9, 2: 20, 3: 30, 4: 22 }
     );
     y -= 4;
-    note("Penjualan produk = subtotal baris setelah diskon per item, sebelum diskon nota & pajak. Porsi item = bagian dari semua item terjual.");
+    note(
+      `Penjualan produk = subtotal baris setelah diskon per item, sebelum diskon nota & pajak. Porsi item = bagian dari semua item terjual.${
+        prev ? " vs lalu = perubahan jumlah terjual dibanding periode sebelumnya dengan panjang sama." : ""
+      }`
+    );
   }
 
   // ——— Pola hari & jam ———
@@ -415,17 +527,22 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
   if (hasWeekday || hasHour) {
     heading("Kapan pelanggan paling ramai", 60);
     if (hasWeekday) {
+      ensure(7 * 5.4 + 12); // judul + 7 batang tetap satu halaman
       doc.setFont("helvetica", "bold").setFontSize(9.5).setTextColor(...INK).text("Jumlah transaksi per hari (total sepanjang periode)", M, y + 3);
       y += 6;
       bars(s.perWeekday!.map((n, i) => ({ label: WEEKDAYS_SHORT[i], value: n, text: `${num(n)} trx` })));
+      if (ongoing) {
+        y -= 2;
+        note(`${WEEKDAYS_SHORT[(new Date(`${s.to}T00:00:00Z`).getUTCDay() + 6) % 7]} termasuk hari ini yang masih berjalan, jadi batangnya bisa tampak lebih rendah.`);
+      }
     }
     if (hasHour) {
       const hours = s.perHour!;
       const active = hours.map((n, h) => [h, n] as const).filter(([, n]) => n > 0);
       const first = active[0][0];
       const last = active[active.length - 1][0];
+      ensure((last - first + 1) * 5.4 + 12); // judul + semua batang jam tetap satu halaman
       doc.setFont("helvetica", "bold").setFontSize(9.5).setTextColor(...INK);
-      ensure(30);
       doc.text("Jumlah transaksi per jam (total sepanjang periode)", M, y + 3);
       y += 6;
       bars(
@@ -449,10 +566,19 @@ export async function buildSalesPdf(input: SalesPdfInput): Promise<Blob> {
   // ——— Kasir ———
   if (s.perCashier.length) {
     heading("Kinerja kasir");
+    const prevC = s.previous?.cashiers;
     table(
-      ["Kasir", "Transaksi", "Penjualan", "Porsi", "Rata-rata", "Dibatalkan"],
-      s.perCashier.map((c) => [c.name, num(c.count), rp(c.revenue), s.revenue ? `${Math.round((c.revenue / s.revenue) * 100)}%` : "-", rp(c.average), num(c.cancelled)]),
-      [1, 2, 3, 4, 5]
+      ["Kasir", "Transaksi", "Penjualan", ...(prevC ? ["vs lalu"] : []), "Porsi", "Rata-rata", "Dibatalkan"],
+      s.perCashier.map((c) => [
+        c.name,
+        num(c.count),
+        rp(c.revenue),
+        ...(prevC ? [vsPrev(c.revenue, prevC.get(c.id) ?? 0)] : []),
+        s.revenue ? `${Math.round((c.revenue / s.revenue) * 100)}%` : "-",
+        rp(c.average),
+        num(c.cancelled),
+      ]),
+      prevC ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]
     );
   }
 

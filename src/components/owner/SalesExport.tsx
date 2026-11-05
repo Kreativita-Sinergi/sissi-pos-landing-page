@@ -4,11 +4,12 @@ import React, { useRef, useState } from "react";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { Modal } from "@/components/admin/ConfirmDialog";
 import { btn, errorMessage, Notice, Spinner } from "@/components/admin/ui";
-import { ownerApi } from "@/lib/owner/api";
+import { ownerApi, pullAll } from "@/lib/owner/api";
+import { readReceiptLogo } from "@/lib/owner/settings";
 import { csvDateTime, downloadCsv } from "@/lib/owner/csv";
-import { buildSalesPdf, summaryFromReport, summaryFromRows, withOutlets } from "@/lib/owner/salesPdf";
+import { buildSalesPdf, summaryFromReport, summaryFromRows, withOutlets, withPrevious } from "@/lib/owner/salesPdf";
 import { zoneLabel } from "@/lib/owner/tz";
-import type { SaleListItem, SalesQuery } from "@/lib/owner/types";
+import type { SaleListItem, SalesQuery, SyncRecord } from "@/lib/owner/types";
 import { refundedTotalOf } from "@/lib/owner/saleRefunds";
 import { labelOf, METHODS, orderTypeLabel, SALE_STATUS } from "./labels";
 
@@ -104,11 +105,18 @@ export function SalesExport({
           ]);
           summary = summaryFromReport(report);
           if (outlets) summary = withOutlets(summary, outlets);
+          // Periode sebelumnya (panjang sama) untuk tren per produk & per kasir; gagal → laporan tetap jadi tanpa tren.
+          const prev = await api
+            .salesReport({ from: report.previous.from, to: report.previous.to, outlet_id: query.outlet_id }, ctrl.signal)
+            .catch(() => null);
+          if (prev) summary = withPrevious(summary, prev);
         } else {
           rows = await fetchRows(CSV_LIMIT, ctrl.signal);
           summary = summaryFromRows(rows, range);
         }
+        const logo = await loadLogo(query.outlet_id, ctrl.signal);
         const blob = await buildSalesPdf({
+          logo,
           businessName,
           outletLabel,
           periodLabel,
@@ -228,6 +236,34 @@ export function SalesExport({
       </Modal>
     </>
   );
+}
+
+/**
+ * Logo usaha untuk kepala PDF: logo struk outlet terpilih, atau outlet pertama yang punya logo
+ * (`outlets.settings.receipt.logo_url`). Dimuat lewat <canvas> → PNG. Gagal (CORS, 404, waktu habis) → null.
+ */
+async function loadLogo(outletId: string | undefined, signal: AbortSignal): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  try {
+    const outlets = await pullAll<SyncRecord & { settings?: unknown }>("outlets", signal);
+    const pick = (outletId ? outlets.filter((o) => o.id === outletId) : outlets).map((o) => readReceiptLogo(o.settings)).find(Boolean);
+    if (!pick) return null;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error("timeout")), 5000);
+      img.onload = () => (clearTimeout(t), resolve());
+      img.onerror = () => (clearTimeout(t), reject(new Error("logo")));
+      img.src = pick;
+    });
+    const scale = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return { dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height };
+  } catch {
+    return null;
+  }
 }
 
 function downloadBlob(blob: Blob, filename: string) {

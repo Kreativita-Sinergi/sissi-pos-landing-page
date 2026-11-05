@@ -818,7 +818,7 @@ test("transaksi: ekspor PDF lewat dialog (kesimpulan, saran, produk, pola waktu,
   const buf = readFileSync(join(dir, file));
   eq(buf.subarray(0, 5).toString(), "%PDF-", "berkas PDF valid");
   const text = buf.toString("latin1");
-  for (const part of ["Laporan Penjualan", "Kesimpulan periode ini", "Saran", "Produk terlaris", "Kapan pelanggan paling ramai", "Kinerja kasir", "Perbandingan outlet", "Rincian penjualan", "gunakan Ekspor CSV", "Halaman 1 dari"]) {
+  for (const part of ["Laporan Penjualan", "Kesimpulan periode ini", "Saran", "Produk terlaris", "Kapan pelanggan paling ramai", "Kinerja kasir", "Perbandingan outlet", "Rincian penjualan", "gunakan Ekspor CSV", "Halaman 1 dari", "sudah sinkron", "hari ini masih berjalan", "vs lalu", "WAKTU RAMAI"]) {
     assert(text.includes(part), `PDF memuat "${part}"`);
   }
   assert(!text.includes("No. struk"), "PDF tidak memuat daftar per transaksi");

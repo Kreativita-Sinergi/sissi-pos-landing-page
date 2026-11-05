@@ -1,11 +1,14 @@
 // Kesimpulan & saran otomatis untuk laporan PDF Transaksi. Aturan tetap (bukan AI) agar setiap kalimat bisa
 // ditelusuri ke angka di laporan yang sama dan diuji. Masukan = SalesSummary (dari laporan server atau dari transaksi
 // yang cocok dengan filter). Kalimat hanya dibuat bila datanya cukup; ambang di bawah sengaja konservatif.
-import type { SalesSummary } from "./salesPdf";
+import { changePct, groupProducts, type SalesSummary } from "./salesPdf";
 import { zonedToday } from "./tz";
 import { labelOf, METHODS, orderTypeLabel, WEEKDAYS } from "@/components/owner/labels";
 
-export type Insights = { conclusions: string[]; suggestions: string[] };
+/** Urutan tema kesimpulan di PDF. */
+export const THEMES = ["Penjualan", "Produk", "Waktu ramai", "Tim & outlet", "Pembayaran & lainnya"] as const;
+export type Theme = (typeof THEMES)[number];
+export type Insights = { conclusions: { theme: Theme; text: string }[]; suggestions: string[] };
 
 /** Ambang saran (dipakai juga oleh tes). */
 export const THRESHOLDS = {
@@ -21,6 +24,14 @@ export const THRESHOLDS = {
   cashierMinCount: 20,
   /** Porsi tunai yang dianggap dominan. */
   cashShare: 0.6,
+  /** Tren produk: minimal terjual periode lalu agar persen bermakna, dan perubahan minimal (persen). */
+  trendMinBase: 10,
+  trendMinChange: 20,
+  /** Penurunan produk (persen) yang memicu saran. */
+  productDrop: -30,
+  /** Perubahan rata-rata per transaksi / penjualan kasir (persen) yang layak disebut. */
+  averageChange: 3,
+  cashierChange: 10,
 } as const;
 
 const rp = (n: number) => `${n < 0 ? "-" : ""}Rp${Math.round(Math.abs(n)).toLocaleString("id-ID")}`;
@@ -39,10 +50,11 @@ function busiestTwoHours(perHour: number[]): [number, number] | null {
 }
 
 export function buildInsights(s: SalesSummary): Insights {
-  const conclusions: string[] = [];
+  const conclusions: Insights["conclusions"] = [];
   const suggestions: string[] = [];
+  const add = (theme: Theme, text: string) => conclusions.push({ theme, text });
   if (s.transactions === 0) {
-    conclusions.push("Belum ada penjualan pada periode ini.");
+    add("Penjualan", "Belum ada penjualan pada periode ini.");
     return { conclusions, suggestions };
   }
 
@@ -56,36 +68,66 @@ export function buildInsights(s: SalesSummary): Insights {
   } else {
     sales += ".";
   }
-  conclusions.push(sales);
+  add("Penjualan", sales);
+  const avgChange = changePct(s.average, s.prevAverage);
+  if (avgChange !== null && s.prevAverage !== null && Math.abs(avgChange) >= THRESHOLDS.averageChange) {
+    add(
+      "Penjualan",
+      `Rata-rata belanja per transaksi ${avgChange > 0 ? "naik" : "turun"} ${Math.abs(avgChange)}% (${rp(s.prevAverage)} menjadi ${rp(s.average)})${
+        avgChange > 0 ? ", tanda pelanggan membeli lebih banyak per kunjungan" : ""
+      }.`
+    );
+  }
 
   // ——— Outlet ———
   const outlets = s.outlets.filter((o) => o.transactions > 0);
   if (s.outlets.length > 1 && outlets.length) {
     const best = s.outlets[0];
-    conclusions.push(`Outlet dengan penjualan tertinggi: ${best.name}, ${rp(best.revenue)} (${best.share.toLocaleString("id-ID")}% dari semua outlet).`);
+    add("Tim & outlet", `Outlet dengan penjualan tertinggi: ${best.name}, ${rp(best.revenue)} (${best.share.toLocaleString("id-ID")}% dari semua outlet).`);
     const idle = s.outlets.filter((o) => o.transactions === 0);
     if (idle.length) suggestions.push(`${idle.map((o) => o.name).join(", ")} tidak mencatat transaksi pada periode ini. Pastikan perangkat kasirnya aktif dan sudah sinkron.`);
   }
 
   // ——— Produk ———
-  const products = (s.products ?? []).filter((p) => p.quantity > 0);
+  // Kesimpulan memakai produk digabung per nama (semua varian/ukuran); tabel PDF tetap per varian.
+  const products = groupProducts((s.products ?? []).filter((p) => p.quantity > 0));
   if (products.length) {
     const top = products[0];
-    const name = productName(top);
+    const name = top.variants > 1 ? `${top.name} (semua varian)` : top.name;
     const share = s.itemsSold ? ` (${pct(top.quantity, s.itemsSold)}% dari semua item terjual)` : "";
-    conclusions.push(`Produk paling laris: ${name}, terjual ${num(top.quantity)} porsi senilai ${rp(top.revenue)}${share}.`);
+    add("Produk", `Produk paling laris: ${name}, terjual ${num(top.quantity)} porsi senilai ${rp(top.revenue)}${share}.`);
     if (products.length >= 3 && s.itemsSold) {
       const top3 = products.slice(0, 3);
-      conclusions.push(`Tiga produk teratas (${top3.map(productName).join(", ")}) menyumbang ${pct(top3.reduce((a, p) => a + p.quantity, 0), s.itemsSold)}% item terjual.`);
+      add("Produk", `Tiga produk teratas (${top3.map((p) => p.name).join(", ")}) menyumbang ${pct(top3.reduce((a, p) => a + p.quantity, 0), s.itemsSold)}% item terjual.`);
     }
-    suggestions.push(`Jaga stok ${name} dan bahan bakunya selalu cukup, terutama menjelang jam ramai; jadikan andalan di menu atau paket bundling.`);
-    // Produk paling jarang laku hanya bila daftar produk lengkap (server mengirim ≤ 100 teratas).
+    suggestions.push(`Jaga stok ${top.name} dan bahan bakunya selalu cukup, terutama menjelang jam ramai; jadikan andalan di menu atau paket bundling.`);
+
+    // Tren dibanding periode lalu (produk menu yang cukup laku di periode lalu).
+    const prev = s.previous;
+    if (prev) {
+      const moves = products
+        .filter((p) => !p.isCustom)
+        .map((p) => ({ p, before: prev.productsByName.get(p.name) ?? 0, change: changePct(p.quantity, prev.productsByName.get(p.name)) }))
+        .filter((m): m is { p: (typeof products)[number]; before: number; change: number } => m.change !== null && m.before >= THRESHOLDS.trendMinBase);
+      const up = moves.filter((m) => m.change >= THRESHOLDS.trendMinChange).sort((a, b) => b.change - a.change)[0];
+      const down = moves.filter((m) => m.change <= -THRESHOLDS.trendMinChange).sort((a, b) => a.change - b.change)[0];
+      if (up) add("Produk", `Naik paling tinggi: ${up.p.name}, ${num(up.p.quantity)} porsi (+${up.change}% dari ${num(up.before)} di periode lalu).`);
+      if (down) {
+        add("Produk", `Turun paling dalam: ${down.p.name}, ${num(down.p.quantity)} porsi (${down.change}% dari ${num(down.before)} di periode lalu).`);
+        if (down.change <= THRESHOLDS.productDrop) {
+          suggestions.push(`Penjualan ${down.p.name} turun ${Math.abs(down.change)}% dari periode lalu. Cek ketersediaan stok, konsistensi rasa, atau posisinya di menu.`);
+        }
+      }
+    }
+
+    // Produk paling jarang laku hanya bila daftar produk lengkap (server mengirim ≤ 100 teratas): produk menu (bukan
+    // item cepat) yang terjual ≤ 10% dari VARIAN terlaris (bukan gabungan, agar produk bervarian tidak menaikkan ambang).
     const complete = s.productsTotal !== null && s.productsTotal <= (s.products ?? []).length;
-    // Hanya produk menu (bukan item cepat) yang terjual ≤ 10% dari produk terlaris.
-    const slow = complete ? products.filter((p) => !p.is_custom && p.quantity <= top.quantity * 0.1).slice(-3).reverse() : [];
+    const topVariant = Math.max(...(s.products ?? []).map((p) => p.quantity));
+    const slow = complete ? products.filter((p) => !p.isCustom && p.quantity <= topVariant * 0.1).slice(-3).reverse() : [];
     if (slow.length) {
       suggestions.push(
-        `${slow.map((p) => `${productName(p)} (${num(p.quantity)})`).join(", ")} paling jarang terjual. Evaluasi harga, resep, atau tampilannya di menu; pertimbangkan menghapus yang tidak bergerak.`
+        `${slow.map((p) => `${p.name} (${num(p.quantity)})`).join(", ")} paling jarang terjual. Evaluasi harga, resep, atau tampilannya di menu; pertimbangkan menghapus yang tidak bergerak.`
       );
     }
   }
@@ -94,7 +136,18 @@ export function buildInsights(s: SalesSummary): Insights {
   const cashiers = s.perCashier.filter((c) => c.count > 0);
   if (cashiers.length > 1) {
     const top = cashiers[0];
-    conclusions.push(`Kasir dengan penjualan tertinggi: ${top.name}, ${rp(top.revenue)} dari ${num(top.count)} transaksi (${pct(top.revenue, s.revenue)}% dari penjualan).`);
+    add("Tim & outlet", `Kasir dengan penjualan tertinggi: ${top.name}, ${rp(top.revenue)} dari ${num(top.count)} transaksi (${pct(top.revenue, s.revenue)}% dari penjualan).`);
+    const prevC = s.previous?.cashiers;
+    if (prevC) {
+      const moves = cashiers
+        .map((c) => ({ c, change: changePct(c.revenue, prevC.get(c.id)) }))
+        .filter((m): m is { c: (typeof cashiers)[number]; change: number } => m.change !== null && Math.abs(m.change) >= THRESHOLDS.cashierChange)
+        .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+        .slice(0, 2);
+      if (moves.length) {
+        add("Tim & outlet", `Dibanding periode lalu: ${moves.map((m) => `penjualan ${m.c.name} ${m.change > 0 ? "naik" : "turun"} ${Math.abs(m.change)}%`).join(", ")}.`);
+      }
+    }
     const fair = cashiers.filter((c) => c.count >= THRESHOLDS.cashierMinCount).sort((a, b) => b.average - a.average);
     if (fair.length > 1) {
       const hi = fair[0];
@@ -106,7 +159,7 @@ export function buildInsights(s: SalesSummary): Insights {
       }
     }
   } else if (cashiers.length === 1) {
-    conclusions.push(`Semua transaksi dicatat oleh ${cashiers[0].name}.`);
+    add("Tim & outlet", `Semua transaksi dicatat oleh ${cashiers[0].name}.`);
   }
 
   // ——— Hari ———
@@ -127,7 +180,7 @@ export function buildInsights(s: SalesSummary): Insights {
     const ranked = sum.map((n, i) => [i, occ[i] ? n / occ[i] : null] as const).filter((x): x is readonly [number, number] => x[1] !== null);
     const best = ranked.reduce((a, b) => (b[1] > a[1] ? b : a));
     const worst = ranked.reduce((a, b) => (b[1] < a[1] ? b : a));
-    conclusions.push(`Hari teramai: ${WEEKDAYS[best[0]]}, rata-rata ${num(Math.round(best[1]))} transaksi per hari${skippedToday ? " (hari ini belum dihitung karena masih berjalan)" : ""}.`);
+    add("Waktu ramai", `Hari teramai: ${WEEKDAYS[best[0]]}, rata-rata ${num(Math.round(best[1]))} transaksi per hari${skippedToday ? " (hari ini belum dihitung karena masih berjalan)" : ""}.`);
     const avgOf = (idx: number[]) => {
       const n = idx.reduce((a, i) => a + occ[i], 0);
       return n ? idx.reduce((a, i) => a + sum[i], 0) / n : null;
@@ -135,7 +188,7 @@ export function buildInsights(s: SalesSummary): Insights {
     const we = avgOf([5, 6]);
     const wd = avgOf([0, 1, 2, 3, 4]);
     if (we !== null && wd !== null && wd > 0 && we > 0 && Math.abs(we / wd - 1) >= 0.1) {
-      conclusions.push(
+      add("Waktu ramai", 
         we > wd
           ? `Akhir pekan ${Math.round((we / wd - 1) * 100)}% lebih ramai dari hari kerja (${num(Math.round(we))} vs ${num(Math.round(wd))} transaksi per hari).`
           : `Hari kerja ${Math.round((wd / we - 1) * 100)}% lebih ramai dari akhir pekan (${num(Math.round(wd))} vs ${num(Math.round(we))} transaksi per hari).`
@@ -153,7 +206,7 @@ export function buildInsights(s: SalesSummary): Insights {
     const total = s.perHour.reduce((a, b) => a + b, 0);
     const peak = s.peakHour ?? s.perHour.indexOf(Math.max(...s.perHour));
     const block = busiestTwoHours(s.perHour);
-    conclusions.push(
+    add("Waktu ramai", 
       `Jam tersibuk ${hourLabel(peak)}–${hourLabel(peak + 1)}${
         block ? `; rentang ${hourLabel(block[0])}–${hourLabel(block[0] + 2)} menyumbang ${pct(block[1], total)}% transaksi` : ""
       }.`
@@ -176,7 +229,7 @@ export function buildInsights(s: SalesSummary): Insights {
   if (s.orderTypes.length > 1) {
     const sum = s.orderTypes.reduce((a, o) => a + o.revenue, 0);
     const top = s.orderTypes[0];
-    conclusions.push(`${orderTypeLabel(top.orderType)} paling banyak (${pct(top.revenue, sum)}% penjualan, ${num(top.count)} transaksi).`);
+    add("Pembayaran & lainnya", `${orderTypeLabel(top.orderType)} paling banyak (${pct(top.revenue, sum)}% penjualan, ${num(top.count)} transaksi).`);
   }
 
   // ——— Metode bayar ———
@@ -184,7 +237,7 @@ export function buildInsights(s: SalesSummary): Insights {
   const paid = positive.reduce((a, m) => a + m.amount, 0);
   if (positive.length) {
     const top = positive[0];
-    conclusions.push(`${labelOf(METHODS, top.method)} jadi metode bayar terbanyak (${pct(top.amount, paid)}% nominal).`);
+    add("Pembayaran & lainnya", `${labelOf(METHODS, top.method)} jadi metode bayar terbanyak (${pct(top.amount, paid)}% nominal).`);
     const cash = positive.find((m) => m.method === "cash");
     if (cash && paid && cash.amount / paid >= THRESHOLDS.cashShare) {
       suggestions.push(`Tunai masih ${pct(cash.amount, paid)}% pembayaran. Tawarkan QRIS untuk mempercepat antrean dan mengurangi selisih kas.`);
@@ -193,7 +246,7 @@ export function buildInsights(s: SalesSummary): Insights {
 
   // ——— Laba ———
   if (s.grossProfit !== null && s.money && s.money.netItems > 0) {
-    conclusions.push(`Laba kotor ${rp(s.grossProfit)} (margin ${pct(s.grossProfit, s.money.netItems)}% dari pendapatan bersih).`);
+    add("Penjualan", `Laba kotor ${rp(s.grossProfit)} (margin ${pct(s.grossProfit, s.money.netItems)}% dari pendapatan bersih).`);
   }
   if (s.itemsWithoutCost > 0) {
     suggestions.push(`${num(s.itemsWithoutCost)} baris penjualan belum punya harga modal (HPP). Lengkapi HPP produk agar laba kotor terhitung akurat.`);
@@ -203,7 +256,7 @@ export function buildInsights(s: SalesSummary): Insights {
   const attempts = s.transactions + s.cancelled.count;
   if (s.cancelled.count > 0) {
     const rate = s.cancelled.count / attempts;
-    conclusions.push(`${num(s.cancelled.count)} transaksi dibatalkan atau dikembalikan senilai ${rp(s.cancelled.amount)} (${(Math.round(rate * 1000) / 10).toLocaleString("id-ID")}% dari transaksi).`);
+    add("Pembayaran & lainnya", `${num(s.cancelled.count)} transaksi dibatalkan atau dikembalikan senilai ${rp(s.cancelled.amount)} (${(Math.round(rate * 1000) / 10).toLocaleString("id-ID")}% dari transaksi).`);
     if (rate >= THRESHOLDS.cancelRate) {
       const worst = [...s.perCashier].sort((a, b) => b.cancelled - a.cancelled)[0];
       suggestions.push(
@@ -228,8 +281,4 @@ export function buildInsights(s: SalesSummary): Insights {
 function weekdayIndex(day: string): number {
   const [y, m, d] = day.split("-").map(Number);
   return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
-}
-
-function productName(p: { name: string; variant_name: string | null }): string {
-  return p.variant_name ? `${p.name} (${p.variant_name})` : p.name;
 }
