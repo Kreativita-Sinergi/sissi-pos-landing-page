@@ -12,6 +12,9 @@ npm run e2e
 1. **API lokal** `sissi-service` menyala di `http://localhost:8000` (`go run ./cmd/api`) dengan origin web
    (`http://localhost:3000`) terdaftar di `OWNER_WEB_ORIGINS`/`ADMIN_ORIGINS`.
 2. **Data demo** dari devseed (akun Pro `demo.pro@contoh.sissi.id` / `Sissi-Demo#2026`, dua outlet, kategori).
+   Data demo bertanggal relatif terhadap waktu seed: transaksi & shift hanya muncul di periode bawaan (7 hari) dan
+   uji coba Pro berakhir setelah beberapa minggu. Bila tes transaksi/shift gagal karena data kosong, isi ulang di
+   `sissi-pos-service`: `scripts/exclusive.sh go run ./cmd/devseed --reset` (hanya menyentuh data contoh).
 3. **Web** menyala di `http://localhost:3000` (`npm run dev`) dengan `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1`
    dan `NEXT_PUBLIC_OWNER_MOCK` bukan `1`. Tes tidak menyalakan server sendiri.
 4. **Google Chrome** di `/Applications/Google Chrome.app/…` (macOS) atau atur `CHROME_PATH`.

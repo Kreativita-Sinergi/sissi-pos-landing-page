@@ -24,10 +24,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Berikutnya
 
-- **P2 · Data demo untuk e2e transaksi & shift.** 3 tes e2e gagal karena data demo 7 hari terakhir kosong (tidak ada
-  transaksi lunas, tidak ada shift buka/tutup): `transaksi: batalkan (void)…`, `shift: catat kas keluar…`,
-  `shift: daftar menandai hitungan server berbeda…`. Bukan regresi kode; perlu seed demo yang diperbarui atau tes yang
-  membuat datanya sendiri.
+- _(kosong)_
 
 ## Backlog
 
@@ -55,4 +52,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   - `23f6db7` sub-menu Pengaturan (5 kelompok), laci menu HP menggantikan menu geser 12 item, `PushNote` seragam.
   - `08be06e` Aktivitas: filter "Jenis" pilihan ganda menggantikan 10 chip.
   - `7d96734` urutkan kategori dari web (Naikkan/Turunkan).
-  - Verifikasi: `tsc`, `eslint`, `npm test` (65/65), e2e 18/21 (3 gagal karena data demo, lihat Berikutnya).
+  - Verifikasi: `tsc`, `eslint`, `npm test` (65/65), e2e 21/21 setelah data demo diisi ulang.
+- **2026-11-05 · Data demo basi** — seed lokal bertanggal 2026-10-13, sehingga 3 tes e2e transaksi/shift gagal (data
+  di luar periode 7 hari; Pro demo kedaluwarsa). Diisi ulang dengan `devseed --reset`; README e2e & pesan galat tes kini
+  menyebut langkah ini.

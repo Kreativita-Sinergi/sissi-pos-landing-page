@@ -768,7 +768,7 @@ test("transaksi: batalkan (void) transaksi lunas dari detail", async () => {
   // Data demo diisi ulang sesi utama; pembatalan ini memang tidak bisa diurungkan.
   const list = await api.get("/owner/sales?status=paid&per_page=20");
   const sale = list.find((s) => s.payment_method === "qris") ?? list.find((s) => s.payment_method === "cash") ?? list[0];
-  assert(sale, "ada transaksi lunas untuk diuji");
+  assert(sale, "ada transaksi lunas untuk diuji — data demo mungkin basi (>7 hari): jalankan `go run ./cmd/devseed --reset` di sissi-pos-service");
   await go(`/dasbor/transaksi/${sale.id}`);
   await click("Batalkan transaksi", { within: "main" });
   await waitDialog(`Batalkan transaksi · ${sale.receipt_no}`);
@@ -793,7 +793,7 @@ test("transaksi: batalkan (void) transaksi lunas dari detail", async () => {
 test("shift: catat kas keluar pada shift yang sedang buka", async () => {
   await ensureLoggedIn();
   const open = await api.get("/owner/shifts?status=open&per_page=5");
-  assert(open.length, "ada shift buka di data demo");
+  assert(open.length, "ada shift buka di data demo — data demo mungkin basi (>7 hari): jalankan `go run ./cmd/devseed --reset` di sissi-pos-service");
   const shift = open[0];
   const note = `E2E ${RUN}`;
   await go(`/dasbor/shift/${shift.id}`);
@@ -816,6 +816,7 @@ test("shift: catat kas keluar pada shift yang sedang buka", async () => {
 test("shift: daftar menandai hitungan server berbeda (bila ada)", async () => {
   await ensureLoggedIn();
   const rows = await api.get("/owner/shifts?per_page=100&status=closed");
+  assert(rows.length, "ada shift tutup di data demo — data demo mungkin basi (>7 hari): jalankan `go run ./cmd/devseed --reset` di sissi-pos-service");
   const bad = rows.find((r) => r.expected_mismatch);
   await go("/dasbor/shift?status=closed");
   await page.waitForSelector("main table");
