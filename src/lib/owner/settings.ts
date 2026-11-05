@@ -43,7 +43,10 @@ export type TransactionSettings = {
   order_types: OrderType[] | null;
   queue_number: boolean;
   allow_credit: boolean;
+  /** PIN pemilik untuk batal & refund transaksi yang sudah dibayar. */
   pin_for_void: boolean;
+  /** PIN pemilik untuk ubah/batal pesanan berjalan; tidak ada di data = mengikuti `pin_for_void` (2026-11-05). */
+  pin_for_order_edit: boolean;
   /** Efektif: kasir menutup tanpa melihat angka sistem (lihat [readTransaction]). */
   blind_close: boolean;
   require_customer_name: boolean;
@@ -188,6 +191,7 @@ export function readTransaction(settings: unknown): TransactionSettings {
     queue_number: bool(s.queue_number, false),
     allow_credit: bool(s.allow_credit, false),
     pin_for_void: bool(s.pin_for_void, true),
+    pin_for_order_edit: bool(s.pin_for_order_edit, bool(s.pin_for_void, true)),
     // Tutup buta aktif bawaan untuk kasir (keputusan pemilik 2026-10-22): aktif bila `blind_close` dinyalakan
     // (app/web lama) atau pemilik belum pernah mengizinkan lewat `show_expected_cash`. Disimpan keduanya agar
     // app lama (hanya membaca `blind_close`) ikut sejalan.

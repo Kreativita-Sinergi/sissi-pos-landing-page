@@ -849,7 +849,8 @@ function TransactionSection({ rec, onRecord, credit }: OutletProps & { credit: b
           </p>
         )}
       </div>
-      <Switch id={`${uid}-pin`} label="PIN pemilik untuk membatalkan" description="Void & refund oleh kasir butuh PIN pemilik." checked={draft.pin_for_void} onChange={(v) => set("pin_for_void", v)} />
+      <Switch id={`${uid}-pin-edit`} label="PIN pemilik untuk ubah/batal pesanan berjalan" description="Mengurangi item yang sudah dikirim ke dapur atau membatalkan pesanan yang belum dibayar." checked={draft.pin_for_order_edit} onChange={(v) => set("pin_for_order_edit", v)} />
+      <Switch id={`${uid}-pin`} label="PIN pemilik untuk batal & refund transaksi" description="Membatalkan atau me-refund transaksi yang sudah dibayar di Riwayat." checked={draft.pin_for_void} onChange={(v) => set("pin_for_void", v)} />
       <Switch
         id={`${uid}-blind`}
         label="Tutup kasir tanpa melihat angka sistem"

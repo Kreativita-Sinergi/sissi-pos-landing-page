@@ -33,6 +33,8 @@ const KIND_LABEL: Record<string, string> = {
   void: "Batalkan transaksi",
   refund: "Refund semua",
   partial_refund: "Refund sebagian",
+  order_reduce: "Kurangi pesanan",
+  order_cancel: "Batalkan pesanan",
 };
 
 type State =
