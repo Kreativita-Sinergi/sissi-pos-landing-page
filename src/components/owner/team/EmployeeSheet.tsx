@@ -147,7 +147,7 @@ function EmployeeForm({
   const id = useId();
   const toast = useToast();
   // Email pemilik tidak bisa diubah dari sini (server menolak); sampai ada verifikasi, diubah oleh tim Sissi.
-  const emailLocked = current?.role === "owner";
+  const emailLocked = current?.role === "owner"; // sekaligus mengunci peran pemilik
   const [initial] = useState(() => ({
     name: current?.name ?? "",
     phone: (current?.phone ?? "").replace(/^\+62/, "0"),
@@ -356,14 +356,18 @@ function EmployeeForm({
       </div>
       <div>
         <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Peran</p>
-        {isSelf ? (
+        {isSelf || emailLocked ? (
           <p className="text-[14px] font-semibold text-text-heading">{ROLE_LABEL[f.role]}</p>
         ) : (
           <div className="max-w-full overflow-x-auto">
             <Segmented label="Peran" options={roles} value={f.role} onChange={(r) => update({ role: r })} />
           </div>
         )}
-        <p className="mt-1.5 text-[13px] text-text-muted">{isSelf ? "Kamu tidak dapat mengubah peranmu sendiri." : ROLE_HINT[f.role]}</p>
+        <p className="mt-1.5 text-[13px] text-text-muted">{isSelf
+            ? "Kamu tidak dapat mengubah peranmu sendiri."
+            : emailLocked
+              ? "Peran pemilik tidak bisa diubah. Hubungi tim Sissi."
+              : ROLE_HINT[f.role]}</p>
         {errors.role && <p className="mt-1 text-[13px] text-danger">{errors.role}</p>}
         {f.role === "waiter" && !isSelf && <p className="mt-1 text-[12.5px] text-warning">{WAITER_APP_NOTE}</p>}
         {!kitchenRole && !isSelf && (
