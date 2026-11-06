@@ -22,6 +22,7 @@ import {
 import { PRICING_FEATURES } from "@/constants/pricing";
 import { ownerApi } from "@/lib/owner/api";
 import type { PayCycle, SubscriptionDetail } from "@/lib/owner/types";
+import { useOwner } from "./OwnerShell";
 import { PayDialog } from "./PayDialog";
 import { labelOf } from "./labels";
 
@@ -47,6 +48,7 @@ const PAY_LOGOS = ["qris", "bca", "gopay", "indomaret"].map((n) => `/logos/pemba
 export function SubscriptionView() {
   const router = useRouter();
   const pathname = usePathname();
+  const { refreshSession } = useOwner();
   const { state, reload } = useLoad<SubscriptionDetail>(async (signal) => (await ownerApi()).subscription(signal), []);
   const [picked, setPicked] = useState<PayCycle | null>(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -98,7 +100,11 @@ export function SubscriptionView() {
           </div>
         </>
       )}
-      <PayDialog cycle={cycle} open={payOpen} onClose={closePay} onPaid={reload} initialCheckoutId={returnId} />
+      <PayDialog cycle={cycle} open={payOpen} onClose={closePay} onPaid={() => {
+          reload();
+          // Lencana paket di sidebar membaca sesi: muat ulang tanpa memuat ulang halaman.
+          refreshSession().catch(() => {});
+        }} initialCheckoutId={returnId} />
     </>
   );
 }

@@ -39,6 +39,7 @@
   --animate-so-bump: so-bump 380ms cubic-bezier(0.3, 1.4, 0.5, 1);
   --animate-so-rise: so-rise 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --animate-so-sheet: so-sheet 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pay-pop: pay-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
   --animate-so-ping: so-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 
   @keyframes so-bump {
@@ -53,6 +54,10 @@
   @keyframes so-sheet {
     from { transform: translateY(40px); opacity: 0.6; }
     to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes pay-pop {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }
   @keyframes so-ping {
     0% { transform: scale(1); opacity: 0.55; }

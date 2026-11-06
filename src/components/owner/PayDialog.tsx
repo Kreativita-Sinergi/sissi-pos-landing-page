@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, ExternalLink, Landmark, QrCode as QrIcon, Store, Wallet } from "lucide-react";
+import { Check, Copy, ExternalLink, Landmark, QrCode as QrIcon, RefreshCw, Store, Wallet } from "lucide-react";
 import { Modal } from "@/components/admin/ConfirmDialog";
 import { BILLING_CYCLES } from "@/components/admin/labels";
-import { btn, CopyButton, formatDate, formatRupiah, Notice, Spinner, errorMessage } from "@/components/admin/ui";
+import { btn, formatDate, formatDateTime, formatRupiah, Notice, Spinner, errorMessage } from "@/components/admin/ui";
 import { QrCode } from "@/components/self-order/QrCode";
 import { ownerApi } from "@/lib/owner/api";
 import type { Checkout, PayCycle, PayKind, PayMethod, PayMethods } from "@/lib/owner/types";
@@ -16,6 +16,7 @@ import { labelOf } from "./labels";
 // dan checkout `pending`; `paid` hanya bisa datang dari server (bukti dari Duitku), bukan dari halaman kembali.
 
 const POLL_MS = 4000;
+const SKEW_CAP_MS = 31_000; // jeda server 30 dtk: jam klien yang meleset tidak boleh mengunci tombol lebih lama
 const UNAVAILABLE = "Pembayaran online belum tersedia, hubungi tim Sissi";
 
 const KIND_TITLE: Record<PayKind, string> = {
@@ -30,8 +31,8 @@ const KIND_ICON: Record<PayKind, typeof QrIcon> = { qris: QrIcon, va: Landmark, 
 
 const STEPS: Record<PayKind, string[]> = {
   qris: ["Buka aplikasi bank atau e-wallet", "Pindai kode di atas", "Periksa nominal, lalu bayar"],
-  va: ["Buka aplikasi bank atau e-wallet Anda", "Pilih transfer ke virtual account, lalu masukkan nomor di atas", "Periksa nominal, lalu konfirmasi"],
-  retail: ["Datang ke kasir gerai", "Sebutkan kode pembayaran di atas", "Bayar sesuai nominal"],
+  va: ["Buka aplikasi bank atau e-wallet Anda", "Pilih transfer ke virtual account, lalu masukkan nomor di atas", "Transfer sesuai total, lalu konfirmasi"],
+  retail: ["Datang ke kasir gerai", "Sebutkan kode pembayaran di atas", "Bayar sesuai total"],
   ewallet: [],
 };
 
@@ -81,6 +82,10 @@ export function PayDialog({
   const [initAttempt, setInitAttempt] = useState(0);
   const [pickCycle, setPickCycle] = useState<PayCycle | null>(null);
   const [lastCode, setLastCode] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [coolUntil, setCoolUntil] = useState<number | null>(null);
+  const [note, setNote] = useState<{ tone: "info" | "warning"; text: string } | null>(null);
+  const coolSeen = useRef<{ next: string; until: number } | null>(null);
   const paidFor = useRef<string | null>(null);
   const onPaidRef = useRef(onPaid);
   const onCloseRef = useRef(onClose);
@@ -90,6 +95,9 @@ export function PayDialog({
     onPaidRef.current = onPaid;
     onCloseRef.current = onClose;
   });
+  useEffect(() => {
+    coolSeen.current = null;
+  }, [open]);
   useEffect(() => {
     session.current++;
     const ref = session;
@@ -110,12 +118,25 @@ export function PayDialog({
       setPickCycle(null);
       setPicked(null);
       setInitLoading(!!initialCheckoutId);
+      setCoolUntil(null);
+      setNote(null);
+      setRefreshing(false);
     }
   }
 
   const apply = useCallback((ck: Checkout) => {
-    setNow(Date.now());
+    const t = Date.now();
+    setNow(t);
     setCheckout(ck);
+    // Jeda cek manual dari server. Tiap nilai next_refresh_at baru dihitung sekali (dibatasi SKEW_CAP_MS dari saat diterima),
+    // supaya polling tidak memperpanjangnya dan jam klien yang meleset tidak mengunci tombol.
+    if (ck.next_refresh_at) {
+      if (coolSeen.current?.next !== ck.next_refresh_at) {
+        const until = Math.min(Date.parse(ck.next_refresh_at), t + SKEW_CAP_MS);
+        coolSeen.current = { next: ck.next_refresh_at, until };
+        setCoolUntil(until);
+      }
+    }
     if (ck.status === "paid" && paidFor.current !== ck.id) {
       paidFor.current = ck.id;
       onPaidRef.current();
@@ -171,13 +192,15 @@ export function PayDialog({
   const pending = checkout?.status === "pending";
   const expiredLocal = pending && now >= expiresMs;
   const live = open && pending && !expiredLocal;
+  const cooling = coolUntil !== null && now < coolUntil;
 
-  // Hitung mundur lokal dari expires_at.
+  // Hitung mundur lokal dari expires_at dan jeda cek manual.
+  const ticking = live || (open && cooling);
   useEffect(() => {
-    if (!live) return;
+    if (!ticking) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
-  }, [live, checkout?.id]);
+  }, [ticking, checkout?.id]);
 
   // Polling status: galat tidak fatal (tetap coba lagi dengan jeda sama), berhenti saat bukan live.
   const checkoutId = checkout?.id;
@@ -236,10 +259,42 @@ export function PayDialog({
     }
   }
 
+  async function checkNow() {
+    if (!checkout || refreshing || cooling) return;
+    const mine = session.current;
+    setRefreshing(true);
+    setNote(null);
+    try {
+      const ck = await (await ownerApi()).refreshCheckout(checkout.id);
+      if (session.current !== mine) return;
+      apply(ck);
+      if (ck.status === "pending" || ck.status === "expired") setNote({ tone: "info", text: "Pembayaran belum diterima. Coba lagi sebentar lagi." });
+    } catch (err) {
+      if (session.current !== mine) return;
+      if (err instanceof ApiError && err.status === 429) {
+        const t = Date.now();
+        setNow(t);
+        setCoolUntil(t + 30_000);
+        setNote({ tone: "warning", text: "Terlalu sering memeriksa. Tunggu sebentar, lalu coba lagi." });
+      } else if (err instanceof ApiError && err.code === "PAYMENT_GATEWAY_ERROR") {
+        setNote({ tone: "warning", text: "Penyedia pembayaran sedang bermasalah. Coba lagi sebentar lagi." });
+      } else if (err instanceof ApiError && err.code === "PAYMENT_UNAVAILABLE") {
+        setNote({ tone: "warning", text: UNAVAILABLE });
+      } else {
+        setNote({ tone: "warning", text: "Belum bisa memeriksa saat ini. Periksa koneksi Anda, lalu coba lagi." });
+      }
+    } finally {
+      if (session.current === mine) setRefreshing(false);
+    }
+  }
+
   function backToPick() {
     if (checkout) setPickCycle(checkout.cycle);
     setCheckout(null);
     setFail(null);
+    setNote(null);
+    setCoolUntil(null);
+    coolSeen.current = null;
     setAttempt((n) => n + 1);
   }
 
@@ -257,20 +312,55 @@ export function PayDialog({
   let footer: React.ReactNode = closeBtn();
   let wide = false;
 
+  const meta = loaded?.data?.methods.find((m) => m.code === checkout?.method);
+  const methodName = checkout ? (meta ? displayName(meta) : KIND_TITLE[checkout.kind]) : "";
+  const checkLabel = refreshing ? "Memeriksa…" : cooling && coolUntil !== null ? `Cek lagi dalam ${Math.ceil((coolUntil - now) / 1000)} dtk` : "Cek status pembayaran";
+  const checkBtn = (cls: string) => (
+    <button type="button" className={cls} disabled={refreshing || cooling} onClick={checkNow}>
+      {refreshing ? <Spinner /> : <RefreshCw size={16} aria-hidden />} {checkLabel}
+    </button>
+  );
+  const noteLive = (
+    <p aria-live="polite" className={`min-h-[1.25rem] text-[12.5px] leading-snug ${note?.tone === "warning" ? "text-warning" : "text-text-body"}`}>
+      {note?.text}
+    </p>
+  );
+
   if (checkout && status === "paid") {
-    title = "Pembayaran diterima";
+    title = "Status pembayaran";
     body = (
-      <div className="flex flex-col items-center gap-2 py-2 text-center" role="status">
-        <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-success-tint text-success">
-          <CheckCircle2 size={30} aria-hidden />
+      <div className="flex flex-col items-center gap-1.5 pt-1 text-center" role="status">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-success-tint text-success motion-safe:animate-pay-pop">
+          <Check size={34} strokeWidth={3} aria-hidden />
         </span>
+        <p className="mt-2 text-[18px] font-bold text-text-heading">Pembayaran diterima</p>
         <p className="text-[14px] text-text-body">
-          Pro aktif{checkout.period_end ? <> sampai <strong className="text-text-heading">{formatDate(checkout.period_end)}</strong></> : ""}. Terima kasih sudah berlangganan.
+          {checkout.period_end ? <>Pro aktif sampai <strong className="text-text-heading">{formatDate(checkout.period_end)}</strong></> : "Pro Anda sudah aktif"}
         </p>
+        <dl className="mt-3 w-full max-w-[360px] space-y-2 rounded-[12px] border border-border-subtle bg-bg-muted p-4 text-left text-[13px] text-text-body">
+          <div className="flex justify-between gap-3">
+            <dt>Paket</dt>
+            <dd className="font-semibold text-text-heading">{planName}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>Total dibayar</dt>
+            <dd className="font-semibold tabular-nums text-text-heading">{formatRupiah(checkout.total)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>Metode</dt>
+            <dd className="text-right font-semibold text-text-heading">{methodName}</dd>
+          </div>
+          {checkout.period_end && (
+            <div className="flex justify-between gap-3">
+              <dt>Aktif sampai</dt>
+              <dd className="font-semibold text-text-heading">{formatDate(checkout.period_end)}</dd>
+            </div>
+          )}
+        </dl>
       </div>
     );
     footer = (
-      <button type="button" className={btn.primary} onClick={onClose}>
+      <button type="button" className={`${btn.primary} sm:min-w-[120px]`} onClick={onClose}>
         Selesai
       </button>
     );
@@ -304,11 +394,13 @@ export function PayDialog({
           Langganan untuk melihat statusnya, atau hubungi tim Sissi.
         </Notice>
         {fail && <Notice tone="danger" role="alert">{fail.text}</Notice>}
+        {noteLive}
       </div>
     );
     footer = (
       <>
         {closeBtn()}
+        {checkBtn(btn.secondary)}
         <button type="button" className={btn.primary} disabled={!!creating} onClick={() => choose(checkout.method)}>
           {creating && <Spinner />} {label}
         </button>
@@ -319,58 +411,103 @@ export function PayDialog({
     const remaining = expiresMs - now;
     const fee = checkout.service_fee;
     const steps = STEPS[checkout.kind];
+    const isCode = checkout.kind === "va" || checkout.kind === "retail";
+    const logo = checkout.kind === "qris" ? QRIS_LOGO : meta ? methodLogoSrc(meta) : (LOCAL_LOGOS[checkout.method] ?? "");
     title = checkout.kind === "qris" ? "Pindai QRIS" : checkout.kind === "va" ? "Bayar lewat Virtual Account" : checkout.kind === "retail" ? "Bayar di gerai ritel" : "Lanjut ke e-wallet";
     body = (
-      <div className="flex flex-col gap-3 text-center">
-        <Summary plan={planName} right={<>Total <strong className="tabular-nums text-text-heading">{formatRupiah(checkout.total)}</strong></>} />
-        {fee > 0 && (
-          <p className="-mt-1.5 text-left text-[12.5px] text-text-muted">
-            Harga <span className="tabular-nums">{formatRupiah(checkout.price)}</span> + biaya layanan <span className="tabular-nums">{formatRupiah(fee)}</span>
-          </p>
-        )}
-        <div>
-          <span className="inline-block rounded-full bg-brand-tint px-3 py-[3px] text-[13px] font-bold tabular-nums text-brand-ink">Sisa {clock(remaining)}</span>
-        </div>
-        {checkout.kind === "qris" && checkout.qr_string && (
-          <div className="flex flex-col items-center gap-2">
-            <QrCode value={checkout.qr_string} label={`QR pembayaran ${formatRupiah(checkout.total)}`} size={200} />
-            <p className="text-[12.5px] text-text-muted">Bisa dari aplikasi bank atau e-wallet apa saja</p>
-          </div>
-        )}
-        {(checkout.kind === "va" || checkout.kind === "retail") && checkout.pay_code && (
-          <div className="rounded-[12px] border border-border-subtle p-3 text-left">
-            <p className="text-[12.5px] text-text-muted">{checkout.kind === "va" ? "Nomor virtual account" : "Kode pembayaran"}</p>
-            <div className="mt-0.5 flex items-center gap-2">
-              <span className="min-w-0 flex-1 break-all text-[20px] font-bold tabular-nums tracking-wide text-text-heading">{checkout.pay_code}</span>
-              <CopyButton value={checkout.pay_code} label={checkout.kind === "va" ? "Salin nomor virtual account" : "Salin kode pembayaran"} />
+      <div className="-m-1 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
+          <section aria-label="Cara bayar" className="flex min-w-0 flex-col items-center gap-3 text-center">
+            {checkout.kind === "qris" && checkout.qr_string && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- logo lokal statis */}
+                <img src={QRIS_LOGO} alt="QRIS" className="h-6 w-auto" />
+                <div className="rounded-[16px] border border-border-subtle bg-white p-3 shadow-so-card">
+                  <QrCode value={checkout.qr_string} label={`QR pembayaran ${formatRupiah(checkout.total)}`} size={196} />
+                </div>
+                <p className="text-[12.5px] text-text-muted">Bisa dari aplikasi bank atau e-wallet apa saja</p>
+              </>
+            )}
+            {isCode && checkout.pay_code && (
+              <div className="flex w-full flex-col items-center gap-2 rounded-[14px] border border-border-subtle p-4">
+                <div className="flex items-center gap-2">
+                  {logo && (
+                    // eslint-disable-next-line @next/next/no-img-element -- logo lokal atau images.duitku.com (host disaring server)
+                    <img src={logo} alt="" referrerPolicy="no-referrer" className="h-7 w-auto max-w-[72px] object-contain" />
+                  )}
+                  <span className="text-[13px] font-semibold text-text-heading">{methodName}</span>
+                </div>
+                <p className="text-[12.5px] text-text-muted">{checkout.kind === "va" ? "Nomor virtual account" : "Kode pembayaran"}</p>
+                <p data-testid="pay-code" className="break-all font-mono text-[24px] font-bold leading-tight tracking-wider text-text-heading sm:text-[28px]">{checkout.pay_code}</p>
+                <CopyText value={checkout.pay_code} label={checkout.kind === "va" ? "Salin nomor virtual account" : "Salin kode pembayaran"} />
+              </div>
+            )}
+            {checkout.kind === "ewallet" && checkout.payment_url && (
+              <a href={checkout.payment_url} className={`${btn.primary} self-center`}>
+                <ExternalLink size={16} aria-hidden /> Lanjut ke pembayaran
+              </a>
+            )}
+            {steps.length > 0 && (
+              <ol className="w-full list-decimal space-y-0.5 pl-5 text-left text-[12.5px] text-text-body">
+                {steps.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ol>
+            )}
+          </section>
+          <aside aria-label="Status pembayaran" className="flex min-w-0 flex-col gap-3 border-t border-border-subtle pt-4 lg:self-start lg:rounded-[12px] lg:border lg:bg-bg-muted lg:p-4">
+            <div className="flex items-center gap-2.5" role="status">
+              <span aria-hidden className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="absolute inset-0 rounded-full bg-brand-primary motion-safe:animate-so-ping" />
+                <span className="relative h-2.5 w-2.5 rounded-full bg-brand-primary" />
+              </span>
+              <span className="text-[15px] font-bold text-text-heading">Menunggu pembayaran</span>
             </div>
-          </div>
-        )}
-        {checkout.kind === "ewallet" && checkout.payment_url && (
-          <a href={checkout.payment_url} className={`${btn.primary} self-center`}>
-            <ExternalLink size={16} aria-hidden /> Lanjut ke pembayaran
-          </a>
-        )}
-        {steps.length > 0 && (
-          <ol className="list-decimal space-y-0.5 pl-5 text-left text-[12.5px] text-text-body">
-            {steps.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ol>
-        )}
-        <p role="status" className="flex items-center justify-center gap-2 text-[12.5px] text-text-body">
-          <span aria-hidden className="h-2 w-2 animate-pulse rounded-full bg-brand-primary motion-reduce:animate-none" /> Menunggu pembayaran…
-        </p>
+            <p className="text-[12.5px] leading-snug text-text-body">Status diperbarui otomatis, biasanya dalam beberapa menit. Sudah bayar? Cek sekarang.</p>
+            <div>
+              {isCode ? (
+                <span className="inline-block rounded-full bg-brand-tint px-3 py-[3px] text-[12.5px] font-semibold text-brand-ink">Berlaku sampai {formatDateTime(checkout.expires_at)}</span>
+              ) : (
+                <span className="inline-block rounded-full bg-brand-tint px-3 py-[3px] text-[13px] font-bold tabular-nums text-brand-ink">Sisa {clock(remaining)}</span>
+              )}
+            </div>
+            <dl className="space-y-1.5 border-t border-border-subtle pt-3 text-[13px] text-text-body">
+              <div className="flex justify-between gap-3">
+                <dt>Paket</dt>
+                <dd className="font-semibold text-text-heading">{planName}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt>Harga</dt>
+                <dd className="tabular-nums">{formatRupiah(checkout.price)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt>Biaya layanan</dt>
+                <dd className={`tabular-nums ${fee === 0 ? "font-semibold text-success" : ""}`}>{fee > 0 ? formatRupiah(fee) : "Gratis"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-2 text-text-heading">
+                <dt className="text-[14px] font-bold">Total</dt>
+                <dd className="flex items-center gap-1.5">
+                  <span className="text-[20px] font-bold tabular-nums">{formatRupiah(checkout.total)}</span>
+                  {checkout.kind === "va" && <CopyText value={String(checkout.total)} label="Salin nominal total" />}
+                </dd>
+              </div>
+            </dl>
+            {checkBtn(`${btn.primary} w-full`)}
+            {noteLive}
+            <div className="flex items-center justify-center gap-1">
+              <button type="button" className={btn.ghost} onClick={backToPick}>
+                Ganti metode
+              </button>
+              <button type="button" className={btn.ghost} onClick={onClose}>
+                Tutup
+              </button>
+            </div>
+          </aside>
+        </div>
       </div>
     );
-    footer = (
-      <>
-        {closeBtn()}
-        <button type="button" className={btn.ghost} onClick={backToPick}>
-          Ganti metode
-        </button>
-      </>
-    );
+    footer = null;
+    wide = true;
   } else if (initLoading) {
     title = "Status pembayaran";
     body = (
@@ -506,12 +643,31 @@ export function PayDialog({
   );
 }
 
-function Summary({ plan, right }: { plan: string; right: React.ReactNode }) {
+/** Tombol "Salin" berlabel; berubah jadi "Tersalin" sebentar sebagai konfirmasi (diumumkan lewat aria-live). */
+function CopyText({ value, label }: { value: string; label: string }) {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => setDone(false), 1500);
+    return () => clearTimeout(t);
+  }, [done]);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[12px] bg-bg-muted px-3 py-2 text-[13px] text-text-body">
-      <span>{plan}</span>
-      <span>{right}</span>
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      className={`${btn.secondary} min-h-8 gap-1.5 px-3 text-[13px]`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setDone(true);
+        } catch {
+          // Clipboard ditolak (mis. bukan HTTPS): pengguna menyalin manual.
+        }
+      }}
+    >
+      {done ? <Check size={14} aria-hidden className="text-success" /> : <Copy size={14} aria-hidden />}
+      <span aria-live="polite">{done ? "Tersalin" : "Salin"}</span>
+    </button>
   );
 }
 

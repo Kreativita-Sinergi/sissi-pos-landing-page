@@ -705,10 +705,11 @@ const byOutlet = (outletId?: string) => (s: { outlet_id: string }) => !outletId 
 
 const MOCK_PRICES: Record<PayCycle, number> = { monthly: 99_000, semiannual: 515_000, yearly: 990_000 };
 const MOCK_PAY_DELAY = 8_000;
+const MOCK_REFRESH_COOLDOWN = 30_000;
 
 export function createMockApi(onUnauthorized: () => void): OwnerApi {
   // Pembayaran online tiruan: checkout jadi `paid` ±8 detik setelah dibuat, lalu masuk riwayat.
-  const checkouts = new Map<string, { ck: Checkout; at: number }>();
+  const checkouts = new Map<string, { ck: Checkout; at: number; refreshedAt?: number; refreshes?: number }>();
   const paidPayments: NonNullable<import("./types").SubscriptionDetail["billing"]>["payments"] = [];
   function mockCheckoutNow(id: string): Checkout | undefined {
     const e = checkouts.get(id);
@@ -730,6 +731,8 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         status: "recorded",
       });
     }
+    const next = e.refreshedAt && e.ck.status === "pending" ? e.refreshedAt + MOCK_REFRESH_COOLDOWN : 0;
+    e.ck = { ...e.ck, next_refresh_at: next > Date.now() ? new Date(next).toISOString() : null };
     return e.ck;
   }
   async function guard(): Promise<MockSession> {
@@ -1314,6 +1317,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         payment_url: found.kind === "ewallet" ? `${window.location.origin}/dasbor/langganan?checkout=${id}` : null,
         expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
         period_end: null,
+        next_refresh_at: null,
       };
       checkouts.set(id, { ck, at: Date.now() });
       return ck;
@@ -1323,6 +1327,18 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       const ck = mockCheckoutNow(id);
       if (!ck) throw new ApiError("Checkout tidak ditemukan.", 404, "CHECKOUT_NOT_FOUND");
       return ck;
+    },
+    // Cek pertama masih pending; cek kedua (setelah jeda) lunas. Dalam jeda: baris apa adanya.
+    async refreshCheckout(id) {
+      await guard();
+      const e = checkouts.get(id);
+      if (!e || !mockCheckoutNow(id)) throw new ApiError("Checkout tidak ditemukan.", 404, "CHECKOUT_NOT_FOUND");
+      if (e.ck.status === "pending" && (!e.refreshedAt || Date.now() - e.refreshedAt >= MOCK_REFRESH_COOLDOWN)) {
+        e.refreshedAt = Date.now();
+        e.refreshes = (e.refreshes ?? 0) + 1;
+        if (e.refreshes >= 2) e.at = 0; // dianggap sudah dibayar
+      }
+      return mockCheckoutNow(id)!;
     },
   };
 }

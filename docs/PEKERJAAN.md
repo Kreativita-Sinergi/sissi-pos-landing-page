@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (dialog "Pilih cara bayar" dibangun ulang: dua panel + ringkasan)
+Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (dialog bayar: tombol Cek status pembayaran, langkah menunggu dan sukses didesain ulang)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -19,6 +19,16 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 | _(kosong)_ | | | | |
 
 ## Sedang dikerjakan
+
+- **Langganan · cek status & desain ulang dialog bayar (2026-11-06):** langkah menunggu memakai tata letak dua panel yang
+  sama dengan "Pilih cara bayar" (satu kolom di ponsel, QR langsung terlihat): kiri cara bayar (QRIS dengan logo, atau
+  nomor VA/kode besar dengan tombol Salin) + langkah bernomor; kanan status "Menunggu pembayaran", pil sisa waktu (VA dan
+  ritel: "Berlaku sampai <tanggal jam>"), ringkasan Paket/Harga/Biaya layanan/Total, dan tombol **Cek status pembayaran**
+  (`POST .../refresh`). Setelah hasil masih pending: catatan tenang dan hitung mundur "Cek lagi dalam N dtk" dari
+  `next_refresh_at` (dibatasi 31 dtk dari saat diterima agar jam klien yang meleset tidak mengunci tombol). 429/502 tampil
+  ramah. Langkah sukses: centang beranimasi (hanya bila gerak diizinkan) dan kartu rincian. Setelah lunas, lencana paket
+  di sidebar diperbarui lewat `refreshSession` yang sudah ada (tanpa muat ulang). Mock: refresh pertama pending, kedua lunas.
+  e2e `langganan:` ditambah empat tes.
 
 - **Langganan · tata letak (2026-11-06):** `/dasbor/langganan` dua kolom: kartu bayar + riwayat di kiri, pemakaian + fitur di kanan; pilih outlet disembunyikan di halaman ini. Pembayaran ujung ke ujung tetap belum teruji.
 

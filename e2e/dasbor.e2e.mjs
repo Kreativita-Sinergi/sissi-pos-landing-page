@@ -977,10 +977,11 @@ const checkout = (over = {}) => ({
   payment_url: null,
   expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
   period_end: null,
+  next_refresh_at: null,
   ...over,
 });
 
-/** Pasang stub pembayaran di `page`. `h` = { methods(), create(body), get(id), subscription?(real) }; kembalikan fungsi pelepas. */
+/** Pasang stub pembayaran di `page`. `h` = { methods(), create(body), get(id), refresh?(id), subscription?(real), me?() }; kembalikan fungsi pelepas. */
 async function stubPayments(h) {
   await page.setRequestInterception(true);
   const log = { created: [], reads: 0 };
@@ -997,7 +998,8 @@ async function stubPayments(h) {
     const path = isApi ? u.pathname.replace(/^.*\/owner/, "") : "";
     const isPay = path === "/subscription/payment-methods" || path.startsWith("/subscription/checkouts");
     const isSub = path === "/subscription" && h.subscription;
-    if (!isPay && !isSub) return req.continue();
+    const isMe = path === "/auth/me" && h.me;
+    if (!isPay && !isSub && !isMe) return req.continue();
     if (req.method() === "OPTIONS") {
       return req.respond({
         status: 204,
@@ -1006,11 +1008,17 @@ async function stubPayments(h) {
     }
     try {
       if (isSub) return req.respond(okJson(await h.subscription()));
+      if (isMe) return req.respond(okJson(await h.me()));
       if (path === "/subscription/payment-methods") return req.respond(await h.methods());
       if (path === "/subscription/checkouts" && req.method() === "POST") {
         const body = JSON.parse(req.postData() || "{}");
         log.created.push(body);
         return req.respond(await h.create(body));
+      }
+      if (req.method() === "POST" && path.endsWith("/refresh") && h.refresh) {
+        const rid = decodeURIComponent(path.split("/").slice(-2)[0]);
+        log.refreshes = (log.refreshes ?? 0) + 1;
+        return req.respond(await h.refresh(rid));
       }
       const id = decodeURIComponent(path.split("/").pop());
       log.reads++;
@@ -1064,9 +1072,9 @@ test("langganan: QRIS tanpa biaya", async () => {
     await openPayDialog();
     await waitDlg("Virtual Account");
     await pressPay();
-    await waitDlg("Total Rp59.000");
+    await waitDlg("Menunggu pembayaran");
     await page.waitForSelector("dialog[open] svg[role=img]", { visible: true });
-    assert(!(await hasText("Biaya layanan", "dialog[open]")), "QRIS tidak boleh menampilkan biaya");
+    assert((await dlgText()).includes("Gratis") && !(await dlgText()).includes("Rp5.000"), "QRIS: biaya layanan harus Gratis");
     assert(/\b\d{1,2}:\d{2}\b/.test(await dlgText()), "hitung mundur tidak tampil");
     assert(stub.log.created[0].method === "SP" && stub.log.created[0].cycle === "monthly" && !("amount" in stub.log.created[0]), "badan POST salah");
   } finally {
@@ -1115,13 +1123,124 @@ test("langganan: lunas", async () => {
     await openPayDialog();
     const before = await rowCount();
     await pressPay();
-    await waitDlg("Total Rp59.000");
+    await waitDlg("Menunggu pembayaran");
     paid = true; // polling berikutnya (≤ 4 dtk) membaca paid
     await waitDlg("Pembayaran diterima", 12_000);
     await poll(async () => (await rowCount()) === before + 1, "riwayat tidak bertambah");
     assert(await hasText("+ biaya Rp5.000", "main"), "riwayat tanpa biaya layanan");
     await click("Selesai", { within: "dialog" });
   } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: tombol Cek status pembayaran memanggil refresh, catatan belum diterima, hitung mundur, lalu lunas dengan rincian", async () => {
+  await ensureLoggedIn();
+  let paid = false;
+  let nextAt = null;
+  const q = () => checkout({ id: "ck-e2e-rf", ...(paid ? { status: "paid", period_end: "2026-12-06" } : { next_refresh_at: nextAt }) });
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => okJson(q(), 201),
+    get: () => okJson(q()),
+    refresh: () => {
+      if (!paid) nextAt = new Date(Date.now() + 4_000).toISOString();
+      return okJson(q());
+    },
+  });
+  try {
+    await openPayDialog();
+    await pressPay();
+    await waitDlg("Menunggu pembayaran");
+    const t = await dlgText();
+    for (const x of ["Status diperbarui otomatis", "Sudah bayar? Cek sekarang.", "Sisa ", "Paket", "Biaya layanan", "Ganti metode", "Tutup", "Bisa dari aplikasi bank"]) assert(t.includes(x), `waiting tanpa: ${x}`);
+    assert(await page.$('dialog[open] img[alt="QRIS"]'), "logo QRIS tidak ada");
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Pembayaran belum diterima. Coba lagi sebentar lagi.");
+    assert(stub.log.refreshes === 1, `refresh dipanggil ${stub.log.refreshes}x`);
+    await waitDlg("Cek lagi dalam");
+    const dis = await page.evaluate(() => [...document.querySelectorAll("dialog[open] button")].find((b) => b.innerText.includes("Cek lagi dalam"))?.disabled);
+    assert(dis === true, "tombol harus nonaktif selama jeda");
+    assert(await page.$("dialog[open] [aria-live=polite]"), "aria-live polite tidak ada");
+    // Jeda habis → tombol aktif lagi.
+    await page.waitForFunction(() => [...document.querySelectorAll("dialog[open] button")].some((b) => b.innerText.includes("Cek status pembayaran") && !b.disabled), { timeout: 10_000 });
+    paid = true;
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Pembayaran diterima", 8_000);
+    const done = await dlgText();
+    for (const x of ["Pro aktif sampai", "Paket", "Total dibayar", "Rp59.000", "Metode", "Aktif sampai"]) assert(done.includes(x), `sukses tanpa: ${x}`);
+    assert(stub.log.refreshes === 2, `refresh ${stub.log.refreshes}x`);
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: cek status 502 tampil ramah, tanpa kode mentah", async () => {
+  await ensureLoggedIn();
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => okJson(checkout({ id: "ck-e2e-502" }), 201),
+    get: () => okJson(checkout({ id: "ck-e2e-502" })),
+    refresh: () => errJson(502, "PAYMENT_GATEWAY_ERROR", "Pembayaran online sedang bermasalah. Coba lagi sebentar lagi."),
+  });
+  try {
+    await openPayDialog();
+    await pressPay();
+    await waitDlg("Menunggu pembayaran");
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Penyedia pembayaran sedang bermasalah. Coba lagi sebentar lagi.");
+    assert(!(await hasText("PAYMENT_GATEWAY_ERROR", "dialog[open]")), "kode mentah tampil");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: setelah lunas lewat cek status, lencana paket di sidebar diperbarui tanpa muat ulang", async () => {
+  await ensureLoggedIn();
+  const real = await api.get("/owner/auth/me");
+  let paid = false;
+  const q = () => checkout({ id: "ck-e2e-badge", ...(paid ? { status: "paid", period_end: "2026-12-06" } : {}) });
+  // /owner/auth/me di-stub: uji coba 5 hari sebelum lunas, Pro aktif sesudahnya.
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => okJson(q(), 201),
+    get: () => okJson(q()),
+    refresh: () => okJson(q()),
+    me: () => ({ ...real, subscription: { ...real.subscription, plan: "pro", status: paid ? "active" : "trial", days_left: paid ? null : 5 } }),
+  });
+  try {
+    await openPayDialog();
+    await page.waitForFunction(() => /Uji coba Pro · 5 hari lagi/.test(document.querySelector("aside")?.innerText ?? ""), { timeout: TIMEOUT });
+    const marker = await page.evaluate(() => (window.__noReload = 7));
+    await pressPay();
+    await waitDlg("Menunggu pembayaran");
+    paid = true;
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Pembayaran diterima", 8_000);
+    await page.waitForFunction(() => !/Uji coba Pro/.test(document.querySelector("aside")?.innerText ?? ""), { timeout: TIMEOUT });
+    assert((await page.evaluate(() => window.__noReload)) === marker, "halaman dimuat ulang");
+    await click("Selesai", { within: "dialog" });
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: langkah menunggu di ponsel menampilkan QR di layar tanpa gulir", async () => {
+  await ensureLoggedIn();
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(checkout({ id: "ck-e2e-ph" }), 201), get: () => okJson(checkout({ id: "ck-e2e-ph" })) });
+  await page.setViewport({ width: 390, height: 844 });
+  try {
+    await openPayDialog();
+    await pressPay();
+    await waitDlg("Menunggu pembayaran");
+    const r = await page.evaluate(() => {
+      const svg = document.querySelector("dialog[open] svg[role=img]").getBoundingClientRect();
+      return { top: svg.top, bottom: svg.bottom, vh: innerHeight, sx: document.documentElement.scrollWidth, vw: innerWidth };
+    });
+    assert(r.top >= 0 && r.bottom <= r.vh, `QR di luar layar: ${JSON.stringify(r)}`);
+    assert(r.sx <= r.vw, "gulir horizontal");
+  } finally {
+    await page.setViewport({ width: 1360, height: 900 });
     await stub.off();
   }
 });
@@ -1159,7 +1278,7 @@ test("langganan: gateway gagal", async () => {
     assert((await dialogTitle()) === "Pilih cara bayar", "dialog tertutup saat gateway gagal");
     fail = false;
     await click("Coba lagi", { within: "dialog" });
-    await waitDlg("Total Rp59.000");
+    await waitDlg("Menunggu pembayaran");
   } finally {
     await stub.off();
   }
@@ -1264,7 +1383,8 @@ test("langganan: pelanggan aktif 6 Bulan terpilih di kartu 6 Bulan, ringkasan di
     await pickMethod("QRIS");
     await waitDlg(`Bayar ${rp(price)}`);
     await pressPay();
-    await waitDlg(`Total ${rp(price)}`);
+    await waitDlg("Menunggu pembayaran");
+    assert((await dlgText()).includes(rp(price)), "total paket 6 bulan tidak tampil");
     eq(stub.log.created[0]?.cycle, "semiannual", "POST memakai siklus semiannual");
     assert(!("amount" in stub.log.created[0]), "klien tidak boleh mengirim nominal");
   } finally {
@@ -1382,7 +1502,7 @@ test("langganan: QRIS terpilih bawaan, ringkasan Gratis, pilih BCA memperbarui t
     await sleep(400);
     eq(stub.log.created.length, 0, "memilih tidak boleh membuat checkout");
     await pressPay();
-    await waitDlg("Total Rp");
+    await waitDlg("Menunggu pembayaran");
     eq(stub.log.created.length, 1, "Bayar membuat satu checkout");
     eq(stub.log.created[0].method, "BC", "metode yang dikirim");
   } finally {
@@ -1442,7 +1562,7 @@ test("langganan: saat membuat checkout tombol berputar dan radio nonaktif", asyn
     );
     const st = await radioState();
     eq(st.disabled, st.n, "semua radio nonaktif saat membuat");
-    await waitDlg("Total Rp59.000");
+    await waitDlg("Menunggu pembayaran");
   } finally {
     await stub.off();
   }

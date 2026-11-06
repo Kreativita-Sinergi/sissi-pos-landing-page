@@ -563,4 +563,6 @@ export type Checkout = {
   expires_at: string;
   /** Terisi setelah `paid`. */
   period_end: string | null;
+  /** Kapan cek manual berikutnya boleh (RFC3339); null = boleh sekarang. Jeda 30 detik ditentukan server. */
+  next_refresh_at?: string | null;
 };
