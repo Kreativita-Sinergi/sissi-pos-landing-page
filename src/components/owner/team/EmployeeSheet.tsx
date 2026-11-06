@@ -146,6 +146,8 @@ function EmployeeForm({
 }) {
   const id = useId();
   const toast = useToast();
+  // Email pemilik tidak bisa diubah dari sini (server menolak); sampai ada verifikasi, diubah oleh tim Sissi.
+  const emailLocked = current?.role === "owner";
   const [initial] = useState(() => ({
     name: current?.name ?? "",
     phone: (current?.phone ?? "").replace(/^\+62/, "0"),
@@ -333,7 +335,12 @@ function EmployeeForm({
             onChange={(e) => update({ phone: e.target.value })}
           />
         </Field>
-        <Field id={`${id}-email`} label="Email (opsional)" error={errors.email}>
+        <Field
+          id={`${id}-email`}
+          label={emailLocked ? "Email" : "Email (opsional)"}
+          error={errors.email}
+          hint={emailLocked ? "Email pemilik tidak bisa diubah. Hubungi tim Sissi." : undefined}
+        >
           <input
             id={`${id}-email`}
             className={inputClass}
@@ -341,6 +348,7 @@ function EmployeeForm({
             autoComplete="off"
             placeholder="nama@email.com"
             value={f.email}
+            readOnly={emailLocked}
             aria-invalid={!!errors.email || undefined}
             onChange={(e) => update({ email: e.target.value })}
           />
