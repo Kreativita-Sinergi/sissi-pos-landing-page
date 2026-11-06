@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (alamat di kotak kontak halaman Tentang)
+Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (dialog bayar langganan Duitku)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -20,7 +20,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
-- _(kosong)_
+- **P1 · Dialog bayar langganan online (Duitku) di `/dasbor` — terimplementasi, BELUM E2E, belum dirilis (2026-11-06).**
+  `PayDialog` + mock/tes browser dengan stub selesai (commit `f31737c..3ca0ad4`). Belum dijalankan terhadap API Duitku
+  sungguhan (sandbox maupun produksi). Rilis menunggu service (`../sissi-pos-service/docs/PEKERJAAN.md`) dideploy dan E2E
+  selesai. Backlog di bawah.
 
 ## Berikutnya
 
@@ -30,6 +33,20 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   baru ada di service `development`. Butuh izin pemilik.
 
 ## Backlog
+
+- **P1 · Duitku langganan, sebelum rilis:** jalankan E2E aplikasi di sandbox, termasuk QRIS `SP` dengan pindai
+  sungguhan memakai APK staging Shopee; ulangi E2E dan bukti `amount` callback dengan kredensial produksi.
+- **P2 · Duitku, kepastian di luar kode:** konfirmasi ke Duitku atau konsultan bahwa membebankan biaya layanan ke
+  pelanggan pada metode non-QRIS diperbolehkan (PBI 23/6/PBI/2021 Pasal 52; teks resmi belum dibaca); cek pengaturan
+  portal untuk `BT A1 DA LA JP` (biaya 0 sehingga disembunyikan); teks PPN masih ada di `/harga`, `HargaSection`,
+  panduan, dan app, kewajiban PPN dikonfirmasi ke akuntan; app Flutter masih menampilkan pembayaran manual;
+  `resultCode` dan `reference` callback tidak ditandatangani Duitku, pengerasan diputuskan sebelum produksi; belum ada
+  alert untuk log error rekonsiliasi berhenti (sisi service).
+- **P3 · Temuan minor dialog yang ditunda:** teks kedaluwarsa menjanjikan pembaruan otomatis padahal polling berhenti
+  (`PayDialog.tsx`); pengalihan e-wallet tetap jalan bila POST selesai setelah dialog ditutup; galat non-404
+  `?checkout=` hilang; `backToPick` memakai siklus halaman; selisih jam klien vs `expires_at`; cakupan e2e
+  `amount_mismatch`/`failed`/paid telat belum ada; `mock.ts` memakai `this.paymentMethods` dan import inline,
+  `PAYMENT_STATUS` hanya `recorded|void`.
 
 - **P3 · Pastikan kecamatan alamat kantor:** situs menulis "Kec. Tampan" sesuai pemilik, tetapi satu sumber tak resmi
   menempatkan Simpang Baru di Kec. Binawidya setelah pemekaran. Perda Pekanbaru No. 2/2020 belum terbaca. Kode pos
