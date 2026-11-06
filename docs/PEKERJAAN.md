@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (paket Pro 6 Bulan: kartu bayar, dialog, admin, halaman harga)
+Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (dialog "Pilih cara bayar" dibangun ulang: dua panel + ringkasan)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -81,6 +81,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 - **Urutan kategori** dari web = `reorderCategories` aplikasi (indeks → `sort_order`, hanya baris berubah).
 
 ## Selesai
+
+- **2026-11-06 · Dialog "Pilih cara bayar" dibangun ulang.** Desktop (`lg`+): dialog lebar 880px, kiri semua metode tanpa lipatan (QRIS penuh di atas; Virtual Account, E-wallet, Gerai ritel dua kolom; baris datar logo ±48x28 + nama + biaya + radio), kanan "Ringkasan" (Paket, Harga, Biaya layanan atau "Gratis", Total, tombol "Bayar Rp…") yang mengikuti pilihan. Tanpa gulir di 1360x768 dan 1360x900 dengan 15 metode (dialog 560px). Ponsel: satu kolom, daftar menggulir di dalam dialog, ringkasan + tombol tertempel di bawah, halaman di belakang terkunci. Perilaku: memilih hanya memilih (radio sungguhan, satu grup, panah keyboard); checkout dibuat saat "Bayar" ditekan; QRIS terpilih bawaan, pilihan yang hilang jatuh ke QRIS/pertama. "Bank lainnya", `VaList`, `VA_FIRST`, `VA_FOLD_MIN` dihapus. `Modal` dapat prop opsional `wide` (lebar + tinggi dibatasi layar + kunci gulir halaman); pemanggil lain tidak berubah. e2e `langganan` 19 lulus.
 
 - **2026-11-06 · Paket Pro 6 Bulan (`semiannual`, Rp309.000 disetujui pemilik; bisa diubah lewat `billing_config`).** Dasbor:
   tiga kartu Bulanan / 6 Bulan / Tahunan (tiga kolom dari `sm`, bertumpuk di ponsel; helper "RpX/bulan" dan "Hemat RpX" dihitung

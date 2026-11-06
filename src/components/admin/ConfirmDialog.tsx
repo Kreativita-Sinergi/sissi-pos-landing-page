@@ -95,6 +95,7 @@ export function Modal({
   onClose,
   dismissible = true,
   icon,
+  wide = false,
 }: {
   open: boolean;
   title: string;
@@ -104,6 +105,8 @@ export function Modal({
   onClose: () => void;
   dismissible?: boolean;
   icon?: React.ReactNode;
+  /** Lebar (hingga 880px dari `lg`) dan tinggi dibatasi layar: isi dipasang kolom flex agar bagian di dalamnya bisa menggulir sendiri. Halaman di belakang dikunci. */
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -114,6 +117,16 @@ export function Modal({
     if (open && !d.open) d.showModal();
     else if (!open && d.open) d.close();
   }, [open]);
+
+  // Dialog lebar: halaman di belakang tidak boleh ikut menggulir.
+  useEffect(() => {
+    if (!wide || !open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [wide, open]);
 
   return (
     <dialog
@@ -128,10 +141,12 @@ export function Modal({
       onClick={(e) => {
         if (e.target === e.currentTarget && dismissible) onClose();
       }}
-      className="m-auto w-[calc(100%-32px)] max-w-[480px] rounded-[16px] bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.5)]"
+      className={`m-auto w-[calc(100%-32px)] rounded-[16px] bg-white p-0 text-text-heading shadow-xl backdrop:bg-[rgb(28_22_18/0.5)] ${
+        wide ? "max-h-[calc(100dvh-32px)] max-w-[480px] overflow-hidden open:flex open:flex-col sm:max-w-[640px] lg:max-w-[880px]" : "max-w-[480px]"
+      }`}
     >
       {open && (
-        <div className="p-5">
+        <div className={wide ? "flex min-h-0 flex-1 flex-col p-5" : "p-5"}>
           <div className="flex items-start gap-3">
             {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
             <div className="min-w-0 flex-1">
@@ -146,7 +161,7 @@ export function Modal({
               </button>
             )}
           </div>
-          <div className="mt-4 text-[14px] text-text-body">{children}</div>
+          <div className={`mt-4 text-[14px] text-text-body ${wide ? "flex min-h-0 flex-1 flex-col" : ""}`}>{children}</div>
           {footer && <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{footer}</div>}
         </div>
       )}

@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, ChevronDown, ExternalLink, Landmark, QrCode as QrIcon, Store, Wallet } from "lucide-react";
+import { CheckCircle2, ExternalLink, Landmark, QrCode as QrIcon, Store, Wallet } from "lucide-react";
 import { Modal } from "@/components/admin/ConfirmDialog";
 import { BILLING_CYCLES } from "@/components/admin/labels";
-import { btn, CopyButton, focusRing, formatDate, formatRupiah, Notice, Spinner, errorMessage } from "@/components/admin/ui";
+import { btn, CopyButton, formatDate, formatRupiah, Notice, Spinner, errorMessage } from "@/components/admin/ui";
 import { QrCode } from "@/components/self-order/QrCode";
 import { ownerApi } from "@/lib/owner/api";
 import type { Checkout, PayCycle, PayKind, PayMethod, PayMethods } from "@/lib/owner/types";
@@ -25,10 +25,8 @@ const KIND_TITLE: Record<PayKind, string> = {
   retail: "Gerai ritel",
 };
 const KIND_ORDER: PayKind[] = ["va", "ewallet", "retail"];
+const RADIO_NAME = "pay-method";
 const KIND_ICON: Record<PayKind, typeof QrIcon> = { qris: QrIcon, va: Landmark, ewallet: Wallet, retail: Store };
-/** Bank VA yang selalu tampil; sisanya masuk "Bank lainnya" (bila lebih dari 3). */
-const VA_FIRST = ["BC", "M2"];
-const VA_FOLD_MIN = 4;
 
 const STEPS: Record<PayKind, string[]> = {
   qris: ["Buka aplikasi bank atau e-wallet", "Pindai kode di atas", "Periksa nominal, lalu bayar"],
@@ -75,6 +73,7 @@ export function PayDialog({
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [fail, setFail] = useState<Fail | null>(null);
   const [creating, setCreating] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [attempt, setAttempt] = useState(0);
   const [initLoading, setInitLoading] = useState(open && !!initialCheckoutId);
@@ -109,6 +108,7 @@ export function PayDialog({
       setCreating(null);
       setInitFail(null);
       setPickCycle(null);
+      setPicked(null);
       setInitLoading(!!initialCheckoutId);
     }
   }
@@ -255,6 +255,7 @@ export function PayDialog({
   let title = "Pilih cara bayar";
   let body: React.ReactNode;
   let footer: React.ReactNode = closeBtn();
+  let wide = false;
 
   if (checkout && status === "paid") {
     title = "Pembayaran diterima";
@@ -421,56 +422,85 @@ export function PayDialog({
     );
   } else {
     const qris = methods.methods.find((m) => m.kind === "qris");
+    // Pilihan yang hilang dari daftar (mis. setelah muat ulang) jatuh ke QRIS, atau metode pertama.
+    const sel = methods.methods.find((m) => m.code === picked) ?? qris ?? methods.methods[0];
+    const busy = !!creating;
+    const row = (m: PayMethod) => (
+      <MethodRow key={m.code} m={m} fav={m.kind === "qris"} checked={m.code === sel?.code} disabled={busy} onPick={() => setPicked(m.code)} />
+    );
     body = (
-      <div className="flex flex-col gap-3">
-        <Summary plan={planName} right={<strong className="tabular-nums text-text-heading">{formatRupiah(methods.price)}</strong>} />
-        {fail && (
-          <Notice tone="danger" role="alert">
-            <span className="flex flex-wrap items-center gap-3">
-              {fail.text}
-              {lastCode && (
-                <button type="button" className={btn.secondary} disabled={!!creating} onClick={() => choose(lastCode)}>
-                  Coba lagi
-                </button>
-              )}
-            </span>
-          </Notice>
-        )}
-        <div className="-mr-2 max-h-[calc(100dvh-300px)] min-h-[180px] overflow-y-auto overscroll-contain pr-2">
-          {qris && (
-            <ul>
-              <MethodRow m={qris} fav busy={creating === qris.code} disabled={!!creating} onPick={() => choose(qris.code)} />
-            </ul>
-          )}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
+        <div role="radiogroup" aria-label="Metode pembayaran" className="-m-1 min-h-0 flex-1 overflow-y-auto overscroll-contain p-1">
+          {qris && <div className="mb-1">{row(qris)}</div>}
           {KIND_ORDER.map((kind) => {
             const list = methods.methods.filter((m) => m.kind === kind);
             if (list.length === 0) return null;
             return (
-              <section key={kind} aria-label={KIND_TITLE[kind]}>
-                <h3 className="mb-1.5 mt-3 text-[12px] font-semibold text-text-muted">{KIND_TITLE[kind]}</h3>
-                {kind === "va" ? (
-                  <VaList list={list} creating={creating} onPick={choose} />
-                ) : (
-                  <ul className="flex flex-col gap-1.5">
-                    {list.map((m) => (
-                      <MethodRow key={m.code} m={m} busy={creating === m.code} disabled={!!creating} onPick={() => choose(m.code)} />
-                    ))}
-                  </ul>
-                )}
+              <section key={kind} aria-label={KIND_TITLE[kind]} className="mt-2.5 first:mt-0">
+                <h3 className="mb-1 px-2.5 text-[12px] font-semibold text-text-muted">{KIND_TITLE[kind]}</h3>
+                <div className="grid grid-cols-1 gap-x-2 gap-y-0.5 lg:grid-cols-2">{list.map(row)}</div>
               </section>
             );
           })}
         </div>
+        <aside aria-label="Ringkasan" className="shrink-0 border-t border-border-subtle pt-3 lg:self-start lg:rounded-[12px] lg:border lg:bg-bg-muted lg:p-4">
+          <h3 className="hidden text-[14px] font-bold text-text-heading lg:block">Ringkasan</h3>
+          <dl className="space-y-1 text-[13px] text-text-body lg:mt-3 lg:space-y-1.5">
+            <div className="flex justify-between gap-3 lg:hidden">
+              <dt className="sr-only">Ringkasan</dt>
+              <dd className="font-semibold text-text-heading">{planName}</dd>
+            </div>
+            <div className="hidden justify-between gap-3 lg:flex">
+              <dt>Paket</dt>
+              <dd className="font-semibold text-text-heading">{planName}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Harga</dt>
+              <dd className="tabular-nums">{formatRupiah(methods.price)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Biaya layanan</dt>
+              <dd className={`tabular-nums ${sel && sel.fee === 0 ? "font-semibold text-success" : ""}`}>{sel ? (sel.fee > 0 ? formatRupiah(sel.fee) : "Gratis") : "-"}</dd>
+            </div>
+            <div className="flex justify-between gap-3 border-t border-border-subtle pt-1.5 text-[14px] font-bold text-text-heading">
+              <dt>Total</dt>
+              <dd className="tabular-nums">{sel ? formatRupiah(sel.total) : "-"}</dd>
+            </div>
+          </dl>
+          {fail && (
+            <div className="mt-2">
+              <Notice tone="danger" role="alert">
+                <span className="flex flex-wrap items-center gap-3">
+                  {fail.text}
+                  {lastCode && (
+                    <button type="button" className={btn.secondary} disabled={busy} onClick={() => choose(lastCode)}>
+                      Coba lagi
+                    </button>
+                  )}
+                </span>
+              </Notice>
+            </div>
+          )}
+          <div className="mt-3 flex gap-2 lg:flex-col">
+            <button type="button" className={`${btn.secondary} lg:order-2`} onClick={onClose}>
+              Batal
+            </button>
+            <button type="button" className={`${btn.primary} min-w-0 flex-1 lg:order-1 lg:flex-none`} disabled={busy || !sel} onClick={() => sel && choose(sel.code)}>
+              {busy && <Spinner />} Bayar {sel ? formatRupiah(sel.total) : ""}
+            </button>
+          </div>
+        </aside>
       </div>
     );
-    footer = closeBtn("Batal");
+    footer = null;
+    wide = true;
   }
 
   // Selama menunggu, latar/Esc tidak menutup: salah ketuk tidak membuang QR. Tutup lewat tombol "Tutup".
   const dismissible = !pending || expiredLocal;
 
   return (
-    <Modal open={open} title={title} onClose={onClose} dismissible={dismissible} footer={footer}>
+    <Modal open={open} title={title} onClose={onClose} dismissible={dismissible} footer={footer} wide={wide}>
       {body}
     </Modal>
   );
@@ -494,62 +524,20 @@ function methodLogoSrc(m: PayMethod): string {
   return m.kind === "qris" ? QRIS_LOGO : (LOCAL_LOGOS[m.code] ?? m.image);
 }
 
-/** Ubin logo berukuran tetap, cukup besar agar logo terbaca. Gagal dimuat → ikon jenis metode. */
-function MethodLogo({ m, small = false }: { m: PayMethod; small?: boolean }) {
+/** Logo berukuran tetap (±48x28), cukup besar agar terbaca. Gagal dimuat → ikon jenis metode. */
+function MethodLogo({ m }: { m: PayMethod }) {
   const [broken, setBroken] = useState(false);
   const Icon = KIND_ICON[m.kind];
-  const size = small ? "h-[22px] w-9 p-[3px]" : "h-[34px] w-14 p-[5px]";
   const src = methodLogoSrc(m);
   return (
-    <span aria-hidden className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-border-subtle bg-white text-text-body`}>
+    <span aria-hidden className="flex h-7 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[6px] border border-border-subtle bg-white p-[3px] text-text-body">
       {src && !broken ? (
         // eslint-disable-next-line @next/next/no-img-element -- logo lokal atau dari images.duitku.com (host disaring server), tanpa optimasi next/image.
         <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="max-h-full max-w-full object-contain" />
       ) : (
-        <Icon size={small ? 14 : 18} aria-hidden />
+        <Icon size={16} aria-hidden />
       )}
     </span>
-  );
-}
-
-function VaList({ list, creating, onPick }: { list: PayMethod[]; creating: string | null; onPick: (code: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const first = VA_FIRST.map((c) => list.find((m) => m.code === c)).filter((m): m is PayMethod => !!m);
-  const rest = list.filter((m) => !VA_FIRST.includes(m.code));
-  const fold = rest.length >= VA_FOLD_MIN;
-  const shown = fold ? first : list;
-  return (
-    <>
-      <ul className="flex flex-col gap-1.5">
-        {shown.map((m) => (
-          <MethodRow key={m.code} m={m} busy={creating === m.code} disabled={!!creating} onPick={() => onPick(m.code)} />
-        ))}
-      </ul>
-      {fold && (
-        <>
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls="pay-va-more"
-            onClick={() => setOpen((v) => !v)}
-            className={`mt-1.5 flex w-full items-center justify-between gap-3 rounded-[12px] border border-border-subtle px-3 py-2.5 text-left text-[13.5px] text-text-heading transition-colors hover:bg-bg-muted ${focusRing}`}
-          >
-            <span>Bank lainnya</span>
-            <span className="flex items-center gap-1">
-              {!open && rest.slice(0, 3).map((m) => <MethodLogo key={m.code} m={m} small />)}
-              <ChevronDown size={16} aria-hidden className={`text-text-muted transition-transform ${open ? "rotate-180" : ""}`} />
-            </span>
-          </button>
-          {open && (
-            <ul id="pay-va-more" className="mt-1.5 flex flex-col gap-1.5">
-              {rest.map((m) => (
-                <MethodRow key={m.code} m={m} busy={creating === m.code} disabled={!!creating} onPick={() => onPick(m.code)} />
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-    </>
   );
 }
 
@@ -569,27 +557,26 @@ function displayName(m: PayMethod): string {
     .join(" ");
 }
 
-function MethodRow({ m, fav = false, busy, disabled, onPick }: { m: PayMethod; fav?: boolean; busy: boolean; disabled: boolean; onPick: () => void }) {
+/** Satu baris pilihan: radio sungguhan (satu grup, panah keyboard) yang terlihat sebagai baris datar. */
+function MethodRow({ m, fav, checked, disabled, onPick }: { m: PayMethod; fav: boolean; checked: boolean; disabled: boolean; onPick: () => void }) {
   const name = m.kind === "qris" ? "QRIS" : displayName(m);
   return (
-    <li>
-      <button
-        type="button"
-        onClick={onPick}
-        disabled={disabled}
-        className={`flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors disabled:opacity-60 ${focusRing} ${
-          fav ? "border-[1.5px] border-brand-primary bg-brand-tint" : "border border-border-subtle hover:bg-bg-muted"
-        }`}
-      >
-        <MethodLogo m={m} />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[13.5px] font-semibold text-text-heading">{name}</span>
-          <span className={`block text-[12px] ${fav ? "font-semibold text-success" : "text-text-muted"}`}>
-            {fav ? "Disarankan · tanpa biaya" : m.fee > 0 ? `Biaya ${formatRupiah(m.fee)}` : "Tanpa biaya layanan"}
-          </span>
+    <label
+      className={`flex items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-brand-primary ${
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+      } ${checked ? "bg-brand-tint" : disabled ? "" : "hover:bg-bg-muted"}`}
+    >
+      <input type="radio" name={RADIO_NAME} value={m.code} checked={checked} disabled={disabled} onChange={onPick} className="peer sr-only" />
+      <MethodLogo m={m} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13.5px] font-semibold leading-tight text-text-heading">{name}</span>
+        <span className={`block text-[12px] leading-tight ${fav ? "font-semibold text-success" : "text-text-muted"}`}>
+          {fav ? "Disarankan · tanpa biaya" : m.fee > 0 ? `Biaya ${formatRupiah(m.fee)}` : "Tanpa biaya layanan"}
         </span>
-        <span className="whitespace-nowrap text-right text-[13.5px] font-semibold tabular-nums text-text-heading">{busy ? <Spinner /> : formatRupiah(m.total)}</span>
-      </button>
-    </li>
+      </span>
+      <span aria-hidden className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 bg-white ${checked ? "border-brand-primary" : "border-border-active"}`}>
+        {checked && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
+      </span>
+    </label>
   );
 }
