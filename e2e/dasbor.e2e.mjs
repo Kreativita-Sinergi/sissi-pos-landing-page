@@ -938,6 +938,242 @@ test("shift: daftar menandai hitungan server berbeda (bila ada)", async () => {
   eq(await hasText("Hitungan server berbeda", "main"), !!bad && rows.indexOf(bad) < 25, "badge selisih hitungan server");
 });
 
+// ——— Langganan: dialog bayar Duitku ———
+// API lokal belum tentu memuat endpoint pembayaran, dan Duitku tidak boleh disentuh tes: hanya
+// /owner/subscription/payment-methods dan /owner/subscription/checkouts* yang di-stub lewat intersepsi request
+// puppeteer; login dan semua endpoint lain tetap ke API sungguhan.
+
+const CORS = { "Access-Control-Allow-Origin": BASE, "Access-Control-Allow-Credentials": "true", Vary: "Origin" };
+const okJson = (data, status = 200) => ({ status, headers: CORS, contentType: "application/json", body: JSON.stringify({ success: true, message: "OK", data }) });
+const errJson = (status, code, message) => ({ status, headers: CORS, contentType: "application/json", body: JSON.stringify({ success: false, message, error: { code } }) });
+const QR = "00020101021226670016COM.NOBUBANK.WWW01189360050300000879140214123456789012340303UMI51440014ID.CO.QRIS.WWW0215ID20232345678900303UMI5204581253033605405590005802ID5910Sissi Test6007Jakarta61051234062070703A0163041234";
+const METHODS = {
+  cycle: "monthly",
+  price: 59000,
+  methods: [
+    { code: "SP", name: "QRIS", kind: "qris", fee: 0, total: 59000 },
+    { code: "BC", name: "BCA Virtual Account", kind: "va", fee: 5000, total: 64000 },
+    { code: "OV", name: "OVO", kind: "ewallet", fee: 1500, total: 60500 },
+  ],
+};
+const checkout = (over = {}) => ({
+  id: "ck-e2e-1",
+  cycle: "monthly",
+  method: "SP",
+  kind: "qris",
+  status: "pending",
+  price: 59000,
+  service_fee: 0,
+  total: 59000,
+  qr_string: QR,
+  pay_code: null,
+  payment_url: null,
+  expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+  period_end: null,
+  ...over,
+});
+
+/** Pasang stub pembayaran di `page`. `h` = { methods(), create(body), get(id), subscription?(real) }; kembalikan fungsi pelepas. */
+async function stubPayments(h) {
+  await page.setRequestInterception(true);
+  const log = { created: [], reads: 0 };
+  const onReq = async (req) => {
+    if (req.isInterceptResolutionHandled()) return;
+    const u = new URL(req.url());
+    const isApi = req.url().startsWith(API);
+    const path = isApi ? u.pathname.replace(/^.*\/owner/, "") : "";
+    const isPay = path === "/subscription/payment-methods" || path.startsWith("/subscription/checkouts");
+    const isSub = path === "/subscription" && h.subscription;
+    if (!isPay && !isSub) return req.continue();
+    if (req.method() === "OPTIONS") {
+      return req.respond({
+        status: 204,
+        headers: { ...CORS, "Access-Control-Allow-Headers": "content-type, x-sissi-owner, idempotency-key", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" },
+      });
+    }
+    try {
+      if (isSub) return req.respond(okJson(await h.subscription()));
+      if (path === "/subscription/payment-methods") return req.respond(await h.methods());
+      if (path === "/subscription/checkouts" && req.method() === "POST") {
+        const body = JSON.parse(req.postData() || "{}");
+        log.created.push(body);
+        return req.respond(await h.create(body));
+      }
+      const id = decodeURIComponent(path.split("/").pop());
+      log.reads++;
+      return req.respond(await h.get(id));
+    } catch (e) {
+      return req.respond(errJson(500, "INTERNAL", String(e)));
+    }
+  };
+  page.on("request", onReq);
+  return {
+    log,
+    async off() {
+      page.off("request", onReq);
+      await page.setRequestInterception(false);
+    },
+  };
+}
+
+const dlgText = () => page.evaluate(() => [...document.querySelectorAll("dialog[open]")].pop()?.innerText ?? "");
+async function waitDlg(text, timeout = TIMEOUT) {
+  await waitText(text, { root: "dialog[open]", timeout });
+}
+async function openPayDialog() {
+  await go("/dasbor/langganan");
+  await click("Bayar sekarang", { within: "main" });
+  await waitDialog("Bayar Pro Bulanan");
+}
+const rowCount = () => page.evaluate(() => document.querySelectorAll("main table tbody tr").length);
+
+test("langganan: kartu bayar tanpa transfer", async () => {
+  await ensureLoggedIn();
+  await go("/dasbor/langganan");
+  await waitText("Bayar sekarang", { root: "main" });
+  for (const t of ["Konfirmasi lewat WhatsApp", "Transfer ke", "Harga belum termasuk PPN", "dicatat tim Sissi"]) {
+    assert(!(await hasText(t, "main")), `teks lama masih ada: ${t}`);
+  }
+});
+
+test("langganan: QRIS tanpa biaya", async () => {
+  await ensureLoggedIn();
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(checkout(), 201), get: () => okJson(checkout()) });
+  try {
+    await openPayDialog();
+    await waitDlg("Virtual Account");
+    await click("QRIS", { within: "dialog", partial: true });
+    await waitDlg("Total Rp59.000");
+    await page.waitForSelector("dialog[open] svg[role=img]", { visible: true });
+    assert(!(await hasText("Biaya layanan", "dialog[open]")), "QRIS tidak boleh menampilkan biaya");
+    assert(/\b\d{1,2}:\d{2}\b/.test(await dlgText()), "hitung mundur tidak tampil");
+    assert(stub.log.created[0].method === "SP" && stub.log.created[0].cycle === "monthly" && !("amount" in stub.log.created[0]), "badan POST salah");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: VA dengan biaya", async () => {
+  await ensureLoggedIn();
+  const va = checkout({ id: "ck-e2e-va", method: "BC", kind: "va", service_fee: 5000, total: 64000, qr_string: null, pay_code: "8001234567890123" });
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(va, 201), get: () => okJson(va) });
+  try {
+    await openPayDialog();
+    await click("BCA Virtual Account", { within: "dialog", partial: true });
+    await waitDlg("8001234567890123");
+    const t = await dlgText();
+    for (const x of ["Rp59.000", "Rp5.000", "Rp64.000"]) assert(t.includes(x), `rincian tanpa ${x}`);
+    await click("Salin nomor virtual account", { within: "dialog" });
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: lunas", async () => {
+  await ensureLoggedIn();
+  let paid = false;
+  const q = () => checkout({ id: "ck-e2e-paid", ...(paid ? { status: "paid", period_end: "2026-12-06" } : {}) });
+  const real = await api.get("/owner/subscription");
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => okJson(q(), 201),
+    get: () => okJson(q()),
+    // Riwayat ikut berubah setelah lunas (API lokal tidak tahu pembayaran stub).
+    subscription: () => ({
+      ...real,
+      billing: real.billing && {
+        ...real.billing,
+        payments: paid
+          ? [{ id: "pay-e2e", paid_at: new Date().toISOString(), amount: 59000, service_fee: 5000, cycle: "monthly", period_start: "2026-11-06", period_end: "2026-12-06", method: "gateway", status: "recorded" }, ...real.billing.payments]
+          : real.billing.payments,
+      },
+    }),
+  });
+  try {
+    await openPayDialog();
+    const before = await rowCount();
+    await click("QRIS", { within: "dialog", partial: true });
+    await waitDlg("Total Rp59.000");
+    paid = true; // polling berikutnya (≤ 4 dtk) membaca paid
+    await waitDlg("Pembayaran diterima", 12_000);
+    await poll(async () => (await rowCount()) === before + 1, "riwayat tidak bertambah");
+    assert(await hasText("+ biaya Rp5.000", "main"), "riwayat tanpa biaya layanan");
+    await click("Selesai", { within: "dialog" });
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: kedaluwarsa", async () => {
+  await ensureLoggedIn();
+  const expires_at = new Date(Date.now() + 3_000).toISOString();
+  const q = () => checkout({ id: "ck-e2e-exp", expires_at });
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(q(), 201), get: () => okJson(q()) });
+  try {
+    await openPayDialog();
+    await click("QRIS", { within: "dialog", partial: true });
+    await waitDlg("Buat QR baru", 10_000);
+    await sleep(1_500); // satu pembacaan terakhir saat hitung mundur habis
+    const reads = stub.log.reads;
+    await sleep(9_000); // > 2 interval polling
+    assert(stub.log.reads === reads, "polling belum berhenti setelah kedaluwarsa");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: gateway gagal", async () => {
+  await ensureLoggedIn();
+  let fail = true;
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => (fail ? errJson(502, "PAYMENT_GATEWAY_ERROR", "Penyedia pembayaran sedang bermasalah.") : okJson(checkout(), 201)),
+    get: () => okJson(checkout()),
+  });
+  try {
+    await openPayDialog();
+    await click("QRIS", { within: "dialog", partial: true });
+    await waitDlg("Coba lagi");
+    assert((await dialogTitle()) === "Bayar Pro Bulanan", "dialog tertutup saat gateway gagal");
+    fail = false;
+    await click("Coba lagi", { within: "dialog" });
+    await waitDlg("Total Rp59.000");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: fitur mati", async () => {
+  await ensureLoggedIn();
+  const stub = await stubPayments({ methods: () => errJson(503, "PAYMENT_UNAVAILABLE", "x"), create: () => errJson(503, "PAYMENT_UNAVAILABLE", "x"), get: () => errJson(503, "PAYMENT_UNAVAILABLE", "x") });
+  try {
+    await openPayDialog();
+    await waitDlg("Pembayaran online belum tersedia, hubungi tim Sissi");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: kembali dari e-wallet", async () => {
+  await ensureLoggedIn();
+  const ck = checkout({ id: "ck-e2e-ret", method: "OV", kind: "ewallet", service_fee: 1500, total: 60500, qr_string: null, payment_url: "https://example.invalid/pay" });
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(ck, 201), get: (id) => (id === "ck-e2e-ret" ? okJson(ck) : errJson(404, "CHECKOUT_NOT_FOUND", "Tidak ada")) });
+  try {
+    await go("/dasbor/langganan?checkout=ck-e2e-ret");
+    await waitDialog("Bayar Pro Bulanan");
+    await waitDlg("Rp60.500");
+    await page.waitForFunction(() => !location.search, { timeout: TIMEOUT });
+    // Id tak dikenal diabaikan diam-diam.
+    await go("/dasbor/langganan?checkout=tidak-ada");
+    await waitText("Bayar sekarang", { root: "main" });
+    await sleep(800);
+    assert(!(await page.$("dialog[open]")), "dialog terbuka untuk checkout 404");
+    await page.waitForFunction(() => !location.search, { timeout: TIMEOUT });
+  } finally {
+    await stub.off();
+  }
+});
+
 test("keluar: konfirmasi Keluar kembali ke halaman masuk", async () => {
   await ensureLoggedIn();
   await click("Keluar", { selector: "aside button" });

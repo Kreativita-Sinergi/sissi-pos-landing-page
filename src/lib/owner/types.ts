@@ -531,6 +531,34 @@ export type SubscriptionDetail = {
       period_end: string;
       method: string;
       status: string;
+      /** Biaya layanan gateway yang ditanggung pelanggan (rupiah); 0/tidak ada untuk pembayaran manual. `amount` = harga paket. */
+      service_fee?: number;
     }[];
   } | null;
+};
+
+// Pembayaran langganan online (Duitku) — kontrak: api.md "Pembayaran langganan online". Web tidak pernah mengirim nominal.
+export type PayKind = "qris" | "va" | "ewallet" | "retail";
+export type PayCycle = "monthly" | "yearly";
+export type CheckoutStatus = "pending" | "paid" | "failed" | "expired" | "amount_mismatch";
+
+export type PayMethod = { code: string; name: string; kind: PayKind; fee: number; total: number };
+export type PayMethods = { cycle: PayCycle; price: number; methods: PayMethod[] };
+
+export type Checkout = {
+  id: string;
+  cycle: PayCycle;
+  method: string;
+  kind: PayKind;
+  status: CheckoutStatus;
+  price: number;
+  service_fee: number;
+  total: number;
+  qr_string: string | null;
+  /** Nomor VA / kode bayar. */
+  pay_code: string | null;
+  payment_url: string | null;
+  expires_at: string;
+  /** Terisi setelah `paid`. */
+  period_end: string | null;
 };

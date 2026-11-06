@@ -1,19 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check, CreditCard, Info, MessageCircle, Minus, Receipt } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Check, CreditCard, Info, Minus, Receipt } from "lucide-react";
 import { Meter } from "@/components/admin/charts";
 import { BILLING_CYCLES, PAYMENT_METHODS } from "@/components/admin/labels";
 import {
   Badge,
   btn,
-  CopyButton,
   EmptyState,
   ErrorBlock,
   formatDate,
   formatRupiah,
   LoadingBar,
-  Notice,
   PageHeader,
   Section,
   SkeletonList,
@@ -23,13 +22,13 @@ import {
 } from "@/components/admin/ui";
 import { PRICING_FEATURES } from "@/constants/pricing";
 import { ownerApi } from "@/lib/owner/api";
-import type { SubscriptionDetail } from "@/lib/owner/types";
+import type { PayCycle, SubscriptionDetail } from "@/lib/owner/types";
+import { PayDialog } from "./PayDialog";
 import { labelOf } from "./labels";
-import { useOwner } from "./OwnerShell";
 import { Segmented } from "./editing";
 
-// Langganan (GET /owner/subscription): status paket, pemakaian, fitur Pro, harga, cara bayar manual
-// (transfer + WhatsApp, dicatat admin), dan riwayat pembayaran. Tidak ada checkout di web.
+// Langganan (GET /owner/subscription): status paket, pemakaian, fitur Pro, harga, bayar online lewat Duitku
+// (dialog PayDialog), dan riwayat pembayaran. `?checkout=<id>` = kembali dari e-wallet → dialog menampilkan statusnya.
 
 const STATUS: Record<SubscriptionDetail["status"], { text: string; tone: "brand" | "warning" | "neutral" | "success" }> = {
   active: { text: "Pro aktif", tone: "success" },
@@ -55,18 +54,31 @@ function statusLine(s: SubscriptionDetail): string {
   }
 }
 
-function waLink(number: string, text: string): string | null {
-  const digits = number.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-  const intl = digits.startsWith("0") ? `62${digits.slice(1)}` : digits;
-  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
-}
-
 export function SubscriptionView() {
-  const { session } = useOwner();
+  const router = useRouter();
+  const pathname = usePathname();
   const { state, reload } = useLoad<SubscriptionDetail>(async (signal) => (await ownerApi()).subscription(signal), []);
-  const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
+  const [cycle, setCycle] = useState<PayCycle>("monthly");
+  const [payOpen, setPayOpen] = useState(false);
+  const [returnId, setReturnId] = useState<string | undefined>();
   const s = state.data;
+
+  // Kembali dari e-wallet: buka dialog dengan status checkout itu, lalu buang query agar muat ulang tidak membukanya lagi.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const id = new URLSearchParams(window.location.search).get("checkout");
+      if (!id) return;
+      setReturnId(id);
+      setPayOpen(true);
+      router.replace(pathname);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [router, pathname]);
+
+  function closePay() {
+    setPayOpen(false);
+    setReturnId(undefined);
+  }
 
   return (
     <>
@@ -108,7 +120,7 @@ export function SubscriptionView() {
               </Section>
 
               {s.billing ? (
-                <PaySection s={s} cycle={cycle} setCycle={setCycle} businessName={session.business.name} email={session.user.email} />
+                <PaySection s={s} cycle={cycle} setCycle={setCycle} onPay={() => setPayOpen(true)} />
               ) : (
                 <Section title="Cara bayar">
                   <p className="text-[14px] text-text-body">Informasi pembayaran belum tersedia. Hubungi tim Sissi.</p>
@@ -116,10 +128,10 @@ export function SubscriptionView() {
               )}
             </div>
 
-            <Section title="Riwayat pembayaran" description="Pembayaran dicatat tim Sissi setelah transfer dikonfirmasi." bodyClass="">
+            <Section title="Riwayat pembayaran" description="Pembayaran Pro yang sudah diterima." bodyClass="">
               {!s.billing || s.billing.payments.length === 0 ? (
                 <EmptyState icon={<Receipt size={22} aria-hidden />} title="Belum ada pembayaran">
-                  Pembayaran Pro yang sudah dikonfirmasi akan muncul di sini.
+                  Pembayaran Pro yang sudah diterima akan muncul di sini.
                 </EmptyState>
               ) : (
                 <div className="overflow-x-auto">
@@ -153,7 +165,9 @@ export function SubscriptionView() {
                           <td className={`${tdClass} border-b border-border-subtle text-text-body`}>
                             {labelOf(BILLING_CYCLES, p.cycle)} · {labelOf(PAYMENT_METHODS, p.method)}
                           </td>
-                          <td className={`${tdClass} border-b border-border-subtle text-right font-semibold tabular-nums`}>{formatRupiah(p.amount)}</td>
+                          <td className={`${tdClass} border-b border-border-subtle text-right font-semibold tabular-nums`}>{formatRupiah(p.amount)}
+                            {(p.service_fee ?? 0) > 0 && <span className="block text-[12px] font-normal text-text-muted">+ biaya {formatRupiah(p.service_fee)}</span>}
+                          </td>
                           <td className={`${tdClass} border-b border-border-subtle`}>
                             <Badge tone={p.status === "recorded" ? "success" : "neutral"}>{labelOf(PAYMENT_STATUS, p.status)}</Badge>
                           </td>
@@ -167,6 +181,7 @@ export function SubscriptionView() {
           </div>
         </>
       )}
+      <PayDialog cycle={cycle} open={payOpen} onClose={closePay} onPaid={reload} initialCheckoutId={returnId} />
     </>
   );
 }
@@ -230,29 +245,13 @@ function StatusCard({ s }: { s: SubscriptionDetail }) {
   );
 }
 
-function PaySection({
-  s,
-  cycle,
-  setCycle,
-  businessName,
-  email,
-}: {
-  s: SubscriptionDetail;
-  cycle: "monthly" | "yearly";
-  setCycle: (c: "monthly" | "yearly") => void;
-  businessName: string;
-  email: string;
-}) {
-  const billing = s.billing!;
-  const { prices, payment_info: info } = billing;
+function PaySection({ s, cycle, setCycle, onPay }: { s: SubscriptionDetail; cycle: PayCycle; setCycle: (c: PayCycle) => void; onPay: () => void }) {
+  const { prices } = s.billing!;
   const price = cycle === "monthly" ? prices.monthly : prices.yearly;
   const saving = prices.monthly * 12 - prices.yearly;
-  const action = s.status === "active" ? "memperpanjang" : "berlangganan";
-  const message = `Halo Sissi, saya ingin ${action} paket Pro ${cycle === "monthly" ? "Bulanan" : "Tahunan"} (${formatRupiah(price)}) untuk usaha "${businessName}" (akun ${email}). Berikut bukti transfernya.`;
-  const wa = info.whatsapp ? waLink(info.whatsapp, message) : null;
 
   return (
-    <Section title="Cara bayar" description="Pembayaran manual: transfer, lalu kirim bukti lewat WhatsApp. Pro aktif setelah dikonfirmasi tim Sissi.">
+    <Section title="Cara bayar" description="Bayar Pro langsung dari sini: QRIS, virtual account, e-wallet, atau gerai ritel. Pro aktif otomatis setelah pembayaran diterima.">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Segmented
@@ -270,37 +269,10 @@ function PaySection({
             {cycle === "yearly" && saving > 0 && <span className="block text-[12.5px] text-success">Hemat {formatRupiah(saving)} per tahun</span>}
           </p>
         </div>
-        <p className="-mt-2 text-[12.5px] text-text-muted">Harga belum termasuk PPN, per usaha (1 outlet termasuk).</p>
-
-        {info.bank_accounts.length > 0 && (
-          <div>
-            <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Transfer ke</p>
-            <ul className="divide-y divide-border-subtle rounded-[12px] border border-border-subtle">
-              {info.bank_accounts.map((a) => (
-                <li key={`${a.bank}-${a.number}`} className="flex items-center gap-3 px-3 py-2">
-                  <CreditCard size={18} aria-hidden className="shrink-0 text-text-muted" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-semibold">
-                      {a.bank} · <span className="tabular-nums">{a.number}</span>
-                    </span>
-                    <span className="block truncate text-[12.5px] text-text-muted">a.n. {a.holder}</span>
-                  </span>
-                  <CopyButton value={a.number.replace(/[\s-]/g, "")} label={`Salin nomor rekening ${a.bank}`} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {info.instructions && <Notice tone="info">{<p className="whitespace-pre-line">{info.instructions}</p>}</Notice>}
-
-        {wa ? (
-          <a href={wa} target="_blank" rel="noopener noreferrer" className={`${btn.primary} self-start`}>
-            <MessageCircle size={17} aria-hidden /> Konfirmasi lewat WhatsApp
-          </a>
-        ) : (
-          <p className="text-[13px] text-text-muted">Nomor WhatsApp admin belum diatur.</p>
-        )}
+        <p className="-mt-2 text-[12.5px] text-text-muted">Harga per usaha, 1 outlet termasuk. Biaya layanan (bila ada) ditampilkan sebelum Anda membayar.</p>
+        <button type="button" className={`${btn.primary} self-start`} onClick={onPay}>
+          <CreditCard size={17} aria-hidden /> Bayar sekarang
+        </button>
       </div>
     </Section>
   );

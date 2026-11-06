@@ -54,6 +54,9 @@ konfirmasi password (salah lalu benar), lalu record outlet dikembalikan persis l
 (QRIS bila ada) + cek pengembalian negatif & Aktivitas · kas keluar Rp1.000 pada shift buka · tanda "Hitungan server
 berbeda" di daftar shift · keluar sungguhan.
 
+Tes `langganan:` (dialog bayar Duitku): login lewat API sungguhan, tetapi `/owner/subscription/payment-methods` dan
+`/owner/subscription/checkouts*` (dan, khusus tes lunas, `GET /owner/subscription`) di-stub lewat intersepsi request puppeteer — Duitku tidak pernah disentuh.
+
 Catatan: pembatalan transaksi dan kas keluar **tidak bisa diurungkan** (aturan entitas sync) — tiap run membatalkan satu
 transaksi lunas dan menambah satu kas keluar `E2E …` di data demo. Konfirmasi password dibatasi server 10/15 menit per
 pengguna (tes memakai 2–3 per run), jadi jangan menjalankan tes QRIS lebih dari ±3 kali per 15 menit.

@@ -14,7 +14,7 @@
 // Masuk dengan Google (tiruan) → Pro aktif.
 import { ApiError } from "@/lib/sissiApi";
 import type { OwnerApi } from "./api";
-import type { StaffMember, SyncRecord } from "./types";
+import type { Checkout, PayMethods, StaffMember, SyncRecord } from "./types";
 import { normalizeZone } from "./tz";
 import { shownTotalOf } from "./saleRefunds";
 import type {
@@ -703,7 +703,35 @@ const byOutlet = (outletId?: string) => (s: { outlet_id: string }) => !outletId 
 
 // ——— API tiruan ———
 
+const MOCK_PRICES = { monthly: 99_000, yearly: 990_000 };
+const MOCK_PAY_DELAY = 8_000;
+
 export function createMockApi(onUnauthorized: () => void): OwnerApi {
+  // Pembayaran online tiruan: checkout jadi `paid` ±8 detik setelah dibuat, lalu masuk riwayat.
+  const checkouts = new Map<string, { ck: Checkout; at: number }>();
+  const paidPayments: NonNullable<import("./types").SubscriptionDetail["billing"]>["payments"] = [];
+  function mockCheckoutNow(id: string): Checkout | undefined {
+    const e = checkouts.get(id);
+    if (!e) return undefined;
+    const { ck } = e;
+    if (ck.status === "pending" && Date.now() - e.at >= MOCK_PAY_DELAY) {
+      const start = wibDay(Date.now());
+      const end = wibDay(Date.now() + (ck.cycle === "monthly" ? 30 : 365) * DAY);
+      e.ck = { ...ck, status: "paid", period_end: end };
+      paidPayments.unshift({
+        id: uuid(`pay:${ck.id}`),
+        paid_at: new Date().toISOString(),
+        amount: ck.price,
+        service_fee: ck.service_fee,
+        cycle: ck.cycle,
+        period_start: start,
+        period_end: end,
+        method: ck.method === "SP" ? "qris" : "gateway",
+        status: "recorded",
+      });
+    }
+    return e.ck;
+  }
   async function guard(): Promise<MockSession> {
     await sleep(200 + Math.random() * 250);
     const s = readSession();
@@ -1225,19 +1253,65 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
         usage: { month: wibDay(now.getTime()).slice(0, 7), tx_this_month: p.tx_this_month, outlets, over_limit: false, outlets_over: outlets > quota },
         server_time: now.toISOString(),
         billing: {
-          prices: { monthly: 99_000, yearly: 990_000 },
+          prices: MOCK_PRICES,
           payment_info: {
             bank_accounts: [{ bank: "BCA", number: "1234567890", holder: "PT Contoh Sissi" }],
             whatsapp: "+6281200000000",
             instructions: "Transfer sesuai harga paket, lalu kirim bukti lewat tombol \"Chat admin via WhatsApp\".",
             updated_at: now.toISOString(),
           },
-          payments:
-            s.plan === "pro"
+          payments: [
+            ...paidPayments,
+            ...(s.plan === "pro"
               ? [{ id: uuid("subpay1"), paid_at: new Date(now.getTime() - 222 * DAY).toISOString(), amount: 990_000, cycle: "yearly", period_start: wibDay(now.getTime() - 222 * DAY), period_end: wibDay(now.getTime() + 143 * DAY), method: "transfer", status: "active" }]
-              : [],
+              : []),
+          ],
         },
       };
+    },
+    async paymentMethods(cycle) {
+      await guard();
+      const price = MOCK_PRICES[cycle];
+      const m = (code: string, name: string, kind: PayMethods["methods"][number]["kind"], fee: number) => ({ code, name, kind, fee, total: price + fee });
+      return {
+        cycle,
+        price,
+        methods: [m("SP", "QRIS", "qris", 0), m("BC", "BCA Virtual Account", "va", 5000), m("OV", "OVO", "ewallet", 1500), m("IR", "Indomaret", "retail", 3500)],
+      };
+    },
+    async createCheckout({ cycle, method }) {
+      await guard();
+      const ms = await this.paymentMethods(cycle);
+      const found = ms.methods.find((x) => x.code === method);
+      if (!found) throw new ApiError("Metode bayar tidak tersedia.", 422, "PAYMENT_METHOD_INVALID");
+      for (const [id] of checkouts) {
+        const cur = mockCheckoutNow(id)!;
+        if (cur.status === "pending" && cur.cycle === cycle && cur.method === method && Date.parse(cur.expires_at) > Date.now()) return cur;
+      }
+      const id = uuid(`checkout:${Date.now()}`);
+      const ck: Checkout = {
+        id,
+        cycle,
+        method,
+        kind: found.kind,
+        status: "pending",
+        price: ms.price,
+        service_fee: found.fee,
+        total: found.total,
+        qr_string: found.kind === "qris" ? "00020101021226670016COM.NOBUBANK.WWW0118936005030000087914021412345678901234030362540799000" : null,
+        pay_code: found.kind === "va" || found.kind === "retail" ? "8001234567890123" : null,
+        payment_url: found.kind === "ewallet" ? `${window.location.origin}/dasbor/langganan?checkout=${id}` : null,
+        expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+        period_end: null,
+      };
+      checkouts.set(id, { ck, at: Date.now() });
+      return ck;
+    },
+    async getCheckout(id) {
+      await guard();
+      const ck = mockCheckoutNow(id);
+      if (!ck) throw new ApiError("Checkout tidak ditemukan.", 404, "CHECKOUT_NOT_FOUND");
+      return ck;
     },
   };
 }

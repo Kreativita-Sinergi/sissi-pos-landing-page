@@ -27,6 +27,9 @@ import type {
   Summary,
   Change,
   ChangeResult,
+  Checkout,
+  PayCycle,
+  PayMethods,
   DataEntity,
   EmployeeInvite,
   PullPage,
@@ -65,6 +68,11 @@ export interface OwnerApi {
   changes(changes: Change[], idempotencyKey: string): Promise<{ results: ChangeResult[]; server_time: string }>;
   stock(q: { outlet_id?: string }, signal?: AbortSignal): Promise<StockRow[]>;
   subscription(signal?: AbortSignal): Promise<SubscriptionDetail>;
+  /** Metode bayar Pro + biaya & total dari server (klien tidak menghitung). Fitur mati → 503 `PAYMENT_UNAVAILABLE`. */
+  paymentMethods(cycle: PayCycle, signal?: AbortSignal): Promise<PayMethods>;
+  /** Buat checkout (atau pakai ulang yang masih berlaku untuk siklus + metode sama). Tanpa nominal di body. */
+  createCheckout(body: { cycle: PayCycle; method: string }): Promise<Checkout>;
+  getCheckout(id: string, signal?: AbortSignal): Promise<Checkout>;
   /**
    * Undang karyawan login di HP pribadi / kirim tautan reset password (belum punya password → `invite` 7 hari, sudah →
    * `reset_password` 24 jam; tautan lama batal). Paket Gratis → 403 `PRO_REQUIRED`; syarat gagal → 422 (`role`,
@@ -282,6 +290,10 @@ const httpApi: OwnerApi = {
       .data,
   stock: async (q, signal) => (await call<StockRow[]>("GET", `/stock${qs(q)}`, { signal })).data ?? [],
   subscription: async (signal) => (await call<SubscriptionDetail>("GET", "/subscription", { signal })).data,
+  paymentMethods: async (cycle, signal) =>
+    (await call<PayMethods>("GET", `/subscription/payment-methods${qs({ cycle })}`, { signal })).data,
+  createCheckout: async (body) => (await call<Checkout>("POST", "/subscription/checkouts", { body })).data,
+  getCheckout: async (id, signal) => (await call<Checkout>("GET", `/subscription/checkouts/${enc(id)}`, { signal })).data,
   // Kontrak menulis `POST /employees/{id}/invite` (Bearer app); dasbor memakai padanan sesi cookie di prefiks /owner.
   inviteEmployee: async (id) =>
     (await call<EmployeeInvite>("POST", `/employees/${enc(id)}/invite`, { body: {}, idempotencyKey: newId() })).data,
