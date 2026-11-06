@@ -72,6 +72,7 @@ export const SUB_STATUS_HINT: Record<string, string> = {
 
 export const BILLING_CYCLES: Record<string, string> = {
   monthly: "Bulanan",
+  semiannual: "6 Bulan",
   yearly: "Tahunan",
   custom: "Periode khusus",
 };

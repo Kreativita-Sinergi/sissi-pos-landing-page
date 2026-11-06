@@ -974,6 +974,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       const start = parseWhen(body.period_start) ?? Math.max(now, cpe ?? 0);
       let end: number;
       if (body.cycle === "monthly") end = addMonths(start, 1);
+      else if (body.cycle === "semiannual") end = addMonths(start, 6);
       else if (body.cycle === "yearly") end = addMonths(start, 12);
       else {
         end = parseWhen(body.period_end) ?? NaN;
@@ -1041,7 +1042,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       const prev = s.payments
         .filter((x) => x.status === "recorded" && x.cycle !== "custom")
         .sort((x, y) => y.created_at.localeCompare(x.created_at))[0];
-      s.billing_cycle = prev ? (prev.cycle as "monthly" | "yearly") : null;
+      s.billing_cycle = prev ? (prev.cycle as "monthly" | "semiannual" | "yearly") : null;
       s.first_paid_at =
         s.payments.filter((x) => x.status === "recorded").sort((x, y) => x.paid_at.localeCompare(y.paid_at))[0]?.paid_at ?? null;
       touch(s);
@@ -1100,6 +1101,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       const details: { field: string; message: string }[] = [];
       if (!Number.isInteger(body.price_monthly) || body.price_monthly < 0) details.push({ field: "price_monthly", message: "Harga tidak valid." });
       if (!Number.isInteger(body.price_yearly) || body.price_yearly < 0) details.push({ field: "price_yearly", message: "Harga tidak valid." });
+      if (!Number.isInteger(body.price_semiannual) || body.price_semiannual < 0) details.push({ field: "price_semiannual", message: "Harga tidak valid." });
       if (body.bank_accounts.length > 5) details.push({ field: "bank_accounts", message: "Maksimal 5 rekening." });
       body.bank_accounts.forEach((a, i) => {
         if (a.bank.trim().length < 1 || a.bank.length > 40) details.push({ field: `bank_accounts[${i}].bank`, message: "Nama bank 1–40 karakter." });
@@ -1112,8 +1114,8 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       const before = db().billing.config;
       db().billing.config = { ...body, updated_by: refOf(meRecord()), updated_at: new Date().toISOString() };
       log("billing_config.update", "billing_config", "1", {
-        before: { price_monthly: before.price_monthly, price_yearly: before.price_yearly, bank_accounts: before.bank_accounts.length },
-        after: { price_monthly: body.price_monthly, price_yearly: body.price_yearly, bank_accounts: body.bank_accounts.length },
+        before: { price_monthly: before.price_monthly, price_yearly: before.price_yearly, price_semiannual: before.price_semiannual, bank_accounts: before.bank_accounts.length },
+        after: { price_monthly: body.price_monthly, price_yearly: body.price_yearly, price_semiannual: body.price_semiannual, bank_accounts: body.bank_accounts.length },
       });
       return db().billing.config;
     },

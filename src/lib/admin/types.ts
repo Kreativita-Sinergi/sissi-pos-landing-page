@@ -383,7 +383,7 @@ export type SecurityQuery = { from?: string; to?: string; flag?: string; q?: str
 
 export type PlanId = "free" | "pro";
 export type SubscriptionStatus = "trial" | "active" | "grace" | "free";
-export type BillingCycle = "monthly" | "yearly";
+export type BillingCycle = "monthly" | "semiannual" | "yearly";
 export type PaymentCycle = BillingCycle | "custom";
 export type PaymentMethod = "transfer" | "qris" | "cash" | "gateway" | "other";
 
@@ -478,6 +478,7 @@ export type BankAccount = { bank: string; number: string; holder: string };
 export type BillingConfig = {
   price_monthly: number;
   price_yearly: number;
+  price_semiannual: number;
   bank_accounts: BankAccount[];
   whatsapp: string;
   instructions: string;

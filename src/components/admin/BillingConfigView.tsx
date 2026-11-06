@@ -42,6 +42,7 @@ function toInput(c: BillingConfig): BillingConfigInput {
   return {
     price_monthly: c.price_monthly,
     price_yearly: c.price_yearly,
+    price_semiannual: c.price_semiannual,
     bank_accounts: c.bank_accounts.map((a) => ({ ...a })),
     whatsapp: c.whatsapp,
     instructions: c.instructions,
@@ -108,6 +109,7 @@ function ConfigForm({ config, onSaved }: { config: BillingConfig; onSaved: (c: B
       if (!a.holder.trim()) e[`bank_accounts[${i}].holder`] = "Isi nama pemilik rekening.";
     });
     if (form.whatsapp && !/^\+[1-9]\d{7,14}$/.test(form.whatsapp)) e.whatsapp = "Format internasional, mis. +6281234567890.";
+    if (form.price_semiannual > form.price_monthly * 6) e.price_semiannual = "Lebih mahal dari 6× bulanan — periksa lagi.";
     if (form.price_yearly > form.price_monthly * 12) e.price_yearly = "Lebih mahal dari 12× bulanan — periksa lagi.";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -137,11 +139,12 @@ function ConfigForm({ config, onSaved }: { config: BillingConfig; onSaved: (c: B
 
   const changes: string[] = [];
   if (form.price_monthly !== initial.price_monthly) changes.push(`Harga bulanan ${formatRupiah(initial.price_monthly)} → ${formatRupiah(form.price_monthly)}`);
+  if (form.price_semiannual !== initial.price_semiannual) changes.push(`Harga 6 bulan ${formatRupiah(initial.price_semiannual)} → ${formatRupiah(form.price_semiannual)}`);
   if (form.price_yearly !== initial.price_yearly) changes.push(`Harga tahunan ${formatRupiah(initial.price_yearly)} → ${formatRupiah(form.price_yearly)}`);
   if (JSON.stringify(form.bank_accounts) !== JSON.stringify(initial.bank_accounts)) changes.push(`Rekening (${form.bank_accounts.length})`);
   if (form.whatsapp !== initial.whatsapp) changes.push(`WhatsApp ${form.whatsapp || "dikosongkan"}`);
   if (form.instructions !== initial.instructions) changes.push("Teks instruksi");
-  const priceChanged = form.price_monthly !== initial.price_monthly || form.price_yearly !== initial.price_yearly;
+  const priceChanged = form.price_monthly !== initial.price_monthly || form.price_yearly !== initial.price_yearly || form.price_semiannual !== initial.price_semiannual;
 
   return (
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -153,9 +156,17 @@ function ConfigForm({ config, onSaved }: { config: BillingConfig; onSaved: (c: B
         )}
 
         <Section title="Harga Pro" description="Nominal bawaan saat mencatat pembayaran & dasar MRR.">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Field id="bc-monthly" label="Bulanan" error={errors.price_monthly}>
               <Money id="bc-monthly" value={form.price_monthly} onChange={(v) => set({ price_monthly: v })} invalid={!!errors.price_monthly} />
+            </Field>
+            <Field
+              id="bc-semiannual"
+              label="6 Bulan"
+              error={errors.price_semiannual}
+              hint={form.price_monthly > 0 ? `Setara ${formatRupiah(Math.round(form.price_semiannual / 6))}/bulan` : undefined}
+            >
+              <Money id="bc-semiannual" value={form.price_semiannual} onChange={(v) => set({ price_semiannual: v })} invalid={!!errors.price_semiannual} />
             </Field>
             <Field
               id="bc-yearly"
@@ -330,14 +341,21 @@ function AppPreview({ form }: { form: BillingConfigInput }) {
         <p className="mt-1 text-[18px] font-bold leading-tight">Perpanjang Pro</p>
         <p className="mt-0.5 text-[12.5px] text-text-body">Semua fitur, transaksi tanpa batas.</p>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2">
           <div className="rounded-[14px] border border-so-line bg-white p-2.5">
             <p className="text-[11.5px] text-text-muted">Bulanan</p>
-            <p className="text-[15px] font-bold tabular-nums">{formatRupiah(form.price_monthly)}</p>
+            <p className="text-[14px] font-bold tabular-nums">{formatRupiah(form.price_monthly)}</p>
+          </div>
+          <div className="rounded-[14px] border border-so-line bg-white p-2.5">
+            <p className="text-[11.5px] text-text-muted">6 Bulan</p>
+            <p className="text-[14px] font-bold tabular-nums">{formatRupiah(form.price_semiannual)}</p>
+            {form.price_monthly * 6 > form.price_semiannual && form.price_semiannual > 0 && (
+              <p className="text-[11px] font-semibold text-success">hemat {formatRupiah(form.price_monthly * 6 - form.price_semiannual)}</p>
+            )}
           </div>
           <div className="relative rounded-[14px] border-2 border-brand-primary bg-white p-2.5">
             <p className="text-[11.5px] text-text-muted">Tahunan</p>
-            <p className="text-[15px] font-bold tabular-nums">{formatRupiah(form.price_yearly)}</p>
+            <p className="text-[14px] font-bold tabular-nums">{formatRupiah(form.price_yearly)}</p>
             {form.price_monthly * 12 > form.price_yearly && form.price_yearly > 0 && (
               <p className="text-[11px] font-semibold text-success">hemat {formatRupiah(form.price_monthly * 12 - form.price_yearly)}</p>
             )}

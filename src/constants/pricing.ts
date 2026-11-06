@@ -4,8 +4,10 @@ export interface PricingPlan {
   tagline: string;
   badge?: string;
   priceMonthly: string;
+  priceSemiannual: string;
   priceYearly: string;
   periodMonthly: string;
+  periodSemiannual: string;
   periodYearly: string;
   equivalentNote?: string;
   ctaText: string;
@@ -18,8 +20,10 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: "Gratis",
     tagline: "Untuk usaha yang baru mulai",
     priceMonthly: "Rp0",
+    priceSemiannual: "Rp0",
     priceYearly: "Rp0",
     periodMonthly: "selamanya",
+    periodSemiannual: "selamanya",
     periodYearly: "selamanya",
     ctaText: "Mulai gratis",
     ctaVariant: "outline",
@@ -30,8 +34,10 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: "Semua fitur untuk usaha yang berkembang",
     badge: "SEMUA FITUR",
     priceMonthly: "Rp59rb",
+    priceSemiannual: "Rp309rb",
     priceYearly: "Rp590rb",
     periodMonthly: "/bulan",
+    periodSemiannual: "/6 bulan",
     periodYearly: "/tahun",
     equivalentNote: "setara Rp49rb per bulan (hemat 2 bulan)",
     ctaText: "Coba gratis 30 hari",

@@ -509,13 +509,14 @@ export type SubscriptionDetail = {
   grace_ends_at: string | null;
   ends_at: string | null;
   days_left: number | null;
-  billing_cycle: "monthly" | "yearly" | null;
+  billing_cycle: "monthly" | "semiannual" | "yearly" | null;
   limits: { tx_per_month: number | null; outlets: number };
   features: string[];
   usage: { month: string; tx_this_month: number; outlets: number; over_limit: boolean; outlets_over: boolean };
   server_time: string;
   billing: {
-    prices: { monthly: number; yearly: number };
+    /** `semiannual` aditif (server lama tidak mengirimnya → paket 6 Bulan disembunyikan). */
+    prices: { monthly: number; semiannual?: number; yearly: number };
     payment_info: {
       bank_accounts: { bank: string; number: string; holder: string }[];
       whatsapp: string;
@@ -539,7 +540,7 @@ export type SubscriptionDetail = {
 
 // Pembayaran langganan online (Duitku) — kontrak: api.md "Pembayaran langganan online". Web tidak pernah mengirim nominal.
 export type PayKind = "qris" | "va" | "ewallet" | "retail";
-export type PayCycle = "monthly" | "yearly";
+export type PayCycle = "monthly" | "semiannual" | "yearly";
 export type CheckoutStatus = "pending" | "paid" | "failed" | "expired" | "amount_mismatch";
 
 /** `image` = URL logo (https://images.duitku.com/...) atau string kosong. */

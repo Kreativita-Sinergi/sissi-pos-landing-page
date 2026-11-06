@@ -1191,30 +1191,100 @@ test("langganan: kembali dari e-wallet", async () => {
   }
 });
 
-test("langganan: kartu paket berupa radio, Tahunan bawaan, tombol mengikuti pilihan", async () => {
+test("langganan: tiga kartu paket (Bulanan, 6 Bulan, Tahunan) berupa radio, Tahunan bawaan, tombol mengikuti pilihan", async () => {
   await ensureLoggedIn();
   const real = await api.get("/owner/subscription");
   const pr = real.billing?.prices;
   assert(pr, "demo tanpa harga billing");
+  assert(typeof pr.semiannual === "number", "API belum mengirim prices.semiannual (jalankan migrasi 00063 & mulai ulang API)");
   await go("/dasbor/langganan");
   await waitText("Bayar Rp", { root: "main" });
   const radios = () => page.$$eval('main input[type=radio][name=pay-cycle]', (els) => els.map((e) => ({ v: e.value, c: e.checked })));
   const r0 = await radios();
-  eq(r0.length, 2, "jumlah radio paket");
-  const wantDefault = real.status === "active" && real.billing_cycle === "monthly" ? "monthly" : "yearly";
+  eq(r0.map((r) => r.v).join(","), "monthly,semiannual,yearly", "urutan kartu paket");
+  const priceOfCycle = (c) => (c === "monthly" ? pr.monthly : c === "semiannual" ? pr.semiannual : pr.yearly);
+  const wantDefault = real.status === "active" && ["monthly", "semiannual"].includes(real.billing_cycle) ? real.billing_cycle : "yearly";
   eq(r0.find((r) => r.c)?.v, wantDefault, "paket bawaan");
   const btnText = () => page.evaluate(() => [...document.querySelectorAll("main button")].find((b) => b.innerText.startsWith("Bayar Rp"))?.innerText.trim());
-  eq(await btnText(), `Bayar ${rp(wantDefault === "yearly" ? pr.yearly : pr.monthly)}`, "teks tombol bawaan");
+  eq(await btnText(), `Bayar ${rp(priceOfCycle(wantDefault))}`, "teks tombol bawaan");
   assert(await hasText("Paling hemat", "main"), "label Paling hemat");
   const saving = pr.monthly * 12 - pr.yearly;
   if (saving > 0) assert(await hasText(`Hemat ${rp(saving)}`, "main"), "label hemat");
   eq(await hasText("2 bulan gratis", "main"), saving === 2 * pr.monthly, "2 bulan gratis hanya bila hemat tepat dua bulan");
-  // Keyboard: fokus ke radio terpilih, panah mengubah pilihan.
+  // Kartu 6 Bulan: harga, "/bulan" dan "Hemat" dihitung dari harga API.
+  const semiCard = await page.$eval('main input[value=semiannual]', (i) => i.closest("label").innerText);
+  assert(semiCard.includes("6 Bulan") && semiCard.includes(rp(pr.semiannual)), `kartu 6 Bulan: ${semiCard}`);
+  assert(semiCard.includes(`${rp(Math.round(pr.semiannual / 6))}/bulan`), `bantuan per bulan: ${semiCard}`);
+  const semiSaving = pr.monthly * 6 - pr.semiannual;
+  eq(semiCard.includes(`Hemat ${rp(semiSaving)}`), semiSaving > 0, "Hemat kartu 6 Bulan");
+  // Tiga kolom dari lebar sm: ketiga kartu sebaris, tanpa meluap dari kartu bayar.
+  const geo = await page.$$eval('main input[name=pay-cycle]', (els) => els.map((e) => { const r = e.closest("label").getBoundingClientRect(); return { top: Math.round(r.top), right: r.right, sw: e.closest("label").scrollWidth, cw: e.closest("label").clientWidth }; }));
+  eq(new Set(geo.map((g) => g.top)).size, 1, "tiga kartu sebaris");
+  assert(geo.every((g) => g.sw <= g.cw + 1), `teks kartu meluap: ${JSON.stringify(geo)}`);
+  // Keyboard: fokus ke radio terpilih, panah mengubah pilihan (urutan visual: Bulanan, 6 Bulan, Tahunan).
   await page.focus(`main input[type=radio][value=${wantDefault}]`);
-  await page.keyboard.press(wantDefault === "yearly" ? "ArrowUp" : "ArrowDown");
-  const other = wantDefault === "yearly" ? "monthly" : "yearly";
+  const order = ["monthly", "semiannual", "yearly"];
+  const nextKey = wantDefault === "yearly" ? "ArrowUp" : "ArrowDown";
+  await page.keyboard.press(nextKey);
+  const other = order[order.indexOf(wantDefault) + (nextKey === "ArrowUp" ? -1 : 1)];
   eq((await radios()).find((r) => r.c)?.v, other, "panah mengganti paket");
-  eq(await btnText(), `Bayar ${rp(other === "yearly" ? pr.yearly : pr.monthly)}`, "teks tombol mengikuti pilihan");
+  eq(await btnText(), `Bayar ${rp(priceOfCycle(other))}`, "teks tombol mengikuti pilihan");
+  await click("6 Bulan", { within: "main", selector: "label", partial: true });
+  eq(await btnText(), `Bayar ${rp(pr.semiannual)}`, "tombol mengikuti kartu 6 Bulan");
+});
+
+test("langganan: pelanggan aktif 6 Bulan terpilih di kartu 6 Bulan, ringkasan dialog Pro 6 Bulan", async () => {
+  await ensureLoggedIn();
+  const real = await api.get("/owner/subscription");
+  const pr = real.billing?.prices;
+  assert(pr && typeof pr.semiannual === "number", "API belum mengirim prices.semiannual");
+  const price = pr.semiannual;
+  const methods = { ...METHODS, cycle: "semiannual", price, methods: METHODS.methods.map((m) => ({ ...m, total: price + m.fee })) };
+  const ck = checkout({ id: "ck-e2e-6", cycle: "semiannual", price, total: price });
+  const stub = await stubPayments({
+    methods: () => okJson(methods),
+    create: () => okJson(ck, 201),
+    get: () => okJson(ck),
+    subscription: () => ({ ...real, status: "active", billing_cycle: "semiannual", days_left: 120 }),
+  });
+  try {
+    await go("/dasbor/langganan");
+    await waitText("Bayar Rp", { root: "main" });
+    eq(await page.$eval("main input[name=pay-cycle]:checked", (i) => i.value), "semiannual", "paket aktif terpilih");
+    await click("Bayar Rp", { within: "main", partial: true });
+    await waitDialog("Pilih cara bayar");
+    await waitDlg("Pro 6 Bulan");
+    await waitDlg(`Rp${(price + 5000).toLocaleString("id-ID")}`); // total BCA VA = harga + biaya
+    await click("QRIS", { within: "dialog", partial: true });
+    await waitDlg(`Total ${rp(price)}`);
+    eq(stub.log.created[0]?.cycle, "semiannual", "POST memakai siklus semiannual");
+    assert(!("amount" in stub.log.created[0]), "klien tidak boleh mengirim nominal");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: server lama tanpa prices.semiannual menampilkan dua kartu", async () => {
+  await ensureLoggedIn();
+  const real = await api.get("/owner/subscription");
+  const old = { ...real.billing.prices };
+  delete old.semiannual;
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => okJson(checkout(), 201),
+    get: () => okJson(checkout()),
+    subscription: () => ({ ...real, status: "active", billing_cycle: "semiannual", billing: { ...real.billing, prices: old } }),
+  });
+  try {
+    await go("/dasbor/langganan");
+    await waitText("Bayar Rp", { root: "main" });
+    const rs = await page.$$eval('main input[name=pay-cycle]', (els) => els.map((e) => ({ v: e.value, c: e.checked })));
+    eq(rs.map((r) => r.v).join(","), "monthly,yearly", "dua kartu saja");
+    eq(rs.find((r) => r.c)?.v, "yearly", "tanpa harga 6 bulan, jatuh ke Tahunan");
+    assert(await page.evaluate(() => !/6 Bulan/.test(document.querySelector("section[aria-label='Bayar Pro']")?.innerText ?? "")), "kartu 6 Bulan harus tersembunyi");
+  } finally {
+    await stub.off();
+  }
 });
 
 test("langganan: logo metode, ikon cadangan, logo QRIS, Bank lainnya", async () => {

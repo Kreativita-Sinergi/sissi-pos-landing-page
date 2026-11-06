@@ -14,7 +14,7 @@
 // Masuk dengan Google (tiruan) → Pro aktif.
 import { ApiError } from "@/lib/sissiApi";
 import type { OwnerApi } from "./api";
-import type { Checkout, PayMethods, StaffMember, SyncRecord } from "./types";
+import type { Checkout, PayCycle, PayMethods, StaffMember, SyncRecord } from "./types";
 import { normalizeZone } from "./tz";
 import { shownTotalOf } from "./saleRefunds";
 import type {
@@ -703,7 +703,7 @@ const byOutlet = (outletId?: string) => (s: { outlet_id: string }) => !outletId 
 
 // ——— API tiruan ———
 
-const MOCK_PRICES = { monthly: 99_000, yearly: 990_000 };
+const MOCK_PRICES: Record<PayCycle, number> = { monthly: 99_000, semiannual: 515_000, yearly: 990_000 };
 const MOCK_PAY_DELAY = 8_000;
 
 export function createMockApi(onUnauthorized: () => void): OwnerApi {
@@ -716,7 +716,7 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
     const { ck } = e;
     if (ck.status === "pending" && Date.now() - e.at >= MOCK_PAY_DELAY) {
       const start = wibDay(Date.now());
-      const end = wibDay(Date.now() + (ck.cycle === "monthly" ? 30 : 365) * DAY);
+      const end = wibDay(Date.now() + (ck.cycle === "monthly" ? 30 : ck.cycle === "semiannual" ? 182 : 365) * DAY);
       e.ck = { ...ck, status: "paid", period_end: end };
       paidPayments.unshift({
         id: uuid(`pay:${ck.id}`),

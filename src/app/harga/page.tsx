@@ -9,7 +9,7 @@ import { Check, Plus, Minus } from "lucide-react";
 import { PRICING_COMPARISON, PRICING_FAQS } from "@/constants/pricingComparison";
 
 export default function HargaPage() {
-  const [isAnnual, setIsAnnual] = useState(true);
+  const [cycle, setCycle] = useState<"monthly" | "semiannual" | "yearly">("yearly");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
@@ -37,32 +37,46 @@ export default function HargaPage() {
           <div className="inline-flex items-center gap-1.5 p-1 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
             <button
               type="button"
-              onClick={() => setIsAnnual(false)}
-              className={`px-5 py-2 rounded-full text-[14px] font-medium transition-all cursor-pointer ${
-                !isAnnual
+              onClick={() => setCycle("monthly")}
+              className={`px-4 sm:px-5 py-2 rounded-full text-[14px] whitespace-nowrap font-medium transition-all cursor-pointer ${
+                cycle === "monthly"
                   ? "bg-white text-[#292e31] shadow-sm"
                   : "text-white hover:text-white/80"
               }`}
             >
               Bulanan
             </button>
+            <button
+              type="button"
+              onClick={() => setCycle("semiannual")}
+              className={`px-4 sm:px-5 py-2 rounded-full text-[14px] whitespace-nowrap font-medium transition-all cursor-pointer ${
+                cycle === "semiannual"
+                  ? "bg-white text-[#292e31] shadow-sm"
+                  : "text-white hover:text-white/80"
+              }`}
+            >
+              6 Bulan
+            </button>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsAnnual(true)}
-                className={`px-5 py-2 rounded-full text-[14px] font-medium transition-all cursor-pointer ${
-                  isAnnual
+                onClick={() => setCycle("yearly")}
+                className={`px-4 sm:px-5 py-2 rounded-full text-[14px] whitespace-nowrap font-medium transition-all cursor-pointer ${
+                  cycle === "yearly"
                     ? "bg-white text-[#292e31] shadow-sm"
                     : "text-white hover:text-white/80"
                 }`}
               >
                 Tahunan
               </button>
-              <span className="mr-2 px-2.5 py-0.5 rounded-full bg-[#e8f4f0] text-[11px] font-mono font-bold text-[#196b52] tracking-wider">
+              <span className="mr-2 hidden min-[481px]:inline-block whitespace-nowrap px-2.5 py-0.5 rounded-full bg-[#e8f4f0] text-[11px] font-mono font-bold text-[#196b52] tracking-wider">
                 HEMAT 2 BULAN
               </span>
             </div>
           </div>
+          <p className="mt-3 text-[13px] text-[#fef1eb] min-[481px]:hidden">
+            Bayar tahunan: hemat 2 bulan
+          </p>
         </div>
       </section>
 
@@ -125,16 +139,18 @@ export default function HargaPage() {
               <div className="mb-6">
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-[44px] font-bold text-[#292e31] tracking-tight font-mono">
-                    {isAnnual ? "Rp590rb" : "Rp59rb"}
+                    {cycle === "yearly" ? "Rp590rb" : cycle === "semiannual" ? "Rp309rb" : "Rp59rb"}
                   </span>
                   <span className="text-[15px] text-[#525866]">
-                    {isAnnual ? "/tahun" : "/bulan"}
+                    {cycle === "yearly" ? "/tahun" : cycle === "semiannual" ? "/6 bulan" : "/bulan"}
                   </span>
                 </div>
                 <p className="text-[14px] text-[#525866]">
-                  {isAnnual
+                  {cycle === "yearly"
                     ? "Setara Rp49rb per bulan kalau bayar tahunan."
-                    : "Atau Rp590rb per tahun (hemat 2 bulan)."}
+                    : cycle === "semiannual"
+                      ? "Setara Rp51,5rb per bulan (hemat Rp45rb dibanding bulanan)."
+                      : "Atau Rp309rb per 6 bulan, atau Rp590rb per tahun (hemat 2 bulan)."}
                 </p>
               </div>
 

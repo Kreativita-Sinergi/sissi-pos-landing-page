@@ -160,6 +160,7 @@ export function SubscriptionListView() {
           label="Siklus"
           options={[
             { value: "monthly", label: "Bulanan" },
+            { value: "semiannual", label: "6 Bulan" },
             { value: "yearly", label: "Tahunan" },
           ]}
           selected={cycle ? [cycle] : []}

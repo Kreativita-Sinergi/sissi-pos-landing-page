@@ -44,7 +44,9 @@ import {
 // (catat pembayaran, batalkan pembayaran terakhir, tambah hari, batas khusus). Setiap aksi dikonfirmasi & diaudit.
 
 const DAY = 86_400_000;
-const FALLBACK_PRICES = { monthly: 59_000, yearly: 590_000 };
+const FALLBACK_PRICES: PlanPrices = { monthly: 59_000, semiannual: 309_000, yearly: 590_000 };
+type PlanPrices = { monthly: number; semiannual: number; yearly: number };
+const priceOf = (p: PlanPrices, cycle: string | null) => (cycle === "yearly" ? p.yearly : cycle === "semiannual" ? p.semiannual : p.monthly);
 
 type Data = { detail: SubscriptionDetail; config: BillingConfig | null };
 
@@ -79,7 +81,7 @@ export function SubscriptionTab({ businessId, businessName }: { businessId: stri
   }
   const { detail, config } = state.data;
   const s = detail.subscription;
-  const prices = config ? { monthly: config.price_monthly, yearly: config.price_yearly } : FALLBACK_PRICES;
+  const prices = config ? { monthly: config.price_monthly, semiannual: config.price_semiannual, yearly: config.price_yearly } : FALLBACK_PRICES;
   const latestRecorded = [...detail.payments]
     .filter((p) => p.status === "recorded")
     .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
@@ -507,7 +509,7 @@ function RecordPaymentDialog({
   s: AdminSubscription;
   businessId: string;
   businessName: string;
-  prices: { monthly: number; yearly: number };
+  prices: PlanPrices;
   onClose: () => void;
   onDone: (r: { subscription: AdminSubscription; payment: AdminPayment }) => void;
 }) {
@@ -525,7 +527,7 @@ function RecordPaymentForm({
   s: AdminSubscription;
   businessId: string;
   businessName: string;
-  prices: { monthly: number; yearly: number };
+  prices: PlanPrices;
   onClose: () => void;
   onDone: (r: { subscription: AdminSubscription; payment: AdminPayment }) => void;
 }) {
@@ -541,7 +543,7 @@ function RecordPaymentForm({
     startMode: "auto",
     periodStart: today,
     periodEnd: "",
-    amount: String(s.billing_cycle === "yearly" ? prices.yearly : prices.monthly),
+    amount: String(priceOf(prices, s.billing_cycle)),
     method: "transfer",
     paidAt: today,
     ref: "",
@@ -553,7 +555,7 @@ function RecordPaymentForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
-  const price = form.cycle === "yearly" ? prices.yearly : form.cycle === "monthly" ? prices.monthly : null;
+  const price = form.cycle === "custom" ? null : priceOf(prices, form.cycle);
   const set = (patch: Partial<PayForm>) => {
     setErrors({});
     setError(null);
@@ -561,7 +563,7 @@ function RecordPaymentForm({
       const next = { ...f, ...patch };
       // Nominal otomatis mengikuti harga paket sampai admin mengubahnya sendiri.
       if (patch.cycle && !amountTouched) {
-        next.amount = patch.cycle === "yearly" ? String(prices.yearly) : patch.cycle === "monthly" ? String(prices.monthly) : f.amount;
+        next.amount = patch.cycle === "custom" ? f.amount : String(priceOf(prices, patch.cycle));
       }
       return next;
     });
@@ -572,7 +574,9 @@ function RecordPaymentForm({
   const endMs =
     form.cycle === "monthly"
       ? addMonths(startMs, 1)
-      : form.cycle === "yearly"
+      : form.cycle === "semiannual"
+        ? addMonths(startMs, 6)
+        : form.cycle === "yearly"
         ? addMonths(startMs, 12)
         : form.periodEnd
           ? dayStartWib(form.periodEnd) + DAY - 1
@@ -680,6 +684,7 @@ function RecordPaymentForm({
               onChange={(v) => set({ cycle: v })}
               options={[
                 { value: "monthly", label: "Bulanan", hint: formatRupiah(prices.monthly) },
+                { value: "semiannual", label: "6 Bulan", hint: formatRupiah(prices.semiannual) },
                 { value: "yearly", label: "Tahunan", hint: formatRupiah(prices.yearly) },
                 { value: "custom", label: "Khusus", hint: "pilih tanggal" },
               ]}

@@ -52,8 +52,9 @@ export function SubscriptionView() {
   const [payOpen, setPayOpen] = useState(false);
   const [returnId, setReturnId] = useState<string | undefined>();
   const s = state.data;
-  // Bawaan Tahunan; pelanggan aktif yang sedang bulanan diarahkan ke Bulanan.
-  const cycle: PayCycle = picked ?? (s?.status === "active" && s.billing_cycle === "monthly" ? "monthly" : "yearly");
+  // Bawaan Tahunan; pelanggan aktif yang sedang bulanan/6 bulan diarahkan ke siklusnya (6 Bulan hanya bila server mengirim harganya).
+  const cur = s?.status === "active" ? s.billing_cycle : null;
+  const cycle: PayCycle = picked ?? (cur === "monthly" || (cur === "semiannual" && s?.billing?.prices.semiannual !== undefined) ? cur : "yearly");
 
   // Kembali dari e-wallet: buka dialog dengan status checkout itu, lalu buang query agar muat ulang tidak membukanya lagi.
   useEffect(() => {
@@ -176,7 +177,7 @@ function PlanCard({ value, current, onChange, name, price, unit, note, badge, ta
         <span className="text-[12px] font-normal text-text-muted">{unit}</span>
       </span>
       {note && <span className="mt-1.5 text-[12.5px] text-text-muted">{note}</span>}
-      {tag && <span className="mt-1.5 inline-block self-start rounded-full bg-success-tint px-2 py-0.5 text-[11.5px] font-semibold text-success">{tag}</span>}
+      {tag && <span className="mt-1.5 inline-block self-start rounded-[10px] bg-success-tint px-2 py-0.5 text-[11.5px] font-semibold leading-snug text-success">{tag}</span>}
     </label>
   );
 }
@@ -186,9 +187,11 @@ function PayCard({ s, cycle, setCycle, onPay }: { s: SubscriptionDetail; cycle: 
   const border = h.tone === "warning" ? "border-warning" : "border-border-subtle";
   const bg = h.tone === "warning" ? "bg-warning-tint" : "bg-white";
   const prices = s.billing?.prices;
-  const price = prices ? (cycle === "monthly" ? prices.monthly : prices.yearly) : 0;
+  const semi = prices?.semiannual;
+  const price = prices ? (cycle === "monthly" ? prices.monthly : cycle === "semiannual" && semi !== undefined ? semi : prices.yearly) : 0;
   const saving = prices ? prices.monthly * 12 - prices.yearly : 0;
   const twoFree = prices !== undefined && saving > 0 && saving === 2 * prices.monthly;
+  const semiSaving = prices && semi !== undefined ? prices.monthly * 6 - semi : 0;
   return (
     <section aria-label="Bayar Pro" className={`rounded-[16px] border p-4 sm:p-5 ${border} ${bg}`}>
       <p className={`text-[12.5px] font-semibold ${EYEBROW_TONE[h.tone]}`}>{h.eyebrow}</p>
@@ -201,8 +204,20 @@ function PayCard({ s, cycle, setCycle, onPay }: { s: SubscriptionDetail; cycle: 
         <>
           <fieldset className="mt-4">
             <legend className="sr-only">Pilih paket Pro</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className={`grid gap-3 ${semi !== undefined ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               <PlanCard value="monthly" current={cycle} onChange={setCycle} name="Bulanan" price={prices.monthly} unit="/bulan" note="Fleksibel, bayar tiap bulan" />
+              {semi !== undefined && (
+                <PlanCard
+                  value="semiannual"
+                  current={cycle}
+                  onChange={setCycle}
+                  name="6 Bulan"
+                  price={semi}
+                  unit="/6 bulan"
+                  note={`${formatRupiah(Math.round(semi / 6))}/bulan`}
+                  tag={semiSaving > 0 ? `Hemat ${formatRupiah(semiSaving)}` : undefined}
+                />
+              )}
               <PlanCard
                 value="yearly"
                 current={cycle}

@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (desain ulang halaman Langganan + dialog bayar: kartu utama, pilihan paket radio, logo metode)
+Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (paket Pro 6 Bulan: kartu bayar, dialog, admin, halaman harga)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -81,6 +81,12 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 - **Urutan kategori** dari web = `reorderCategories` aplikasi (indeks → `sort_order`, hanya baris berubah).
 
 ## Selesai
+
+- **2026-11-06 · Paket Pro 6 Bulan (`semiannual`, Rp309.000 disetujui pemilik; bisa diubah lewat `billing_config`).** Dasbor:
+  tiga kartu Bulanan / 6 Bulan / Tahunan (tiga kolom dari `sm`, bertumpuk di ponsel; helper "RpX/bulan" dan "Hemat RpX" dihitung
+  dari harga API; server lama tanpa `prices.semiannual` jadi dua kartu), pelanggan aktif 6 bulan terpilih otomatis, dialog "Pro 6 Bulan".
+  Admin: kolom harga 6 bulan di "Cara bayar & harga", siklus 6 Bulan di catat pembayaran & filter, MRR dibagi 6. Publik: `/harga` dan
+  `HargaSection` menampilkan 6 Bulan (Rp309rb, setara Rp51,5rb/bulan, hemat Rp45rb); teks PPN tidak berubah. e2e `langganan` 15 lulus.
 
 - **2026-11-06 · Alamat di kontak `/tentang`** (Claude Opus 5.5): kotak "Alamat" selebar dua kolom di bawah WhatsApp &
   Email; nama perumahan tebal, wilayah abu-abu, tautan "Buka di Google Maps" (`OFFICE_*` di `src/constants/site.ts`).

@@ -148,12 +148,14 @@ export function publicPayment(p: PaymentRecord): AdminPayment {
 // ——— Pembuatan data ———
 
 export const PRICE_MONTHLY = 59_000;
+export const PRICE_SEMIANNUAL = 309_000;
 export const PRICE_YEARLY = 590_000;
 
 export function makeBillingConfig(): BillingConfig {
   return {
     price_monthly: PRICE_MONTHLY,
     price_yearly: PRICE_YEARLY,
+    price_semiannual: PRICE_SEMIANNUAL,
     bank_accounts: [
       { bank: "BCA", number: "8730 123 456", holder: "PT Sissi Teknologi Nusantara" },
       { bank: "Mandiri", number: "131-00-1234567-8", holder: "PT Sissi Teknologi Nusantara" },
@@ -349,6 +351,7 @@ export function computeMetrics(
         .sort((a, b) => b.paid_at.localeCompare(a.paid_at))[0];
       if (!last) continue;
       if (last.cycle === "monthly") sum += last.amount;
+      else if (last.cycle === "semiannual") sum += last.amount / 6;
       else if (last.cycle === "yearly") sum += last.amount / 12;
       else sum += (last.amount * 30) / Math.max(1, (Date.parse(last.period_end) - Date.parse(last.period_start)) / DAY);
     }

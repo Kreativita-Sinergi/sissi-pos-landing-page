@@ -8,9 +8,10 @@ import { PRICING_FEATURES } from "@/constants/pricing";
 import { PLAY_STORE_URL } from "@/constants/site";
 
 export function HargaSection() {
-  const [billingCycle, setBillingCycle] = useState<"yearly" | "monthly">("yearly");
+  const [billingCycle, setBillingCycle] = useState<"yearly" | "semiannual" | "monthly">("yearly");
 
   const isYearly = billingCycle === "yearly";
+  const isSemiannual = billingCycle === "semiannual";
 
   return (
     <SectionWrapper id="harga" bg="white">
@@ -35,8 +36,8 @@ export function HargaSection() {
           <button
             type="button"
             onClick={() => setBillingCycle("monthly")}
-            className={`px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all cursor-pointer ${
-              !isYearly
+            className={`px-4 py-2 rounded-[8px] whitespace-nowrap text-[14px] font-medium transition-all cursor-pointer ${
+              billingCycle === "monthly"
                 ? "bg-white text-[#292e31] shadow-2xs font-semibold"
                 : "text-[#525866] hover:text-[#292e31]"
             }`}
@@ -45,8 +46,19 @@ export function HargaSection() {
           </button>
           <button
             type="button"
+            onClick={() => setBillingCycle("semiannual")}
+            className={`px-4 py-2 rounded-[8px] whitespace-nowrap text-[14px] font-medium transition-all cursor-pointer ${
+              isSemiannual
+                ? "bg-white text-[#292e31] shadow-2xs font-semibold"
+                : "text-[#525866] hover:text-[#292e31]"
+            }`}
+          >
+            6 Bulan
+          </button>
+          <button
+            type="button"
             onClick={() => setBillingCycle("yearly")}
-            className={`px-4 py-2 rounded-[8px] text-[14px] font-medium flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-4 py-2 rounded-[8px] whitespace-nowrap text-[14px] font-medium flex items-center gap-2 transition-all cursor-pointer ${
               isYearly
                 ? "bg-white text-[#292e31] shadow-2xs font-semibold"
                 : "text-[#525866] hover:text-[#292e31]"
@@ -108,10 +120,10 @@ export function HargaSection() {
 
                 <div className="mt-3 flex items-baseline gap-1.5">
                   <span className="text-[44px] font-semibold text-[#292e31] leading-none tracking-tight">
-                    {isYearly ? "Rp590rb" : "Rp59rb"}
+                    {isYearly ? "Rp590rb" : isSemiannual ? "Rp309rb" : "Rp59rb"}
                   </span>
                   <span className="text-[14px] text-[#7d8986]">
-                    {isYearly ? "/tahun" : "/bulan"}
+                    {isYearly ? "/tahun" : isSemiannual ? "/6 bulan" : "/bulan"}
                   </span>
                 </div>
 
@@ -121,6 +133,13 @@ export function HargaSection() {
                       <span className="text-[#525866]">atau Rp59rb/bulan</span>
                       <span className="text-[#f1702c] font-medium">
                         setara Rp49rb per bulan
+                      </span>
+                    </>
+                  ) : isSemiannual ? (
+                    <>
+                      <span className="text-[#525866]">atau Rp59rb/bulan</span>
+                      <span className="text-[#f1702c] font-medium">
+                        setara Rp51,5rb per bulan (hemat Rp45rb)
                       </span>
                     </>
                   ) : (

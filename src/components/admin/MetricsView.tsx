@@ -312,7 +312,7 @@ function MetricsBody({ m, days }: { m: Metrics; days: number }) {
           label="MRR (perkiraan)"
           value={formatRupiahShort(k.mrr_estimate.value ?? 0)}
           footer={<Change k={k.mrr_estimate} days={days} />}
-          hint="Tahunan dihitung ÷ 12"
+          hint="6 Bulan dihitung ÷ 6, Tahunan ÷ 12"
         />
         <KpiCard
           label="Konversi uji coba → Pro"
