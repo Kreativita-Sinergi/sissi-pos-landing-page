@@ -347,12 +347,15 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
             </NavDrawer>
 
             <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <OutletPicker outlets={session.outlets} selected={outletId} />
-                <span className="lg:hidden">
-                  <Badge tone={plan.tone}>{plan.text}</Badge>
-                </span>
-              </div>
+              {/* Langganan berlaku per usaha, bukan per outlet, dan paketnya sudah tampil di halaman. */}
+              {pathname !== "/dasbor/langganan" && (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <OutletPicker outlets={session.outlets} selected={outletId} />
+                  <span className="lg:hidden">
+                    <Badge tone={plan.tone}>{plan.text}</Badge>
+                  </span>
+                </div>
+              )}
               {/* Dipasang ulang saat zona usaha berubah agar semua tanggal/periode dihitung ulang. */}
               <React.Fragment key={business.timezone}>{children}</React.Fragment>
             </main>

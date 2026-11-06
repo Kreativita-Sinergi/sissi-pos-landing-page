@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarClock, Check, HandCoins, Headset, Info, Lock, QrCode, Receipt, Sparkles, UserCheck, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarClock, Check, ChevronDown, HandCoins, Headset, Info, Lock, QrCode, Receipt, Sparkles, UserCheck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { Meter } from "@/components/admin/charts";
 import { BILLING_CYCLES, PAYMENT_METHODS } from "@/components/admin/labels";
 import {
@@ -74,7 +74,7 @@ export function SubscriptionView() {
 
   return (
     <>
-      <PageHeader title="Langganan" description="Paket usaha Anda, pemakaian bulan ini, dan cara membayar Pro." />
+      <PageHeader title="Langganan" description="Paket dan pembayaran usaha Anda." />
 
       {state.status === "error" && (
         <div className="mb-4">
@@ -85,12 +85,15 @@ export function SubscriptionView() {
       {s && (
         <>
           <LoadingBar active={state.status === "loading"} />
-          <div className="flex flex-col gap-5">
-            <PayCard s={s} cycle={cycle} setCycle={setPicked} onPay={() => setPayOpen(true)} />
-            <UsageRow s={s} />
-
-            <FeaturesSection pro={s.plan === "pro"} />
-            <HistorySection payments={s.billing?.payments ?? []} />
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+            <div className="flex min-w-0 flex-col gap-4">
+              <PayCard s={s} cycle={cycle} setCycle={setPicked} onPay={() => setPayOpen(true)} />
+              <HistorySection payments={s.billing?.payments ?? []} />
+            </div>
+            <div className="flex min-w-0 flex-col gap-4">
+              <UsageCard s={s} />
+              <FeaturesCard pro={s.plan === "pro"} />
+            </div>
           </div>
         </>
       )}
@@ -241,66 +244,64 @@ function MethodLogoImg({ src }: { src: string }) {
   );
 }
 
-function UsageRow({ s }: { s: SubscriptionDetail }) {
+/** Pemakaian: satu kartu samping berisi paket, transaksi, outlet, dan catatannya. */
+function UsageCard({ s }: { s: SubscriptionDetail }) {
   const st = STATUS[s.status] ?? STATUS.free;
   const limit = s.limits.tx_per_month;
   const used = s.usage.tx_this_month;
   const ratio = limit ? used / limit : 0;
   const tone = limit ? (ratio >= 1 ? "danger" : ratio >= 0.8 ? "warning" : "brand") : "brand";
-  const month = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${s.usage.month}-01T00:00:00Z`));
-  const mini = "rounded-[12px] border border-border-subtle bg-white px-3 py-2.5";
+  const month = new Intl.DateTimeFormat("id-ID", { month: "long", timeZone: "UTC" }).format(new Date(`${s.usage.month}-01T00:00:00Z`));
+  const row = "flex items-center justify-between gap-3 text-[13.5px]";
+  const value = "text-right font-semibold tabular-nums text-text-heading";
   return (
-    <div>
-      <div className="grid gap-2.5 sm:grid-cols-3">
-        <div className={mini}>
-          <p className="text-[12.5px] text-text-muted">Paket saat ini</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span className="text-[15px] font-bold text-text-heading">{s.plan === "pro" ? "Pro" : "Gratis"}</span>
-            <Badge tone={st.tone}>{st.text}</Badge>
-            {s.billing_cycle && s.status === "active" && <Badge>{labelOf(BILLING_CYCLES, s.billing_cycle)}</Badge>}
-          </p>
+    <Section title="Pemakaian">
+      <div className="flex flex-col gap-3.5">
+        <div className={row}>
+          <span className="text-text-body">Paket</span>
+          <Badge tone={st.tone}>{st.text}</Badge>
         </div>
-        <div className={mini}>
-          <p className="text-[12.5px] text-text-muted">Transaksi {month}</p>
-          <p className="mt-0.5 text-[15px] font-bold tabular-nums text-text-heading">
-            {used.toLocaleString("id-ID")}
-            <span className="text-[13px] font-medium text-text-muted"> / {limit === null ? "tanpa batas" : limit.toLocaleString("id-ID")}</span>
-          </p>
+        <div>
+          <div className={row}>
+            <span className="text-text-body">Transaksi {month}</span>
+            <span className={value}>
+              {used.toLocaleString("id-ID")} / {limit === null ? "tanpa batas" : limit.toLocaleString("id-ID")}
+            </span>
+          </div>
           {limit !== null && (
-            <div className="mt-1.5">
-              <Meter value={Math.min(used, limit)} max={limit} tone={tone} />
-            </div>
+            <>
+              <div className="mt-1.5">
+                <Meter value={Math.min(used, limit)} max={limit} tone={tone} />
+              </div>
+              <p className={`mt-1.5 text-[12.5px] ${ratio >= 1 ? "font-semibold text-danger" : ratio >= 0.8 ? "text-warning" : "text-text-muted"}`}>
+                {ratio >= 1
+                  ? "Batas bulan ini tercapai — transaksi baru diblokir di aplikasi sampai bulan depan atau upgrade ke Pro."
+                  : `Sisa ${(limit - used).toLocaleString("id-ID")} transaksi bulan ini.`}
+              </p>
+            </>
           )}
         </div>
-        <div className={mini}>
-          <p className="text-[12.5px] text-text-muted">Outlet</p>
-          <p className="mt-0.5 text-[15px] font-bold tabular-nums text-text-heading">
-            {s.usage.outlets.toLocaleString("id-ID")}
-            <span className="text-[13px] font-medium text-text-muted"> / {s.limits.outlets.toLocaleString("id-ID")} kuota</span>
-          </p>
+        <div>
+          <div className={row}>
+            <span className="text-text-body">Outlet</span>
+            <span className={value}>
+              {s.usage.outlets.toLocaleString("id-ID")} / {s.limits.outlets.toLocaleString("id-ID")}
+            </span>
+          </div>
           <div className="mt-1.5">
             <Meter value={Math.min(s.usage.outlets, s.limits.outlets)} max={s.limits.outlets} tone={s.usage.outlets_over ? "danger" : "neutral"} />
           </div>
-        </div>
-      </div>
-      <div className="mt-2 flex flex-col gap-1 text-[12.5px]">
-        {limit !== null && (
-          <p className={ratio >= 1 ? "font-semibold text-danger" : ratio >= 0.8 ? "text-warning" : "text-text-muted"}>
-            {ratio >= 1
-              ? "Batas bulan ini tercapai — transaksi baru diblokir di aplikasi sampai bulan depan atau upgrade ke Pro."
-              : `Sisa ${(limit - used).toLocaleString("id-ID")} transaksi bulan ini.`}
+          <p className={`mt-1.5 text-[12.5px] ${s.usage.outlets_over ? "text-danger" : "text-text-muted"}`}>
+            {s.usage.outlets_over ? "Outlet aktif melebihi kuota — hanya outlet tertua yang bisa bertransaksi." : "Butuh outlet tambahan? Hubungi tim Sissi."}
           </p>
-        )}
-        <p className={s.usage.outlets_over ? "text-danger" : "text-text-muted"}>
-          {s.usage.outlets_over ? "Outlet aktif melebihi kuota — hanya outlet tertua yang bisa bertransaksi." : "Butuh outlet tambahan? Hubungi tim Sissi."}
-        </p>
+        </div>
         {!s.enforced && (
-          <p className="flex items-start gap-1.5 text-text-muted">
+          <p className="flex items-start gap-1.5 border-t border-border-subtle pt-3 text-[12.5px] text-text-muted">
             <Info size={14} aria-hidden className="mt-0.5 shrink-0" /> Batas paket belum diberlakukan — semua fitur masih terbuka.
           </p>
         )}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -314,44 +315,74 @@ const FEATURE_ICON: Record<string, LucideIcon> = {
   "Bantuan prioritas": Headset,
 };
 
-/** Fitur khusus Pro ditonjolkan sebagai ubin; fitur semua paket jadi daftar ringkas di bawahnya. */
-function FeaturesSection({ pro }: { pro: boolean }) {
-  const all = PRICING_FEATURES.filter((f) => f.proValue === true);
-  const proOnly = all.filter((f) => f.freeValue !== true);
-  const basic = all.filter((f) => f.freeValue === true);
+// Tiga fitur yang ditampilkan lebih dulu bagi pemilik yang sudah Pro.
+const FEATURED = ["Meja, pesanan berjalan & layar dapur", "Absensi, jadwal shift & gaji", "Jam ramai & produk terlaris"];
+
+function FeatureItem({ name, pro }: { name: string; pro: boolean }) {
+  const Icon = FEATURE_ICON[name] ?? Sparkles;
   return (
-    <Section title="Fitur Pro" description={pro ? "Semua fitur ini aktif untuk usaha Anda." : "Buka semua fitur ini dengan Pro."}>
-      <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {proOnly.map((f) => {
-          const Icon = FEATURE_ICON[f.name] ?? Sparkles;
-          return (
-            <li key={f.name} className="flex items-center gap-3 rounded-[12px] border border-border-subtle p-3">
-              <span aria-hidden className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${pro ? "bg-brand-tint text-brand-deep" : "bg-bg-muted text-text-muted"}`}>
-                <Icon size={18} />
-              </span>
-              <span className={`min-w-0 flex-1 text-[13.5px] font-medium leading-snug ${pro ? "text-text-heading" : "text-text-body"}`}>
-                {f.name}
-                <span className="sr-only">{pro ? " (aktif)" : " (tidak aktif)"}</span>
-              </span>
-              {!pro && <Lock size={14} aria-hidden className="shrink-0 text-text-muted" />}
-            </li>
-          );
-        })}
+    <li className="flex items-center gap-2.5 text-[13.5px]">
+      <span aria-hidden className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] ${pro ? "bg-brand-tint text-brand-deep" : "bg-bg-muted text-text-muted"}`}>
+        <Icon size={15} />
+      </span>
+      <span className={`min-w-0 flex-1 leading-snug ${pro ? "text-text-heading" : "text-text-body"}`}>
+        {name}
+        <span className="sr-only">{pro ? " (aktif)" : " (tidak aktif)"}</span>
+      </span>
+      {!pro && <Lock size={14} aria-hidden className="shrink-0 text-text-muted" />}
+    </li>
+  );
+}
+
+/** Sudah Pro: ringkas, sisanya dilipat. Gratis: semua fitur Pro tampil karena itulah alasan upgrade. */
+function FeaturesCard({ pro }: { pro: boolean }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const all = PRICING_FEATURES.filter((f) => f.proValue === true);
+  const proOnly = all.filter((f) => f.freeValue !== true).map((f) => f.name);
+  const basic = all.filter((f) => f.freeValue === true).map((f) => f.name);
+  const shown = pro ? proOnly.filter((n) => FEATURED.includes(n)) : proOnly;
+  const hiddenPro = pro ? proOnly.filter((n) => !FEATURED.includes(n)) : [];
+  return (
+    <Section title={pro ? "Fitur Pro aktif" : "Yang Anda dapat dengan Pro"}>
+      <ul className="flex flex-col gap-2.5">
+        {shown.map((n) => (
+          <FeatureItem key={n} name={n} pro={pro} />
+        ))}
       </ul>
-      <div className="mt-4 rounded-[12px] bg-bg-muted p-3.5">
-        <h3 className="text-[13px] font-semibold text-text-heading">Termasuk di semua paket</h3>
-        <ul className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
-          {basic.map((f) => (
-            <li key={f.name} className="flex items-start gap-2 text-[13px] text-text-body">
-              <Check size={14} strokeWidth={3} aria-hidden className="mt-[3px] shrink-0 text-success" />
-              <span>
-                {f.name}
-                <span className="sr-only"> (aktif)</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {open && (
+        <div id={id}>
+          {hiddenPro.length > 0 && (
+            <ul className="mt-2.5 flex flex-col gap-2.5">
+              {hiddenPro.map((n) => (
+                <FeatureItem key={n} name={n} pro={pro} />
+              ))}
+            </ul>
+          )}
+          <h3 className="mt-4 text-[12.5px] font-semibold text-text-heading">Termasuk di semua paket</h3>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {basic.map((n) => (
+              <li key={n} className="flex items-start gap-2 text-[13px] text-text-body">
+                <Check size={14} strokeWidth={3} aria-hidden className="mt-[3px] shrink-0 text-success" />
+                <span>
+                  {n}
+                  <span className="sr-only"> (aktif)</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        onClick={() => setOpen((v) => !v)}
+        className="mt-3 inline-flex items-center gap-1 rounded-[6px] text-[13px] font-semibold text-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+      >
+        {open ? "Sembunyikan" : pro ? `Lihat semua ${all.length} fitur` : "Lihat fitur semua paket"}
+        <ChevronDown size={15} aria-hidden className={open ? "rotate-180" : ""} />
+      </button>
     </Section>
   );
 }

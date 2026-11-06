@@ -20,6 +20,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
+- **Langganan · tata letak (2026-11-06):** `/dasbor/langganan` dua kolom: kartu bayar + riwayat di kiri, pemakaian + fitur di kanan; pilih outlet disembunyikan di halaman ini. Pembayaran ujung ke ujung tetap belum teruji.
+
 - **Langganan · logo metode (2026-11-06):** logo QRIS, Indomaret, dan Alfamart disimpan di `public/logos/pembayaran/` (sumber Wikimedia Commons: `QRIS_Logo.svg` CC0, `Indomaret.svg`, `Alfamart.svg`, `Gopay_logo_(2019).svg`; BCA dari Duitku) karena logo gabungan Duitku terlalu kecil terbaca; metode lain tetap dari `images.duitku.com`. Logo adalah merek dagang pemiliknya: pastikan ketentuan pemakaian logo QRIS ke Duitku sebelum produksi.
 
 - **P1 · Dialog bayar langganan online (Duitku) di `/dasbor` — terimplementasi, BELUM E2E, belum dirilis (2026-11-06).**
