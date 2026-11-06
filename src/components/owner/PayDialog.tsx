@@ -498,7 +498,7 @@ export function methodLogoSrc(m: PayMethod): string {
 function MethodLogo({ m, small = false }: { m: PayMethod; small?: boolean }) {
   const [broken, setBroken] = useState(false);
   const Icon = KIND_ICON[m.kind];
-  const size = small ? "h-6 w-10 p-[3px]" : "h-10 w-16 p-[5px]";
+  const size = small ? "h-[22px] w-9 p-[3px]" : "h-[34px] w-14 p-[5px]";
   const src = methodLogoSrc(m);
   return (
     <span aria-hidden className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-border-subtle bg-white text-text-body`}>

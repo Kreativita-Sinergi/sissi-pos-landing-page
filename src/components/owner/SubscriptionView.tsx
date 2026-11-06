@@ -330,7 +330,7 @@ function MethodLogoImg({ src }: { src: string }) {
   if (broken) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- logo lokal atau dari images.duitku.com (host disaring server), tanpa optimasi next/image.
-    <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="h-[18px] max-w-[52px] object-contain" />
+    <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="h-4 max-w-[46px] object-contain" />
   );
 }
 
