@@ -12,6 +12,13 @@ export const SUPPORT_WHATSAPP_NUMBER = "6285161462806";
 export const SUPPORT_WHATSAPP_URL = `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}`;
 export const SUPPORT_WHATSAPP_LABEL = "+62 851-6146-2806";
 
+/** Alamat kantor yang tampil di kotak kontak halaman Tentang. */
+export const OFFICE_ADDRESS_LINES = [
+  "Perum Rajawali Sakti L 12",
+  "Kel. Simpang Baru, Kec. Tampan",
+  "Kota Pekanbaru, Riau 28293",
+];
+
 /** Versi Android minimum (minSdk 24 = Android 7.0). */
 export const MIN_ANDROID = "Android 7.0";
 
