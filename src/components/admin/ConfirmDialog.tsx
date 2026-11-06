@@ -94,6 +94,7 @@ export function Modal({
   footer,
   onClose,
   dismissible = true,
+  showClose = false,
   icon,
   wide = false,
 }: {
@@ -104,6 +105,8 @@ export function Modal({
   footer?: React.ReactNode;
   onClose: () => void;
   dismissible?: boolean;
+  /** Tampilkan tombol X di kepala meski latar/Esc tidak menutup (`dismissible` false): jalan keluar yang selalu terlihat. */
+  showClose?: boolean;
   icon?: React.ReactNode;
   /** Lebar (hingga 880px dari `lg`) dan tinggi dibatasi layar: isi dipasang kolom flex agar bagian di dalamnya bisa menggulir sendiri. Halaman di belakang dikunci. */
   wide?: boolean;
@@ -155,7 +158,7 @@ export function Modal({
               </h2>
               {description && <p className="mt-1 text-[14px] leading-relaxed text-text-body">{description}</p>}
             </div>
-            {dismissible && (
+            {(dismissible || showClose) && (
               <button type="button" className={`${iconBtn} -mt-1 -mr-1`} onClick={onClose} aria-label="Tutup">
                 <X size={18} aria-hidden />
               </button>

@@ -1333,12 +1333,14 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
       await guard();
       const e = checkouts.get(id);
       if (!e || !mockCheckoutNow(id)) throw new ApiError("Checkout tidak ditemukan.", 404, "CHECKOUT_NOT_FOUND");
+      let checked = false;
       if (e.ck.status === "pending" && (!e.refreshedAt || Date.now() - e.refreshedAt >= MOCK_REFRESH_COOLDOWN)) {
+        checked = true;
         e.refreshedAt = Date.now();
         e.refreshes = (e.refreshes ?? 0) + 1;
         if (e.refreshes >= 2) e.at = 0; // dianggap sudah dibayar
       }
-      return mockCheckoutNow(id)!;
+      return { ...mockCheckoutNow(id)!, checked };
     },
   };
 }

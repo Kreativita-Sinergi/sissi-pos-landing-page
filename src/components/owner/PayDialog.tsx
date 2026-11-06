@@ -85,6 +85,7 @@ export function PayDialog({
   const [refreshing, setRefreshing] = useState(false);
   const [coolUntil, setCoolUntil] = useState<number | null>(null);
   const [note, setNote] = useState<{ tone: "info" | "warning"; text: string } | null>(null);
+  const currentId = useRef<string | null>(null);
   const coolSeen = useRef<{ next: string; until: number } | null>(null);
   const paidFor = useRef<string | null>(null);
   const onPaidRef = useRef(onPaid);
@@ -98,6 +99,9 @@ export function PayDialog({
   useEffect(() => {
     coolSeen.current = null;
   }, [open]);
+  useEffect(() => {
+    currentId.current = checkout?.id ?? null;
+  }, [checkout?.id]);
   useEffect(() => {
     session.current++;
     const ref = session;
@@ -247,6 +251,11 @@ export function PayDialog({
     setLastCode(code);
     setCreating(code);
     setFail(null);
+    // Checkout baru tidak mewarisi catatan/hitung mundur yang lama.
+    setNote(null);
+    setCoolUntil(null);
+    coolSeen.current = null;
+    setRefreshing(false);
     try {
       const ck = await (await ownerApi()).createCheckout({ cycle: checkout?.cycle ?? activeCycle, method: code });
       if (session.current !== mine) return; // dialog sudah ditutup: jangan ubah state dan jangan alihkan halaman
@@ -267,8 +276,17 @@ export function PayDialog({
     try {
       const ck = await (await ownerApi()).refreshCheckout(checkout.id);
       if (session.current !== mine) return;
+      if (currentId.current !== ck.id) {
+        // Pemilik sudah pindah ke checkout lain: jangan timpa tampilannya, tetapi lunas tetap harus memuat ulang langganan.
+        if (ck.status === "paid" && paidFor.current !== ck.id) {
+          paidFor.current = ck.id;
+          onPaidRef.current();
+        }
+        return;
+      }
       apply(ck);
-      if (ck.status === "pending" || ck.status === "expired") setNote({ tone: "info", text: "Pembayaran belum diterima. Coba lagi sebentar lagi." });
+      // Catatan hanya bila server benar-benar bertanya ke penyedia; dalam jeda cukup hitung mundur.
+      if (ck.checked && ck.status !== "paid") setNote({ tone: "info", text: "Belum ada konfirmasi pembayaran dari penyedia." });
     } catch (err) {
       if (session.current !== mine) return;
       if (err instanceof ApiError && err.status === 429) {
@@ -277,7 +295,11 @@ export function PayDialog({
         setCoolUntil(t + 30_000);
         setNote({ tone: "warning", text: "Terlalu sering memeriksa. Tunggu sebentar, lalu coba lagi." });
       } else if (err instanceof ApiError && err.code === "PAYMENT_GATEWAY_ERROR") {
-        setNote({ tone: "warning", text: "Penyedia pembayaran sedang bermasalah. Coba lagi sebentar lagi." });
+        // Server sudah memakai jatah jeda 30 dtk untuk percobaan ini.
+        const t = Date.now();
+        setNow(t);
+        setCoolUntil(t + 30_000);
+        setNote({ tone: "warning", text: "Belum bisa mengecek. Coba lagi sebentar lagi." });
       } else if (err instanceof ApiError && err.code === "PAYMENT_UNAVAILABLE") {
         setNote({ tone: "warning", text: UNAVAILABLE });
       } else {
@@ -290,6 +312,7 @@ export function PayDialog({
 
   function backToPick() {
     if (checkout) setPickCycle(checkout.cycle);
+    setRefreshing(false);
     setCheckout(null);
     setFail(null);
     setNote(null);
@@ -370,12 +393,19 @@ export function PayDialog({
       <Notice tone="warning" role="status">
         {status === "amount_mismatch"
           ? "Nominal pembayaran tidak sesuai dengan tagihan. Jangan bayar lagi dulu, hubungi tim Sissi agar kami bantu memeriksanya."
-          : "Pembayaran ini tidak berhasil. Bila saldo Anda sudah terpotong, hubungi tim Sissi dan kami bantu memeriksanya."}
+          : "Pembayaran ini tidak berhasil. Bila saldo Anda sudah terpotong, tekan Cek status pembayaran atau hubungi tim Sissi."}
       </Notice>
+    );
+    body = (
+      <div className="flex flex-col gap-3">
+        {body}
+        {status === "failed" && noteLive}
+      </div>
     );
     footer = (
       <>
         {closeBtn()}
+        {status === "failed" && checkBtn(btn.secondary)}
         {status === "failed" && (
           <button type="button" className={btn.primary} onClick={backToPick}>
             Pilih metode lain
@@ -390,8 +420,8 @@ export function PayDialog({
     body = (
       <div className="flex flex-col gap-3">
         <Notice tone="info" role="status">
-          {qr ? "QR ini sudah kedaluwarsa." : "Kode pembayaran ini sudah kedaluwarsa."} Pemeriksaan otomatis sudah berhenti. Bila Anda sudah membayar, muat ulang halaman
-          Langganan untuk melihat statusnya, atau hubungi tim Sissi.
+          {qr ? "QR ini sudah kedaluwarsa." : "Kode pembayaran ini sudah kedaluwarsa."} Pemeriksaan otomatis sudah berhenti. Bila Anda sudah membayar, tekan Cek status
+          pembayaran, atau hubungi tim Sissi.
         </Notice>
         {fail && <Notice tone="danger" role="alert">{fail.text}</Notice>}
         {noteLive}
@@ -637,7 +667,7 @@ export function PayDialog({
   const dismissible = !pending || expiredLocal;
 
   return (
-    <Modal open={open} title={title} onClose={onClose} dismissible={dismissible} footer={footer} wide={wide}>
+    <Modal open={open} title={title} onClose={onClose} dismissible={dismissible} showClose={!dismissible && !!checkout} footer={footer} wide={wide}>
       {body}
     </Modal>
   );

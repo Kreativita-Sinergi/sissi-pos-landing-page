@@ -566,3 +566,6 @@ export type Checkout = {
   /** Kapan cek manual berikutnya boleh (RFC3339); null = boleh sekarang. Jeda 30 detik ditentukan server. */
   next_refresh_at?: string | null;
 };
+
+/** Jawaban `POST .../refresh`: `checked` true hanya bila server benar-benar memanggil penyedia dan mendapat jawaban. */
+export type CheckoutRefresh = Checkout & { checked?: boolean };

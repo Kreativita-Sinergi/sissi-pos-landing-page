@@ -28,6 +28,7 @@ import type {
   Change,
   ChangeResult,
   Checkout,
+  CheckoutRefresh,
   PayCycle,
   PayMethods,
   DataEntity,
@@ -74,7 +75,7 @@ export interface OwnerApi {
   createCheckout(body: { cycle: PayCycle; method: string }): Promise<Checkout>;
   getCheckout(id: string, signal?: AbortSignal): Promise<Checkout>;
   /** Cek manual status bayar ke penyedia (jeda 30 detik per checkout, diatur server). */
-  refreshCheckout(id: string): Promise<Checkout>;
+  refreshCheckout(id: string): Promise<CheckoutRefresh>;
   /**
    * Undang karyawan login di HP pribadi / kirim tautan reset password (belum punya password → `invite` 7 hari, sudah →
    * `reset_password` 24 jam; tautan lama batal). Paket Gratis → 403 `PRO_REQUIRED`; syarat gagal → 422 (`role`,
@@ -296,7 +297,7 @@ const httpApi: OwnerApi = {
     (await call<PayMethods>("GET", `/subscription/payment-methods${qs({ cycle })}`, { signal })).data,
   createCheckout: async (body) => (await call<Checkout>("POST", "/subscription/checkouts", { body })).data,
   getCheckout: async (id, signal) => (await call<Checkout>("GET", `/subscription/checkouts/${enc(id)}`, { signal })).data,
-  refreshCheckout: async (id) => (await call<Checkout>("POST", `/subscription/checkouts/${enc(id)}/refresh`)).data,
+  refreshCheckout: async (id) => (await call<CheckoutRefresh>("POST", `/subscription/checkouts/${enc(id)}/refresh`)).data,
   // Kontrak menulis `POST /employees/{id}/invite` (Bearer app); dasbor memakai padanan sesi cookie di prefiks /owner.
   inviteEmployee: async (id) =>
     (await call<EmployeeInvite>("POST", `/employees/${enc(id)}/invite`, { body: {}, idempotencyKey: newId() })).data,

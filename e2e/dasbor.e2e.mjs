@@ -1145,7 +1145,7 @@ test("langganan: tombol Cek status pembayaran memanggil refresh, catatan belum d
     get: () => okJson(q()),
     refresh: () => {
       if (!paid) nextAt = new Date(Date.now() + 4_000).toISOString();
-      return okJson(q());
+      return okJson({ ...q(), checked: true });
     },
   });
   try {
@@ -1156,7 +1156,7 @@ test("langganan: tombol Cek status pembayaran memanggil refresh, catatan belum d
     for (const x of ["Status diperbarui otomatis", "Sudah bayar? Cek sekarang.", "Sisa ", "Paket", "Biaya layanan", "Ganti metode", "Tutup", "Bisa dari aplikasi bank"]) assert(t.includes(x), `waiting tanpa: ${x}`);
     assert(await page.$('dialog[open] img[alt="QRIS"]'), "logo QRIS tidak ada");
     await click("Cek status pembayaran", { within: "dialog", partial: true });
-    await waitDlg("Pembayaran belum diterima. Coba lagi sebentar lagi.");
+    await waitDlg("Belum ada konfirmasi pembayaran dari penyedia.");
     assert(stub.log.refreshes === 1, `refresh dipanggil ${stub.log.refreshes}x`);
     await waitDlg("Cek lagi dalam");
     const dis = await page.evaluate(() => [...document.querySelectorAll("dialog[open] button")].find((b) => b.innerText.includes("Cek lagi dalam"))?.disabled);
@@ -1188,7 +1188,8 @@ test("langganan: cek status 502 tampil ramah, tanpa kode mentah", async () => {
     await pressPay();
     await waitDlg("Menunggu pembayaran");
     await click("Cek status pembayaran", { within: "dialog", partial: true });
-    await waitDlg("Penyedia pembayaran sedang bermasalah. Coba lagi sebentar lagi.");
+    await waitDlg("Belum bisa mengecek. Coba lagi sebentar lagi.");
+    await waitDlg("Cek lagi dalam 30 dtk");
     assert(!(await hasText("PAYMENT_GATEWAY_ERROR", "dialog[open]")), "kode mentah tampil");
   } finally {
     await stub.off();
@@ -1225,6 +1226,88 @@ test("langganan: setelah lunas lewat cek status, lencana paket di sidebar diperb
   }
 });
 
+test("langganan: dalam jeda tanpa klaim belum dibayar, hanya hitung mundur", async () => {
+  await ensureLoggedIn();
+  const nextAt = new Date(Date.now() + 20_000).toISOString();
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: () => okJson(checkout({ id: "ck-e2e-cd" }), 201),
+    get: () => okJson(checkout({ id: "ck-e2e-cd" })),
+    refresh: () => okJson({ ...checkout({ id: "ck-e2e-cd", next_refresh_at: nextAt }), checked: false }),
+  });
+  try {
+    await openPayDialog();
+    await pressPay();
+    await waitDlg("Menunggu pembayaran");
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Cek lagi dalam");
+    const t = await dlgText();
+    assert(!t.includes("Belum ada konfirmasi") && !t.includes("belum diterima"), "klaim tanpa pengecekan");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: respons cek basi tidak menimpa checkout lain, lunas tetap memuat ulang langganan", async () => {
+  await ensureLoggedIn();
+  const real = await api.get("/owner/subscription");
+  let subReads = 0;
+  let release;
+  const gate = new Promise((r) => (release = r));
+  const qr = checkout({ id: "ck-e2e-old" });
+  const va = checkout({ id: "ck-e2e-new", method: "BC", kind: "va", service_fee: 5000, total: 64000, qr_string: null, pay_code: "8001234567890123" });
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: (b) => okJson(b.method === "BC" ? va : qr, 201),
+    get: (id) => okJson(id === "ck-e2e-new" ? va : qr),
+    refresh: async () => {
+      await gate;
+      return okJson({ ...qr, status: "paid", period_end: "2026-12-06", checked: true });
+    },
+    subscription: () => {
+      subReads++;
+      return real;
+    },
+  });
+  try {
+    await openPayDialog();
+    await pressPay();
+    await waitDlg("Menunggu pembayaran");
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Memeriksa");
+    await click("Ganti metode", { within: "dialog" });
+    await waitDlg("Pilih cara bayar");
+    await pickMethod("BCA");
+    await pressPay();
+    await waitDlg("8001234567890123");
+    const before = subReads;
+    release();
+    await poll(async () => subReads > before, "onPaid tidak memuat ulang langganan");
+    const t = await dlgText();
+    assert(t.includes("8001234567890123") && !t.includes("Pembayaran diterima") && !t.includes("Memeriksa"), `tampilan tertimpa: ${t.slice(0, 200)}`);
+  } finally {
+    release();
+    await stub.off();
+  }
+});
+
+test("langganan: tampilan kedaluwarsa punya tombol cek dan tidak menyuruh muat ulang", async () => {
+  await ensureLoggedIn();
+  const q = () => checkout({ id: "ck-e2e-exp2", expires_at: new Date(Date.now() + 2_000).toISOString() });
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(q(), 201), get: () => okJson(q()), refresh: () => okJson({ ...q(), checked: true }) });
+  try {
+    await openPayDialog();
+    await pressPay();
+    await waitDlg("Buat QR baru", 10_000);
+    const t = await dlgText();
+    assert(t.includes("Cek status pembayaran") && !t.includes("muat ulang"), `teks: ${t}`);
+    await click("Cek status pembayaran", { within: "dialog", partial: true });
+    await waitDlg("Belum ada konfirmasi pembayaran dari penyedia.");
+  } finally {
+    await stub.off();
+  }
+});
+
 test("langganan: langkah menunggu di ponsel menampilkan QR di layar tanpa gulir", async () => {
   await ensureLoggedIn();
   const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(checkout({ id: "ck-e2e-ph" }), 201), get: () => okJson(checkout({ id: "ck-e2e-ph" })) });
@@ -1238,6 +1321,11 @@ test("langganan: langkah menunggu di ponsel menampilkan QR di layar tanpa gulir"
       return { top: svg.top, bottom: svg.bottom, vh: innerHeight, sx: document.documentElement.scrollWidth, vw: innerWidth };
     });
     assert(r.top >= 0 && r.bottom <= r.vh, `QR di luar layar: ${JSON.stringify(r)}`);
+    const x = await page.evaluate(() => {
+      const b = document.querySelector('dialog[open] button[aria-label="Tutup"]')?.getBoundingClientRect();
+      return b ? { top: b.top, bottom: b.bottom, vh: innerHeight } : null;
+    });
+    assert(x && x.top >= 0 && x.bottom <= x.vh, `tombol X tidak terlihat: ${JSON.stringify(x)}`);
     assert(r.sx <= r.vw, "gulir horizontal");
   } finally {
     await page.setViewport({ width: 1360, height: 900 });
