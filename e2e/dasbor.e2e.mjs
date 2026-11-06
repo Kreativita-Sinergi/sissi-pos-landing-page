@@ -1217,7 +1217,7 @@ test("langganan: kartu paket berupa radio, Tahunan bawaan, tombol mengikuti pili
   eq(await btnText(), `Bayar ${rp(other === "yearly" ? pr.yearly : pr.monthly)}`, "teks tombol mengikuti pilihan");
 });
 
-test("langganan: logo metode, ikon cadangan, QRIS generik, Bank lainnya", async () => {
+test("langganan: logo metode, ikon cadangan, logo QRIS, Bank lainnya", async () => {
   await ensureLoggedIn();
   const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(checkout(), 201), get: () => okJson(checkout()) });
   try {
@@ -1235,9 +1235,11 @@ test("langganan: logo metode, ikon cadangan, QRIS generik, Bank lainnya", async 
     eq(JSON.stringify(attrs), JSON.stringify({ alt: "", rp: "no-referrer", lazy: "lazy" }), "atribut img logo");
     // Mandiri: gambar rusak → jatuh ke ikon.
     await page.waitForFunction(() => { const b = [...document.querySelectorAll("dialog[open] ul button")].find((x) => x.innerText.includes("Mandiri")); return b && b.querySelectorAll("img").length === 0 && b.querySelectorAll("svg").length > 0; }, { timeout: TIMEOUT });
-    // QRIS: ikon generik, tidak ada img penyedia walau API memberi image.
+    // QRIS: logo QRIS lokal, bukan logo penyedia walau API memberi image.
     const q = await info("Disarankan");
-    assert(q && q.img === 0 && q.svg > 0, `baris QRIS harus ikon generik: ${JSON.stringify(q)}`);
+    assert(q && q.img === 1, `baris QRIS harus punya satu logo: ${JSON.stringify(q)}`);
+    await page.waitForFunction(() => { const i = document.querySelector('dialog[open] img[src="/logos/pembayaran/qris.svg"]'); return i && i.complete && i.naturalWidth > 0; }, { timeout: TIMEOUT });
+    eq(await page.$$eval('dialog[open] img[src*="SP.PNG"]', (l) => l.length), 0, "logo penyedia QRIS tidak boleh tampil");
     assert(q.text.includes("tanpa biaya"), "QRIS tanpa biaya");
     // Bank lainnya: tertutup → BNI belum ada; buka → ada dan terjangkau keyboard.
     assert(!(await info("BNI")), "BNI tidak boleh ada sebelum dibuka");

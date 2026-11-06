@@ -23,7 +23,7 @@ import {
 import { PRICING_FEATURES } from "@/constants/pricing";
 import { ownerApi } from "@/lib/owner/api";
 import type { PayCycle, PayMethod, SubscriptionDetail } from "@/lib/owner/types";
-import { PayDialog } from "./PayDialog";
+import { methodLogoSrc, PayDialog } from "./PayDialog";
 import { labelOf } from "./labels";
 
 // Langganan (GET /owner/subscription): status paket, pemakaian, fitur Pro, harga, bayar online lewat Duitku
@@ -38,9 +38,9 @@ const STATUS: Record<SubscriptionDetail["status"], { text: string; tone: "brand"
 
 const PAYMENT_STATUS: Record<string, string> = { recorded: "Tercatat", void: "Dibatalkan" };
 
-const LOGO_CODES = ["BC", "M2", "OV", "DA", "IR", "I1"];
+const LOGO_CODES = ["SP", "NQ", "BC", "M2", "OV", "DA", "IR", "I1"];
 
-/** Logo metode dari daftar metode (tanpa QRIS, yang memakai ikon generik). Gagal/fitur mati → kosong. */
+/** Logo metode dari daftar metode, QRIS lebih dulu. Gagal/fitur mati → kosong. */
 function useMethodLogos(): string[] {
   const [logos, setLogos] = useState<string[]>([]);
   useEffect(() => {
@@ -50,11 +50,11 @@ function useMethodLogos(): string[] {
         const l = await (await ownerApi()).paymentMethods("yearly", ctrl.signal);
         if (ctrl.signal.aborted) return;
         const by = (m: PayMethod) => (LOGO_CODES.indexOf(m.code) + 1 || 99);
-        const imgs = l.methods
-          .filter((m) => m.kind !== "qris" && m.image)
+        const imgs = [...l.methods]
           .sort((x, y) => by(x) - by(y))
-          .map((m) => m.image);
-        setLogos([...new Set(imgs)].slice(0, 4));
+          .map(methodLogoSrc)
+          .filter(Boolean);
+        setLogos([...new Set(imgs)].slice(0, 5));
       } catch {
         // Logo hanya hiasan: galat/fitur mati tidak menampilkan apa pun.
       }
@@ -329,8 +329,8 @@ function MethodLogoImg({ src }: { src: string }) {
   const [broken, setBroken] = useState(false);
   if (broken) return null;
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- logo dari images.duitku.com (host disaring server), tanpa optimasi next/image.
-    <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="h-[14px] max-w-[44px] object-contain" />
+    // eslint-disable-next-line @next/next/no-img-element -- logo lokal atau dari images.duitku.com (host disaring server), tanpa optimasi next/image.
+    <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="h-[18px] max-w-[52px] object-contain" />
   );
 }
 

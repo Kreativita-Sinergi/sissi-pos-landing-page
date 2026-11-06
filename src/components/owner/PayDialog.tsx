@@ -485,16 +485,26 @@ function Summary({ plan, right }: { plan: string; right: React.ReactNode }) {
   );
 }
 
-/** Ubin logo 46x28 berukuran tetap. QRIS selalu ikon QR generik (QRIS bisa dibayar dari aplikasi apa pun). */
+// Logo gabungan Duitku terlalu kecil terbaca di ubin (Indomaret + i.saku, Alfamart + Pegadaian + Pos): pakai logo lokal.
+const LOCAL_LOGOS: Record<string, string> = { IR: "/logos/pembayaran/indomaret.svg", FT: "/logos/pembayaran/alfamart.svg" };
+export const QRIS_LOGO = "/logos/pembayaran/qris.svg";
+
+/** Sumber logo metode. QRIS selalu logo QRIS, bukan logo penyedia, karena bisa dibayar dari aplikasi apa pun. */
+export function methodLogoSrc(m: PayMethod): string {
+  return m.kind === "qris" ? QRIS_LOGO : (LOCAL_LOGOS[m.code] ?? m.image);
+}
+
+/** Ubin logo berukuran tetap, cukup besar agar logo terbaca. Gagal dimuat → ikon jenis metode. */
 function MethodLogo({ m, small = false }: { m: PayMethod; small?: boolean }) {
   const [broken, setBroken] = useState(false);
   const Icon = KIND_ICON[m.kind];
-  const size = small ? "h-[22px] w-[34px]" : "h-7 w-[46px]";
+  const size = small ? "h-6 w-10 p-[3px]" : "h-10 w-16 p-[5px]";
+  const src = methodLogoSrc(m);
   return (
-    <span aria-hidden className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-[7px] border border-border-subtle bg-white p-[3px] text-text-body`}>
-      {m.kind !== "qris" && m.image && !broken ? (
-        // eslint-disable-next-line @next/next/no-img-element -- logo dari images.duitku.com (host disaring server), tanpa optimasi next/image.
-        <img src={m.image} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="max-h-full max-w-full object-contain" />
+    <span aria-hidden className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-[8px] border border-border-subtle bg-white text-text-body`}>
+      {src && !broken ? (
+        // eslint-disable-next-line @next/next/no-img-element -- logo lokal atau dari images.duitku.com (host disaring server), tanpa optimasi next/image.
+        <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="max-h-full max-w-full object-contain" />
       ) : (
         <Icon size={small ? 14 : 18} aria-hidden />
       )}
@@ -543,16 +553,19 @@ function VaList({ list, creating, onPick }: { list: PayMethod[]; creating: strin
   );
 }
 
-const ACRONYMS = new Set(["BCA", "BNI", "BRI", "BSI", "BNC", "CIMB", "OVO", "DANA", "VA"]);
+const ACRONYMS = new Set(["ATM", "BCA", "BNI", "BRI", "BSI", "BNC", "CIMB", "OVO", "DANA", "VA"]);
+// Nama Duitku yang tidak terbaca dari aturan umum. FT menurut dokumentasi Duitku = Pegadaian/ALFA/Pos.
+const NAME_BY_CODE: Record<string, string> = { FT: "Alfamart, Pegadaian, Pos" };
 
 /** Nama dari Duitku sering HURUF BESAR dan memuat sufiks teknis ("MANDIRI VA H2H"): rapikan untuk tampilan. */
 function displayName(m: PayMethod): string {
+  if (NAME_BY_CODE[m.code]) return NAME_BY_CODE[m.code];
   let n = m.name.trim();
   if (m.kind === "va") n = n.replace(/\s+(virtual account|va)(\s+h2h)?$/i, "");
   if (n !== n.toUpperCase()) return n;
   return n
     .split(/\s+/)
-    .map((w) => (ACRONYMS.has(w) ? w : /^shopeepay$/i.test(w) ? "ShopeePay" : w.charAt(0) + w.slice(1).toLowerCase()))
+    .map((w) => (ACRONYMS.has(w) ? w : /^shopeepay$/i.test(w) ? "ShopeePay" : /^linkaja$/i.test(w) ? "LinkAja" : w.charAt(0) + w.slice(1).toLowerCase()))
     .join(" ");
 }
 
