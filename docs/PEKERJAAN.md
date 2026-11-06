@@ -33,7 +33,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 - **P3 · Pastikan kecamatan alamat kantor:** situs menulis "Kec. Tampan" sesuai pemilik, tetapi satu sumber tak resmi
   menempatkan Simpang Baru di Kec. Binawidya setelah pemekaran. Perda Pekanbaru No. 2/2020 belum terbaca. Kode pos
-  28293 juga dari sumber tak resmi. Nilai ada di `OFFICE_ADDRESS_LINES` (`src/constants/site.ts`).
+  28293 juga dari sumber tak resmi. Nilai ada di `OFFICE_ADDRESS_AREA` (`src/constants/site.ts`). Titik tautan Google
+  Maps (pencarian teks alamat) juga perlu dicek pemilik.
 
 ## Keputusan
 
@@ -62,7 +63,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 ## Selesai
 
 - **2026-11-06 · Alamat di kontak `/tentang`** (Claude Opus 5.5): kotak "Alamat" selebar dua kolom di bawah WhatsApp &
-  Email; teks dari `OFFICE_ADDRESS_LINES`.
+  Email; nama perumahan tebal, wilayah abu-abu, tautan "Buka di Google Maps" (`OFFICE_*` di `src/constants/site.ts`).
 - **2026-11-05 · Reviu `826043f` `/setujui/[token]`** (Claude Opus 5.5): GET hanya membaca, keputusan lewat POST
   (aman dari pemindai tautan email), `noindex` + `no-referrer`. Ditambah header `/setujui/:path*` di `next.config.ts`
   (`X-Frame-Options: DENY`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer`) seperti `/undangan`. Catatan:
