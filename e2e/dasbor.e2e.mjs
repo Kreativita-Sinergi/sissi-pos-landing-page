@@ -951,11 +951,18 @@ const METHODS = {
   cycle: "monthly",
   price: 59000,
   methods: [
-    { code: "SP", name: "QRIS", kind: "qris", fee: 0, total: 59000 },
-    { code: "BC", name: "BCA Virtual Account", kind: "va", fee: 5000, total: 64000 },
-    { code: "OV", name: "OVO", kind: "ewallet", fee: 1500, total: 60500 },
+    { code: "SP", name: "QRIS", kind: "qris", image: "https://images.duitku.com/hotlink-ok/SP.PNG", fee: 0, total: 59000 },
+    { code: "BC", name: "BCA Virtual Account", kind: "va", image: "https://images.duitku.com/hotlink-ok/BCA.SVG", fee: 5000, total: 64000 },
+    { code: "M2", name: "Mandiri Virtual Account", kind: "va", image: "https://images.duitku.com/hotlink-ok/BROKEN.PNG", fee: 3000, total: 62000 },
+    { code: "I1", name: "BNI Virtual Account", kind: "va", image: "https://images.duitku.com/hotlink-ok/I1.PNG", fee: 3000, total: 62000 },
+    { code: "BR", name: "BRI Virtual Account", kind: "va", image: "https://images.duitku.com/hotlink-ok/BR.PNG", fee: 3000, total: 62000 },
+    { code: "B1", name: "CIMB Niaga Virtual Account", kind: "va", image: "https://images.duitku.com/hotlink-ok/B1.PNG", fee: 3000, total: 62000 },
+    { code: "BT", name: "Permata Virtual Account", kind: "va", image: "", fee: 3000, total: 62000 },
+    { code: "OV", name: "OVO", kind: "ewallet", image: "https://images.duitku.com/hotlink-ok/OV.PNG", fee: 1500, total: 60500 },
   ],
 };
+const PNG_1PX = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+const SVG_STUB = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#06c"/></svg>';
 const checkout = (over = {}) => ({
   id: "ck-e2e-1",
   cycle: "monthly",
@@ -980,6 +987,12 @@ async function stubPayments(h) {
   const onReq = async (req) => {
     if (req.isInterceptResolutionHandled()) return;
     const u = new URL(req.url());
+    // Logo Duitku: jangan keluar jaringan. BROKEN → 404 (menguji onError), .SVG → svg, sisanya PNG 1px.
+    if (u.hostname === "images.duitku.com") {
+      if (u.pathname.includes("BROKEN")) return req.respond({ status: 404, body: "" });
+      if (u.pathname.toUpperCase().endsWith(".SVG")) return req.respond({ status: 200, contentType: "image/svg+xml", body: SVG_STUB });
+      return req.respond({ status: 200, contentType: "image/png", body: PNG_1PX });
+    }
     const isApi = req.url().startsWith(API);
     const path = isApi ? u.pathname.replace(/^.*\/owner/, "") : "";
     const isPay = path === "/subscription/payment-methods" || path.startsWith("/subscription/checkouts");
@@ -1020,18 +1033,22 @@ const dlgText = () => page.evaluate(() => [...document.querySelectorAll("dialog[
 async function waitDlg(text, timeout = TIMEOUT) {
   await waitText(text, { root: "dialog[open]", timeout });
 }
+const rp = (n) => `Rp${n.toLocaleString("id-ID")}`;
+/** Buka halaman, pilih paket Bulanan (bawaan Tahunan), tekan "Bayar Rp…" → dialog pilih metode. */
 async function openPayDialog() {
   await go("/dasbor/langganan");
-  await click("Bayar sekarang", { within: "main" });
-  await waitDialog("Bayar Pro Bulanan");
+  await waitText("Bayar Rp", { root: "main" });
+  await click("Bulanan", { within: "main", selector: "label" , partial: true});
+  await click("Bayar Rp", { within: "main", partial: true });
+  await waitDialog("Pilih cara bayar");
 }
 const rowCount = () => page.evaluate(() => document.querySelectorAll("main table tbody tr").length);
 
 test("langganan: kartu bayar tanpa transfer", async () => {
   await ensureLoggedIn();
   await go("/dasbor/langganan");
-  await waitText("Bayar sekarang", { root: "main" });
-  for (const t of ["Konfirmasi lewat WhatsApp", "Transfer ke", "Harga belum termasuk PPN", "dicatat tim Sissi"]) {
+  await waitText("Bayar Rp", { root: "main" });
+  for (const t of ["Bayar sekarang", "Konfirmasi lewat WhatsApp", "Transfer ke", "Harga belum termasuk PPN", "dicatat tim Sissi"]) {
     assert(!(await hasText(t, "main")), `teks lama masih ada: ${t}`);
   }
 });
@@ -1059,7 +1076,7 @@ test("langganan: VA dengan biaya", async () => {
   const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(va, 201), get: () => okJson(va) });
   try {
     await openPayDialog();
-    await click("BCA Virtual Account", { within: "dialog", partial: true });
+    await click("BCA", { within: "dialog", partial: true });
     await waitDlg("8001234567890123");
     const t = await dlgText();
     for (const x of ["Rp59.000", "Rp5.000", "Rp64.000"]) assert(t.includes(x), `rincian tanpa ${x}`);
@@ -1134,7 +1151,7 @@ test("langganan: gateway gagal", async () => {
     await openPayDialog();
     await click("QRIS", { within: "dialog", partial: true });
     await waitDlg("Coba lagi");
-    assert((await dialogTitle()) === "Bayar Pro Bulanan", "dialog tertutup saat gateway gagal");
+    assert((await dialogTitle()) === "Pilih cara bayar", "dialog tertutup saat gateway gagal");
     fail = false;
     await click("Coba lagi", { within: "dialog" });
     await waitDlg("Total Rp59.000");
@@ -1160,15 +1177,118 @@ test("langganan: kembali dari e-wallet", async () => {
   const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(ck, 201), get: (id) => (id === "ck-e2e-ret" ? okJson(ck) : errJson(404, "CHECKOUT_NOT_FOUND", "Tidak ada")) });
   try {
     await go("/dasbor/langganan?checkout=ck-e2e-ret");
-    await waitDialog("Bayar Pro Bulanan");
+    await waitDialog("Lanjut ke e-wallet");
     await waitDlg("Rp60.500");
     await page.waitForFunction(() => !location.search, { timeout: TIMEOUT });
     // Id tak dikenal diabaikan diam-diam.
     await go("/dasbor/langganan?checkout=tidak-ada");
-    await waitText("Bayar sekarang", { root: "main" });
+    await waitText("Bayar Rp", { root: "main" });
     await sleep(800);
     assert(!(await page.$("dialog[open]")), "dialog terbuka untuk checkout 404");
     await page.waitForFunction(() => !location.search, { timeout: TIMEOUT });
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: kartu paket berupa radio, Tahunan bawaan, tombol mengikuti pilihan", async () => {
+  await ensureLoggedIn();
+  const real = await api.get("/owner/subscription");
+  const pr = real.billing?.prices;
+  assert(pr, "demo tanpa harga billing");
+  await go("/dasbor/langganan");
+  await waitText("Bayar Rp", { root: "main" });
+  const radios = () => page.$$eval('main input[type=radio][name=pay-cycle]', (els) => els.map((e) => ({ v: e.value, c: e.checked })));
+  const r0 = await radios();
+  eq(r0.length, 2, "jumlah radio paket");
+  const wantDefault = real.status === "active" && real.billing_cycle === "monthly" ? "monthly" : "yearly";
+  eq(r0.find((r) => r.c)?.v, wantDefault, "paket bawaan");
+  const btnText = () => page.evaluate(() => [...document.querySelectorAll("main button")].find((b) => b.innerText.startsWith("Bayar Rp"))?.innerText.trim());
+  eq(await btnText(), `Bayar ${rp(wantDefault === "yearly" ? pr.yearly : pr.monthly)}`, "teks tombol bawaan");
+  assert(await hasText("Paling hemat", "main"), "label Paling hemat");
+  const saving = pr.monthly * 12 - pr.yearly;
+  if (saving > 0) assert(await hasText(`Hemat ${rp(saving)}`, "main"), "label hemat");
+  eq(await hasText("2 bulan gratis", "main"), saving === 2 * pr.monthly, "2 bulan gratis hanya bila hemat tepat dua bulan");
+  // Keyboard: fokus ke radio terpilih, panah mengubah pilihan.
+  await page.focus(`main input[type=radio][value=${wantDefault}]`);
+  await page.keyboard.press(wantDefault === "yearly" ? "ArrowUp" : "ArrowDown");
+  const other = wantDefault === "yearly" ? "monthly" : "yearly";
+  eq((await radios()).find((r) => r.c)?.v, other, "panah mengganti paket");
+  eq(await btnText(), `Bayar ${rp(other === "yearly" ? pr.yearly : pr.monthly)}`, "teks tombol mengikuti pilihan");
+});
+
+test("langganan: logo metode, ikon cadangan, QRIS generik, Bank lainnya", async () => {
+  await ensureLoggedIn();
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(checkout(), 201), get: () => okJson(checkout()) });
+  try {
+    await openPayDialog();
+    await waitDlg("Virtual Account");
+    const row = (name) =>
+      page.evaluateHandle((n) => [...document.querySelectorAll("dialog[open] ul button")].find((b) => b.innerText.includes(n)) ?? null, name);
+    const info = async (name) => {
+      const h = await row(name);
+      return h.evaluate((b) => (b ? { img: b.querySelectorAll("img").length, svg: b.querySelectorAll("svg").length, text: b.innerText } : null));
+    };
+    // BCA: logo dimuat (naturalWidth > 0), alt kosong, referrerpolicy.
+    await page.waitForFunction(() => { const i = document.querySelector('dialog[open] img[src$="BCA.SVG"]'); return i && i.complete && i.naturalWidth > 0; }, { timeout: TIMEOUT });
+    const attrs = await page.$eval('dialog[open] img[src$="BCA.SVG"]', (i) => ({ alt: i.getAttribute("alt"), rp: i.referrerPolicy, lazy: i.loading }));
+    eq(JSON.stringify(attrs), JSON.stringify({ alt: "", rp: "no-referrer", lazy: "lazy" }), "atribut img logo");
+    // Mandiri: gambar rusak → jatuh ke ikon.
+    await page.waitForFunction(() => { const b = [...document.querySelectorAll("dialog[open] ul button")].find((x) => x.innerText.includes("Mandiri")); return b && b.querySelectorAll("img").length === 0 && b.querySelectorAll("svg").length > 0; }, { timeout: TIMEOUT });
+    // QRIS: ikon generik, tidak ada img penyedia walau API memberi image.
+    const q = await info("Disarankan");
+    assert(q && q.img === 0 && q.svg > 0, `baris QRIS harus ikon generik: ${JSON.stringify(q)}`);
+    assert(q.text.includes("tanpa biaya"), "QRIS tanpa biaya");
+    // Bank lainnya: tertutup → BNI belum ada; buka → ada dan terjangkau keyboard.
+    assert(!(await info("BNI")), "BNI tidak boleh ada sebelum dibuka");
+    const toggle = '[aria-controls="pay-va-more"]';
+    eq(await page.$eval(`dialog[open] ${toggle}`, (b) => b.getAttribute("aria-expanded")), "false", "aria-expanded awal");
+    await click("Bank lainnya", { within: "dialog", partial: true });
+    eq(await page.$eval(`dialog[open] ${toggle}`, (b) => b.getAttribute("aria-expanded")), "true", "aria-expanded setelah dibuka");
+    assert(await info("BNI"), "BNI muncul setelah dibuka");
+    await page.focus("dialog[open] #pay-va-more button");
+    eq(await page.evaluate(() => document.activeElement?.closest("#pay-va-more") !== null), true, "baris tersembunyi bisa difokus");
+    await click("Bank lainnya", { within: "dialog", partial: true });
+    eq(await page.$eval(`dialog[open] ${toggle}`, (b) => b.getAttribute("aria-expanded")), "false", "aria-expanded setelah ditutup");
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: POST e-wallet selesai setelah dialog ditutup tidak mengalihkan halaman", async () => {
+  await ensureLoggedIn();
+  const ck = checkout({ id: "ck-e2e-late", method: "OV", kind: "ewallet", service_fee: 1500, total: 60500, qr_string: null, payment_url: "https://example.invalid/pay" });
+  const stub = await stubPayments({
+    methods: () => okJson(METHODS),
+    create: async () => {
+      await sleep(2_000);
+      return okJson(ck, 201);
+    },
+    get: () => okJson(ck),
+  });
+  try {
+    await openPayDialog();
+    await click("OVO", { within: "dialog", partial: true });
+    await click("Batal", { within: "dialog" });
+    await waitDialogClosed("Pilih cara bayar");
+    await poll(async () => stub.log.created.length === 1, "POST belum terkirim");
+    await sleep(3_500);
+    assert(page.url().startsWith(`${BASE}/dasbor/langganan`), `halaman dialihkan: ${page.url()}`);
+  } finally {
+    await stub.off();
+  }
+});
+
+test("langganan: galat selain 404 saat kembali dari e-wallet tampil", async () => {
+  await ensureLoggedIn();
+  const stub = await stubPayments({ methods: () => okJson(METHODS), create: () => okJson(checkout(), 201), get: () => errJson(500, "INTERNAL", "Terjadi gangguan.") });
+  try {
+    await go("/dasbor/langganan?checkout=ck-e2e-500");
+    await waitDialog("Status pembayaran");
+    await waitDlg("Coba lagi");
+    await sleep(1_000);
+    assert(await page.$("dialog[open]"), "dialog galat hilang");
+    assert((await dlgText()).includes("Coba lagi"), "galat harus tetap tampil");
   } finally {
     await stub.off();
   }

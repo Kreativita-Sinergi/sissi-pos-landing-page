@@ -1272,11 +1272,22 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
     async paymentMethods(cycle) {
       await guard();
       const price = MOCK_PRICES[cycle];
-      const m = (code: string, name: string, kind: PayMethods["methods"][number]["kind"], fee: number) => ({ code, name, kind, fee, total: price + fee });
+      const img = (file: string) => `https://images.duitku.com/hotlink-ok/${file}`;
+      const m = (code: string, name: string, kind: PayMethods["methods"][number]["kind"], fee: number, file: string) => ({ code, name, kind, image: img(file), fee, total: price + fee });
       return {
         cycle,
         price,
-        methods: [m("SP", "QRIS", "qris", 0), m("BC", "BCA Virtual Account", "va", 5000), m("OV", "OVO", "ewallet", 1500), m("IR", "Indomaret", "retail", 3500)],
+        methods: [
+          m("SP", "QRIS", "qris", 0, "DA.PNG"),
+          m("BC", "BCA Virtual Account", "va", 5000, "BCA.SVG"),
+          m("M2", "Mandiri Virtual Account", "va", 3000, "MV.PNG"),
+          m("I1", "BNI Virtual Account", "va", 3000, "I1.PNG"),
+          m("BR", "BRI Virtual Account", "va", 3000, "BR.PNG"),
+          m("B1", "CIMB Niaga Virtual Account", "va", 3000, "B1.PNG"),
+          m("OV", "OVO", "ewallet", 1500, "OV.PNG"),
+          m("DA", "DANA", "ewallet", 1200, "DA.PNG"),
+          m("IR", "Indomaret", "retail", 3500, "IR.PNG"),
+        ],
       };
     },
     async createCheckout({ cycle, method }) {

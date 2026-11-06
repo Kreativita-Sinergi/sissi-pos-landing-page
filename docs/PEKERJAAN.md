@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (dialog bayar langganan Duitku)
+Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (desain ulang halaman Langganan + dialog bayar: kartu utama, pilihan paket radio, logo metode)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -42,9 +42,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   panduan, dan app, kewajiban PPN dikonfirmasi ke akuntan; app Flutter masih menampilkan pembayaran manual;
   `resultCode` dan `reference` callback tidak ditandatangani Duitku, pengerasan diputuskan sebelum produksi; belum ada
   alert untuk log error rekonsiliasi berhenti (sisi service).
-- **P3 · Temuan minor dialog yang ditunda:** teks kedaluwarsa menjanjikan pembaruan otomatis padahal polling berhenti
-  (`PayDialog.tsx`); pengalihan e-wallet tetap jalan bila POST selesai setelah dialog ditutup; galat non-404
-  `?checkout=` hilang; `backToPick` memakai siklus halaman; selisih jam klien vs `expires_at`; cakupan e2e
+- **P3 · Temuan minor dialog yang ditunda** (teks kedaluwarsa, pengalihan e-wallet setelah dialog ditutup, galat non-404
+  `?checkout=`, dan siklus `backToPick` sudah diperbaiki 2026-11-06): selisih jam klien vs `expires_at`; cakupan e2e
   `amount_mismatch`/`failed`/paid telat belum ada; `mock.ts` memakai `this.paymentMethods` dan import inline,
   `PAYMENT_STATUS` hanya `recorded|void`.
 

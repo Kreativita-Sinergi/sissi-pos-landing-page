@@ -542,7 +542,8 @@ export type PayKind = "qris" | "va" | "ewallet" | "retail";
 export type PayCycle = "monthly" | "yearly";
 export type CheckoutStatus = "pending" | "paid" | "failed" | "expired" | "amount_mismatch";
 
-export type PayMethod = { code: string; name: string; kind: PayKind; fee: number; total: number };
+/** `image` = URL logo (https://images.duitku.com/...) atau string kosong. */
+export type PayMethod = { code: string; name: string; kind: PayKind; image: string; fee: number; total: number };
 export type PayMethods = { cycle: PayCycle; price: number; methods: PayMethod[] };
 
 export type Checkout = {
