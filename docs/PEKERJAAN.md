@@ -20,7 +20,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
-- **Langganan · logo metode (2026-11-06):** logo QRIS, Indomaret, dan Alfamart disimpan di `public/logos/pembayaran/` (sumber Wikimedia Commons: `QRIS_Logo.svg` CC0, `Indomaret.svg`, `Alfamart.svg`) karena logo gabungan Duitku terlalu kecil terbaca; metode lain tetap dari `images.duitku.com`. Logo adalah merek dagang pemiliknya: pastikan ketentuan pemakaian logo QRIS ke Duitku sebelum produksi.
+- **Langganan · logo metode (2026-11-06):** logo QRIS, Indomaret, dan Alfamart disimpan di `public/logos/pembayaran/` (sumber Wikimedia Commons: `QRIS_Logo.svg` CC0, `Indomaret.svg`, `Alfamart.svg`, `Gopay_logo_(2019).svg`; BCA dari Duitku) karena logo gabungan Duitku terlalu kecil terbaca; metode lain tetap dari `images.duitku.com`. Logo adalah merek dagang pemiliknya: pastikan ketentuan pemakaian logo QRIS ke Duitku sebelum produksi.
 
 - **P1 · Dialog bayar langganan online (Duitku) di `/dasbor` — terimplementasi, BELUM E2E, belum dirilis (2026-11-06).**
   `PayDialog` + mock/tes browser dengan stub selesai (commit `f31737c..3ca0ad4`). Belum dijalankan terhadap API Duitku

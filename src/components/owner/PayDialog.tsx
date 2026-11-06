@@ -487,10 +487,10 @@ function Summary({ plan, right }: { plan: string; right: React.ReactNode }) {
 
 // Logo gabungan Duitku terlalu kecil terbaca di ubin (Indomaret + i.saku, Alfamart + Pegadaian + Pos): pakai logo lokal.
 const LOCAL_LOGOS: Record<string, string> = { IR: "/logos/pembayaran/indomaret.svg", FT: "/logos/pembayaran/alfamart.svg" };
-export const QRIS_LOGO = "/logos/pembayaran/qris.svg";
+const QRIS_LOGO = "/logos/pembayaran/qris.svg";
 
 /** Sumber logo metode. QRIS selalu logo QRIS, bukan logo penyedia, karena bisa dibayar dari aplikasi apa pun. */
-export function methodLogoSrc(m: PayMethod): string {
+function methodLogoSrc(m: PayMethod): string {
   return m.kind === "qris" ? QRIS_LOGO : (LOCAL_LOGOS[m.code] ?? m.image);
 }
 

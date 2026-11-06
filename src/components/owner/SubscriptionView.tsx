@@ -22,8 +22,8 @@ import {
 } from "@/components/admin/ui";
 import { PRICING_FEATURES } from "@/constants/pricing";
 import { ownerApi } from "@/lib/owner/api";
-import type { PayCycle, PayMethod, SubscriptionDetail } from "@/lib/owner/types";
-import { methodLogoSrc, PayDialog } from "./PayDialog";
+import type { PayCycle, SubscriptionDetail } from "@/lib/owner/types";
+import { PayDialog } from "./PayDialog";
 import { labelOf } from "./labels";
 
 // Langganan (GET /owner/subscription): status paket, pemakaian, fitur Pro, harga, bayar online lewat Duitku
@@ -38,38 +38,14 @@ const STATUS: Record<SubscriptionDetail["status"], { text: string; tone: "brand"
 
 const PAYMENT_STATUS: Record<string, string> = { recorded: "Tercatat", void: "Dibatalkan" };
 
-const LOGO_CODES = ["SP", "NQ", "BC", "M2", "OV", "DA", "IR", "I1"];
-
-/** Logo metode dari daftar metode, QRIS lebih dulu. Gagal/fitur mati → kosong. */
-function useMethodLogos(): string[] {
-  const [logos, setLogos] = useState<string[]>([]);
-  useEffect(() => {
-    const ctrl = new AbortController();
-    (async () => {
-      try {
-        const l = await (await ownerApi()).paymentMethods("yearly", ctrl.signal);
-        if (ctrl.signal.aborted) return;
-        const by = (m: PayMethod) => (LOGO_CODES.indexOf(m.code) + 1 || 99);
-        const imgs = [...l.methods]
-          .sort((x, y) => by(x) - by(y))
-          .map(methodLogoSrc)
-          .filter(Boolean);
-        setLogos([...new Set(imgs)].slice(0, 5));
-      } catch {
-        // Logo hanya hiasan: galat/fitur mati tidak menampilkan apa pun.
-      }
-    })();
-    return () => ctrl.abort();
-  }, []);
-  return logos;
-}
+// Contoh cara bayar di kartu utama. GoPay bukan kanal sendiri: dibayar lewat QRIS.
+const PAY_LOGOS = ["qris", "bca", "gopay", "indomaret"].map((n) => `/logos/pembayaran/${n}.svg`);
 
 export function SubscriptionView() {
   const router = useRouter();
   const pathname = usePathname();
   const { state, reload } = useLoad<SubscriptionDetail>(async (signal) => (await ownerApi()).subscription(signal), []);
   const [picked, setPicked] = useState<PayCycle | null>(null);
-  const logos = useMethodLogos();
   const [payOpen, setPayOpen] = useState(false);
   const [returnId, setReturnId] = useState<string | undefined>();
   const s = state.data;
@@ -107,7 +83,7 @@ export function SubscriptionView() {
         <>
           <LoadingBar active={state.status === "loading"} />
           <div className="flex flex-col gap-5">
-            <PayCard s={s} cycle={cycle} setCycle={setPicked} logos={logos} onPay={() => setPayOpen(true)} />
+            <PayCard s={s} cycle={cycle} setCycle={setPicked} onPay={() => setPayOpen(true)} />
             <UsageRow s={s} />
 
             <Section title="Fitur Pro" description={s.plan === "pro" ? "Semua fitur ini aktif untuk usaha Anda." : "Buka semua fitur ini dengan Pro."}>
@@ -269,7 +245,7 @@ function PlanCard({ value, current, onChange, name, price, unit, note, badge, ta
   );
 }
 
-function PayCard({ s, cycle, setCycle, logos, onPay }: { s: SubscriptionDetail; cycle: PayCycle; setCycle: (c: PayCycle) => void; logos: string[]; onPay: () => void }) {
+function PayCard({ s, cycle, setCycle, onPay }: { s: SubscriptionDetail; cycle: PayCycle; setCycle: (c: PayCycle) => void; onPay: () => void }) {
   const h = headlineFor(s);
   const border = h.tone === "warning" ? "border-warning" : "border-border-subtle";
   const bg = h.tone === "warning" ? "bg-warning-tint" : "bg-white";
@@ -308,14 +284,12 @@ function PayCard({ s, cycle, setCycle, logos, onPay }: { s: SubscriptionDetail; 
           </button>
           <div className="mt-2 text-center text-[12px] text-text-muted">
             <p>Pro langsung aktif setelah pembayaran diterima</p>
-            {logos.length > 0 && (
-              <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                {logos.map((u) => (
-                  <MethodLogoImg key={u} src={u} />
-                ))}
-                <span>dan lainnya</span>
-              </p>
-            )}
+            <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              {PAY_LOGOS.map((u) => (
+                <MethodLogoImg key={u} src={u} />
+              ))}
+              <span>dan lainnya</span>
+            </p>
           </div>
         </>
       ) : (
@@ -329,7 +303,7 @@ function MethodLogoImg({ src }: { src: string }) {
   const [broken, setBroken] = useState(false);
   if (broken) return null;
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- logo lokal atau dari images.duitku.com (host disaring server), tanpa optimasi next/image.
+    // eslint-disable-next-line @next/next/no-img-element -- logo lokal di public, tanpa optimasi next/image.
     <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} className="h-4 max-w-[46px] object-contain" />
   );
 }
