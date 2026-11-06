@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/shared/Container";
 import {
+  OFFICE_ADDRESS_LINES,
   SUPPORT_WHATSAPP_LABEL,
   SUPPORT_WHATSAPP_URL,
 } from "@/constants/site";
@@ -156,6 +157,19 @@ export default function TentangPage() {
                 >
                   Atau baca panduan dulu →
                 </Link>
+              </div>
+
+              <div className="p-7 rounded-[16px] border border-[#e4e9e7] bg-white md:col-span-2">
+                <h3 className="text-[14px] font-mono tracking-wider uppercase text-[#be5823]">
+                  Alamat
+                </h3>
+                <address className="mt-2 not-italic text-[20px] font-semibold text-[#292e31] leading-snug">
+                  {OFFICE_ADDRESS_LINES.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </address>
               </div>
             </div>
           </Container>
