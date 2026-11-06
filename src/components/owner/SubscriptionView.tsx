@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, CalendarClock, Check, ChevronDown, HandCoins, Headset, Info, Lock, QrCode, Receipt, Sparkles, UserCheck, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarClock, Check, ChevronDown, HandCoins, Headset, Lock, QrCode, Receipt, Sparkles, UserCheck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { Meter } from "@/components/admin/charts";
 import { BILLING_CYCLES, PAYMENT_METHODS } from "@/components/admin/labels";
 import {
@@ -306,21 +306,22 @@ function UsageCard({ s }: { s: SubscriptionDetail }) {
           <div className={row}>
             <span className="text-text-body">Outlet</span>
             <span className={value}>
-              {s.usage.outlets.toLocaleString("id-ID")} / {s.limits.outlets.toLocaleString("id-ID")}
+              {s.usage.outlets.toLocaleString("id-ID")} dari {s.limits.outlets.toLocaleString("id-ID")} outlet
             </span>
           </div>
-          <div className="mt-1.5">
-            <Meter value={Math.min(s.usage.outlets, s.limits.outlets)} max={s.limits.outlets} tone={s.usage.outlets_over ? "danger" : "neutral"} />
-          </div>
+          {s.usage.outlets_over && (
+            <div className="mt-1.5">
+              <Meter value={s.limits.outlets} max={s.limits.outlets} tone="danger" />
+            </div>
+          )}
           <p className={`mt-1.5 text-[12.5px] ${s.usage.outlets_over ? "text-danger" : "text-text-muted"}`}>
-            {s.usage.outlets_over ? "Outlet aktif melebihi kuota — hanya outlet tertua yang bisa bertransaksi." : "Butuh outlet tambahan? Hubungi tim Sissi."}
+            {s.usage.outlets_over
+              ? "Outlet aktif melebihi kuota — hanya outlet tertua yang bisa bertransaksi."
+              : s.limits.outlets === 1
+                ? `Paket ${s.plan === "pro" ? "Pro" : "Gratis"} sudah termasuk 1 outlet. Butuh lebih? Hubungi tim Sissi.`
+                : `Kuota usaha Anda ${s.limits.outlets.toLocaleString("id-ID")} outlet. Butuh lebih? Hubungi tim Sissi.`}
           </p>
         </div>
-        {!s.enforced && (
-          <p className="flex items-start gap-1.5 border-t border-border-subtle pt-3 text-[12.5px] text-text-muted">
-            <Info size={14} aria-hidden className="mt-0.5 shrink-0" /> Batas paket belum diberlakukan — semua fitur masih terbuka.
-          </p>
-        )}
       </div>
     </Section>
   );

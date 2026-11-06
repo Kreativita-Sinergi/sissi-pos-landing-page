@@ -20,6 +20,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
+- **Langganan · kartu Pemakaian (2026-11-06):** outlet ditulis `1 dari 1 outlet` dengan keterangan kuota; bilah hanya saat melebihi kuota; catatan `enforced` tidak lagi ditampilkan ke pemilik.
+
 - **Langganan · cek status & desain ulang dialog bayar (2026-11-06):** langkah menunggu memakai tata letak dua panel yang
   sama dengan "Pilih cara bayar" (satu kolom di ponsel, QR langsung terlihat): kiri cara bayar (QRIS dengan logo, atau
   nomor VA/kode besar dengan tombol Salin) + langkah bernomor; kanan status "Menunggu pembayaran", pil sisa waktu (VA dan
