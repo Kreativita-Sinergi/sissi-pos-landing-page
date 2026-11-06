@@ -2,13 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, Info, Minus, Receipt } from "lucide-react";
+import { BarChart3, CalendarClock, Check, HandCoins, Headset, Info, Lock, QrCode, Receipt, Sparkles, UserCheck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { Meter } from "@/components/admin/charts";
 import { BILLING_CYCLES, PAYMENT_METHODS } from "@/components/admin/labels";
 import {
   Badge,
   btn,
-  EmptyState,
   ErrorBlock,
   formatDate,
   formatRupiah,
@@ -35,6 +34,10 @@ const STATUS: Record<SubscriptionDetail["status"], { text: string; tone: "brand"
   grace: { text: "Masa tenggang", tone: "warning" },
   free: { text: "Gratis", tone: "neutral" },
 };
+
+type SubscriptionPaymentRow = NonNullable<SubscriptionDetail["billing"]>["payments"][number];
+
+const methodLabel = (m: string) => (m === "gateway" ? "Pembayaran online" : labelOf(PAYMENT_METHODS, m));
 
 const PAYMENT_STATUS: Record<string, string> = { recorded: "Tercatat", void: "Dibatalkan" };
 
@@ -86,78 +89,8 @@ export function SubscriptionView() {
             <PayCard s={s} cycle={cycle} setCycle={setPicked} onPay={() => setPayOpen(true)} />
             <UsageRow s={s} />
 
-            <Section title="Fitur Pro" description={s.plan === "pro" ? "Semua fitur ini aktif untuk usaha Anda." : "Buka semua fitur ini dengan Pro."}>
-              <ul className="flex flex-col gap-2">
-                {PRICING_FEATURES.filter((f) => f.proValue === true).map((f) => {
-                  const on = s.plan === "pro" || f.freeValue === true;
-                  return (
-                    <li key={f.name} className="flex items-start gap-2.5 text-[14px]">
-                      <span
-                        className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${on ? "bg-success-tint text-success" : "bg-bg-muted text-text-muted"}`}
-                        aria-hidden
-                      >
-                        {on ? <Check size={13} strokeWidth={3} /> : <Minus size={13} strokeWidth={3} />}
-                      </span>
-                      <span className={on ? "text-text-heading" : "text-text-body"}>
-                        {f.name}
-                        <span className="sr-only">{on ? " (aktif)" : " (tidak aktif)"}</span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Section>
-
-            <Section title="Riwayat pembayaran" description="Pembayaran Pro yang sudah diterima." bodyClass="">
-              {!s.billing || s.billing.payments.length === 0 ? (
-                <EmptyState icon={<Receipt size={22} aria-hidden />} title="Belum ada pembayaran">
-                  Pembayaran Pro yang sudah diterima akan muncul di sini.
-                </EmptyState>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[14px]">
-                    <thead>
-                      <tr>
-                        <th scope="col" className={thClass}>
-                          Tanggal bayar
-                        </th>
-                        <th scope="col" className={thClass}>
-                          Periode
-                        </th>
-                        <th scope="col" className={thClass}>
-                          Siklus · metode
-                        </th>
-                        <th scope="col" className={`${thClass} text-right`}>
-                          Jumlah
-                        </th>
-                        <th scope="col" className={thClass}>
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {s.billing.payments.map((p) => (
-                        <tr key={p.id}>
-                          <td className={`${tdClass} border-b border-border-subtle tabular-nums`}>{formatDate(p.paid_at)}</td>
-                          <td className={`${tdClass} border-b border-border-subtle tabular-nums text-text-body`}>
-                            {formatDate(p.period_start)} – {formatDate(p.period_end)}
-                          </td>
-                          <td className={`${tdClass} border-b border-border-subtle text-text-body`}>
-                            {labelOf(BILLING_CYCLES, p.cycle)} · {labelOf(PAYMENT_METHODS, p.method)}
-                          </td>
-                          <td className={`${tdClass} border-b border-border-subtle text-right font-semibold tabular-nums`}>{formatRupiah(p.amount)}
-                            {(p.service_fee ?? 0) > 0 && <span className="block text-[12px] font-normal text-text-muted">+ biaya {formatRupiah(p.service_fee)}</span>}
-                          </td>
-                          <td className={`${tdClass} border-b border-border-subtle`}>
-                            <Badge tone={p.status === "recorded" ? "success" : "neutral"}>{labelOf(PAYMENT_STATUS, p.status)}</Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Section>
+            <FeaturesSection pro={s.plan === "pro"} />
+            <HistorySection payments={s.billing?.payments ?? []} />
           </div>
         </>
       )}
@@ -368,5 +301,143 @@ function UsageRow({ s }: { s: SubscriptionDetail }) {
         )}
       </div>
     </div>
+  );
+}
+
+const FEATURE_ICON: Record<string, LucideIcon> = {
+  "Kasbon dengan pengingat": HandCoins,
+  "Meja, pesanan berjalan & layar dapur": UtensilsCrossed,
+  "Pesan & Bayar Mandiri lewat QR": QrCode,
+  "Antrean servis, jadwal & sesi sewa": CalendarClock,
+  "Absensi, jadwal shift & gaji": UserCheck,
+  "Jam ramai & produk terlaris": BarChart3,
+  "Bantuan prioritas": Headset,
+};
+
+/** Fitur khusus Pro ditonjolkan sebagai ubin; fitur semua paket jadi daftar ringkas di bawahnya. */
+function FeaturesSection({ pro }: { pro: boolean }) {
+  const all = PRICING_FEATURES.filter((f) => f.proValue === true);
+  const proOnly = all.filter((f) => f.freeValue !== true);
+  const basic = all.filter((f) => f.freeValue === true);
+  return (
+    <Section title="Fitur Pro" description={pro ? "Semua fitur ini aktif untuk usaha Anda." : "Buka semua fitur ini dengan Pro."}>
+      <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {proOnly.map((f) => {
+          const Icon = FEATURE_ICON[f.name] ?? Sparkles;
+          return (
+            <li key={f.name} className="flex items-center gap-3 rounded-[12px] border border-border-subtle p-3">
+              <span aria-hidden className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${pro ? "bg-brand-tint text-brand-deep" : "bg-bg-muted text-text-muted"}`}>
+                <Icon size={18} />
+              </span>
+              <span className={`min-w-0 flex-1 text-[13.5px] font-medium leading-snug ${pro ? "text-text-heading" : "text-text-body"}`}>
+                {f.name}
+                <span className="sr-only">{pro ? " (aktif)" : " (tidak aktif)"}</span>
+              </span>
+              {!pro && <Lock size={14} aria-hidden className="shrink-0 text-text-muted" />}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-4 rounded-[12px] bg-bg-muted p-3.5">
+        <h3 className="text-[13px] font-semibold text-text-heading">Termasuk di semua paket</h3>
+        <ul className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+          {basic.map((f) => (
+            <li key={f.name} className="flex items-start gap-2 text-[13px] text-text-body">
+              <Check size={14} strokeWidth={3} aria-hidden className="mt-[3px] shrink-0 text-success" />
+              <span>
+                {f.name}
+                <span className="sr-only"> (aktif)</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Section>
+  );
+}
+
+function PaymentAmount({ p }: { p: SubscriptionPaymentRow }) {
+  return (
+    <>
+      {formatRupiah(p.amount)}
+      {(p.service_fee ?? 0) > 0 && <span className="block text-[12px] font-normal text-text-muted">+ biaya {formatRupiah(p.service_fee)}</span>}
+    </>
+  );
+}
+
+/** Riwayat: tabel di layar lebar, kartu di HP supaya tidak perlu geser ke samping. */
+function HistorySection({ payments }: { payments: SubscriptionPaymentRow[] }) {
+  const tone = (p: SubscriptionPaymentRow) => (p.status === "recorded" ? "success" : "neutral");
+  return (
+    <Section title="Riwayat pembayaran" description="Pembayaran Pro yang sudah diterima." bodyClass="">
+      {payments.length === 0 ? (
+        <div className="flex items-center gap-3 p-4 sm:p-5">
+          <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg-muted text-text-muted">
+            <Receipt size={18} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold text-text-heading">Belum ada pembayaran</p>
+            <p className="text-[13px] text-text-muted">Pembayaran Pro yang sudah diterima akan muncul di sini.</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <ul className="divide-y divide-border-subtle sm:hidden">
+            {payments.map((p) => (
+              <li key={p.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-text-heading">Pro {labelOf(BILLING_CYCLES, p.cycle)}</p>
+                    <p className="text-[12.5px] text-text-muted">
+                      {formatDate(p.paid_at)} · {methodLabel(p.method)}
+                    </p>
+                  </div>
+                  <p className="whitespace-nowrap text-right text-[14px] font-semibold tabular-nums text-text-heading">
+                    <PaymentAmount p={p} />
+                  </p>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="text-[12.5px] tabular-nums text-text-body">
+                    {formatDate(p.period_start)} – {formatDate(p.period_end)}
+                  </p>
+                  <Badge tone={tone(p)}>{labelOf(PAYMENT_STATUS, p.status)}</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <table className="hidden w-full border-separate border-spacing-0 text-[14px] sm:table">
+            <thead>
+              <tr>
+                <th scope="col" className={thClass}>Tanggal bayar</th>
+                <th scope="col" className={thClass}>Paket</th>
+                <th scope="col" className={thClass}>Masa aktif</th>
+                <th scope="col" className={`${thClass} text-right`}>Jumlah</th>
+                <th scope="col" className={thClass}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.id}>
+                  <td className={`${tdClass} border-b border-border-subtle tabular-nums`}>{formatDate(p.paid_at)}</td>
+                  <td className={`${tdClass} border-b border-border-subtle text-text-body`}>
+                    <span className="block font-medium text-text-heading">{labelOf(BILLING_CYCLES, p.cycle)}</span>
+                    <span className="block text-[12.5px] text-text-muted">{methodLabel(p.method)}</span>
+                  </td>
+                  <td className={`${tdClass} border-b border-border-subtle tabular-nums text-text-body`}>
+                    {formatDate(p.period_start)} – {formatDate(p.period_end)}
+                  </td>
+                  <td className={`${tdClass} border-b border-border-subtle text-right font-semibold tabular-nums`}>
+                    <PaymentAmount p={p} />
+                  </td>
+                  <td className={`${tdClass} border-b border-border-subtle`}>
+                    <Badge tone={tone(p)}>{labelOf(PAYMENT_STATUS, p.status)}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </Section>
   );
 }
