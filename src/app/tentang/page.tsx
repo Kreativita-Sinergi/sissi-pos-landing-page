@@ -6,7 +6,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Container } from "@/components/shared/Container";
 import {
-  OFFICE_ADDRESS_LINES,
+  OFFICE_ADDRESS_AREA,
+  OFFICE_ADDRESS_STREET,
+  OFFICE_MAPS_URL,
   SUPPORT_WHATSAPP_LABEL,
   SUPPORT_WHATSAPP_URL,
 } from "@/constants/site";
@@ -159,17 +161,28 @@ export default function TentangPage() {
                 </Link>
               </div>
 
-              <div className="p-7 rounded-[16px] border border-[#e4e9e7] bg-white md:col-span-2">
-                <h3 className="text-[14px] font-mono tracking-wider uppercase text-[#be5823]">
-                  Alamat
-                </h3>
-                <address className="mt-2 not-italic text-[20px] font-semibold text-[#292e31] leading-snug">
-                  {OFFICE_ADDRESS_LINES.map((line) => (
-                    <span key={line} className="block">
-                      {line}
+              <div className="p-7 rounded-[16px] border border-[#e4e9e7] bg-white md:col-span-2 flex flex-col md:flex-row md:items-end md:justify-between gap-8">
+                <div>
+                  <h3 className="text-[14px] font-mono tracking-wider uppercase text-[#be5823]">
+                    Alamat
+                  </h3>
+                  <address className="mt-2 not-italic">
+                    <span className="block text-[20px] font-semibold text-[#292e31]">
+                      {OFFICE_ADDRESS_STREET}
                     </span>
-                  ))}
-                </address>
+                    <span className="mt-2 block text-[15px] text-[#525866] leading-relaxed">
+                      {OFFICE_ADDRESS_AREA}
+                    </span>
+                  </address>
+                </div>
+                <Link
+                  href={OFFICE_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-[15px] font-semibold text-[#be5823] hover:text-[#f1702c]"
+                >
+                  Buka di Google Maps →
+                </Link>
               </div>
             </div>
           </Container>
