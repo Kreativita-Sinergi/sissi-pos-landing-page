@@ -20,6 +20,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
+- **Admin · susunan menu samping (2026-11-07):** grup kini Merchant, Pendapatan, Aplikasi, Tim & keamanan; Ringkasan dan Metrik tanpa judul grup. Alamat halaman tidak berubah.
+
 - **Admin · informasi merchant (2026-11-07, DIRILIS ke `main` sebagai `6cf93fd`, cherry-pick khusus admin: 18 commit lain di `development` termasuk dialog bayar Duitku sengaja belum ikut):** Ringkasan menampilkan `MerchantOverview` (aktif hari ini,
   sedang aktif, nilai & jumlah transaksi, grafik 30 hari/12 minggu/12 bulan, merchant bertumbuh tercepat); detail bisnis
   punya tab **Performa** (`BusinessPerformanceTab`: KPI, peta jam ramai, tren 12 minggu, per outlet, saring periode & outlet).
