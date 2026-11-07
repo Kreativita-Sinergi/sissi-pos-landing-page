@@ -1,5 +1,7 @@
 // Tipe Admin platform — persis kontrak sissi-service/docs/api.md bagian "Admin platform".
 
+import type { BusinessSales } from "./merchant";
+
 export type AdminRef = { id: string; email: string; name: string };
 
 export type Admin = AdminRef & { last_login_at: string | null; must_change_password?: boolean };
@@ -122,6 +124,9 @@ export type BusinessSummary = {
   deletion: { purge_after: string } | null;
   // Tahap 3 (aditif).
   subscription?: BusinessSubscriptionBrief;
+  // Informasi merchant (aditif). `sales` hanya dari GET /admin/businesses.
+  is_test?: boolean;
+  sales?: BusinessSales;
 };
 
 export type BusinessSubscriptionBrief = {
@@ -187,6 +192,7 @@ export type BusinessQuery = {
   created_to?: string;
   deletion?: string;
   plan_status?: string[];
+  test?: string;
   sort?: string;
   order?: string;
   page?: number;

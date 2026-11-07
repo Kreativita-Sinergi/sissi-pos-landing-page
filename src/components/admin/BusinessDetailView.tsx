@@ -23,6 +23,7 @@ import { ApiError } from "@/lib/sissiApi";
 import { ActivityDot } from "./BusinessListView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useQueryState } from "./filters";
+import { BusinessPerformanceTab } from "./BusinessPerformanceTab";
 import { AUDIT_ACTIONS, BUSINESS_TYPES, DEVICE_MODES, labelOf, OUTLET_STATUS, PROVIDERS, ROLES } from "./labels";
 import { SubscriptionTab } from "./SubscriptionTab";
 import { useToast } from "./toast";
@@ -60,8 +61,8 @@ const backLink = (
   </Link>
 );
 
-type TabId = "ringkasan" | "langganan" | "perangkat" | "karyawan" | "fitur" | "hapus-akun" | "aktivitas";
-const TAB_IDS: TabId[] = ["ringkasan", "langganan", "perangkat", "karyawan", "fitur", "hapus-akun", "aktivitas"];
+type TabId = "ringkasan" | "performa" | "langganan" | "perangkat" | "karyawan" | "fitur" | "hapus-akun" | "aktivitas";
+const TAB_IDS: TabId[] = ["ringkasan", "performa", "langganan", "perangkat", "karyawan", "fitur", "hapus-akun", "aktivitas"];
 
 type Data = { business: BusinessDetail; version: AppVersionConfig | null };
 
@@ -127,6 +128,12 @@ export function BusinessDetailView() {
           <>
             {labelOf(BUSINESS_TYPES, b.type)}
             {b.category ? ` · ${b.category}` : ""} · terdaftar {formatDate(b.created_at)}
+            {b.is_test && (
+              <>
+                {" "}
+                <Badge tone="warning">Akun uji</Badge>
+              </>
+            )}
           </>
         }
         actions={
@@ -152,6 +159,7 @@ export function BusinessDetailView() {
         onChange={setTab}
         tabs={[
           { id: "ringkasan", label: "Ringkasan" },
+          { id: "performa", label: "Performa" },
           { id: "langganan", label: "Langganan" },
           { id: "perangkat", label: "Outlet & perangkat", count: b.devices.length },
           { id: "karyawan", label: "Karyawan", count: b.employees_count ?? b.users.filter((u) => u.role !== "owner").length },
@@ -163,12 +171,14 @@ export function BusinessDetailView() {
 
       <div role="tabpanel" aria-label={tab}>
         {tab === "ringkasan" && <OverviewTab b={b} outdated={outdated} onTab={setTab} />}
+        {tab === "performa" && <BusinessPerformanceTab b={b} />}
         {tab === "langganan" && <SubscriptionTab businessId={b.id} businessName={b.name} />}
         {tab === "perangkat" && <DevicesTab b={b} version={version} />}
         {tab === "karyawan" && <EmployeesTab b={b} />}
         {tab === "fitur" && (
-          <div className="max-w-[560px]">
+          <div className="flex max-w-[560px] flex-col gap-5">
             <FeaturesCard business={b} onSaved={(features) => setData({ ...state.data!, business: { ...b, features } })} />
+            <TestAccountCard business={b} onSaved={(is_test) => setData({ ...state.data!, business: { ...b, is_test } })} />
           </div>
         )}
         {tab === "hapus-akun" && <DeletionTab b={b} now={now} />}
@@ -542,6 +552,31 @@ function describe(f: FeaturesInput): string {
   if (!f.online_payment) return "Pesan QR aktif, bayar di kasir";
   const p = PROVIDERS.find((x) => x.value === f.provider)?.label ?? f.provider;
   return `Pesan QR aktif, bayar online lewat ${p}`;
+}
+
+function TestAccountCard({ business, onSaved }: { business: BusinessDetail; onSaved: (isTest: boolean) => void }) {
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const on = business.is_test ?? false;
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    try {
+      await (await adminApi()).setTestAccount(business.id, next);
+      onSaved(next);
+      toast.success(next ? "Ditandai sebagai akun uji." : "Tanda akun uji dicabut.");
+    } catch (err) {
+      toast.error(`Gagal menyimpan: ${errorMessage(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="Akun uji" description="Akun uji tidak dihitung di informasi merchant pada Ringkasan dan Pertumbuhan.">
+      <Switch id="biz-test-account" checked={on} disabled={busy} label="Tandai bisnis ini sebagai akun uji" onChange={toggle} />
+    </Section>
+  );
 }
 
 function FeaturesCard({ business, onSaved }: { business: BusinessDetail; onSaved: (f: Features) => void }) {

@@ -165,8 +165,8 @@ function MetricsSkeleton() {
 
 // ——— Kartu angka ———
 
-function Change({ k, days, invert = false, percentPoints = false }: { k: Kpi; days: number; invert?: boolean; percentPoints?: boolean }) {
-  const vs = `vs ${days} hari sebelumnya`;
+export function Change({ k, days, invert = false, percentPoints = false, short = false }: { k: Kpi; days: number; invert?: boolean; percentPoints?: boolean; short?: boolean }) {
+  const vs = short ? "vs sebelumnya" : `vs ${days} hari sebelumnya`;
   if (k.value !== null && k.previous !== null && percentPoints) {
     const diff = Math.round((k.value - k.previous) * 1000) / 10;
     return <ChangeChip diff={diff} unit=" poin" vs={vs} invert={invert} />;
@@ -181,7 +181,7 @@ function Change({ k, days, invert = false, percentPoints = false }: { k: Kpi; da
   return <ChangeChip diff={k.change_pct} unit="%" vs={vs} invert={invert} />;
 }
 
-function ChangeChip({ diff, unit, vs, invert }: { diff: number; unit: string; vs: string; invert: boolean }) {
+export function ChangeChip({ diff, unit, vs, invert }: { diff: number; unit: string; vs: string; invert: boolean }) {
   const up = diff > 0;
   const flat = diff === 0;
   const good = invert ? !up : up;
@@ -236,7 +236,7 @@ function KpiCard({
 
 // ——— Isi ———
 
-function bucketLabels(bucket: string, interval: MetricsInterval, multiYear: boolean) {
+export function bucketLabels(bucket: string, interval: MetricsInterval, multiYear: boolean) {
   const p = dayParts(bucket);
   if (interval === "month") {
     return { label: `${MONTHS[p.m - 1]}${multiYear ? ` ${String(p.y).slice(2)}` : ""}`, title: `${MONTHS_LONG[p.m - 1]} ${p.y}` };
