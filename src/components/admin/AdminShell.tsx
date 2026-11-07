@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bug,
   ChartLine,
+  TrendingUp,
   CreditCard,
   Wallet,
   LayoutDashboard,
@@ -34,6 +35,7 @@ const NAV_GROUPS = [
       { href: "/admin", label: "Ringkasan", short: "Ringkasan", icon: LayoutDashboard },
       { href: "/admin/metrik", label: "Metrik", short: "Metrik", icon: ChartLine },
       { href: "/admin/bisnis", label: "Bisnis", short: "Bisnis", icon: Store },
+      { href: "/admin/pertumbuhan", label: "Pertumbuhan", short: "Tumbuh", icon: TrendingUp },
       { href: "/admin/crash", label: "Crash", short: "Crash", icon: Bug },
       { href: "/admin/hapus-akun", label: "Hapus akun", short: "Hapus akun", icon: UserRoundX },
       { href: "/admin/keamanan", label: "Keamanan", short: "Keamanan", icon: ShieldAlert },

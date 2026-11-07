@@ -20,6 +20,16 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
+- **Admin · informasi merchant (2026-11-07, belum di-commit/push):** Ringkasan menampilkan `MerchantOverview` (aktif hari ini,
+  sedang aktif, nilai & jumlah transaksi, grafik 30 hari/12 minggu/12 bulan, merchant bertumbuh tercepat); detail bisnis
+  punya tab **Performa** (`BusinessPerformanceTab`: KPI, peta jam ramai, tren 12 minggu, per outlet, saring periode & outlet).
+  Halaman baru `/admin/pertumbuhan` (`GrowthView`: merchant bertransaksi, aktivasi, merchant berisiko, per jenis, metode bayar);
+  merchant berisiko juga di Ringkasan; daftar bisnis punya kolom nilai & pertumbuhan, dan semua saringan (termasuk akun uji) masuk satu panel Filter + label filter aktif;
+  tab Performa punya produk & metode bayar; sakelar akun uji di tab Fitur. Ringkasan dikelompokkan Merchant/Langganan/Aplikasi,
+  kartu "Total bisnis" dihapus (angkanya ada di kartu Bisnis aktif hari ini). Pertumbuhan memakai pola kelompok yang sama:
+  Perlu dihubungi, Perkembangan, Perbandingan. Tab Performa: peta jam mengikuti jam yang ada transaksinya, "Per outlet" hanya
+  bila outlet > 1, tata letak dua kolom (analisis kiri, metode bayar & produk kanan). Kontrak: `../sissi-pos-service/docs/api.md` "Admin platform — informasi merchant".
+
 - **Langganan · kartu Pemakaian (2026-11-06):** outlet ditulis `1 dari 1 outlet` dengan keterangan kuota; bilah hanya saat melebihi kuota; catatan `enforced` tidak lagi ditampilkan ke pemilik.
 
 - **Langganan · cek status & desain ulang dialog bayar (2026-11-06):** langkah menunggu memakai tata letak dua panel yang

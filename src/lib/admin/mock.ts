@@ -11,6 +11,7 @@
 // ADMIN_EXISTS; email memuat "batas" → 429. Unggah APK: nama berkas memuat "rusak" → 422 INVALID_APK.
 import { ApiError } from "@/lib/sissiApi";
 import type { AdminApi } from "./api";
+import { mockGrowth, mockInsights, mockPerformance, mockSales } from "./mockMerchant";
 import {
   ADMINS,
   hex,
@@ -212,6 +213,8 @@ function summaryOf(b: BusinessDetail): BusinessSummary {
     features: b.features,
     deletion: b.deletion ? { purge_after: b.deletion.purge_after } : null,
     subscription: briefOf(b),
+    is_test: b.is_test ?? false,
+    sales: mockSales(b.id),
   };
 }
 
@@ -875,6 +878,26 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
     },
 
     // ——— Tahap 3: metrik & langganan ———
+    async merchantGrowth() {
+      await guard();
+      return mockGrowth(db().businesses);
+    },
+    async setTestAccount(id, isTest) {
+      await guard();
+      const b = db().businesses.find((x) => x.id === id);
+      if (!b) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
+      b.is_test = isTest;
+    },
+    async merchantInsights(range) {
+      await guard();
+      return mockInsights(db().businesses, range);
+    },
+    async businessPerformance(id, q) {
+      await guard();
+      const b = db().businesses.find((x) => x.id === id);
+      if (!b) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
+      return mockPerformance(b, q.days, q.outlet_id);
+    },
     async metrics(q) {
       await guard();
       await sleep(250); // hitungan metrik sedikit lebih lambat

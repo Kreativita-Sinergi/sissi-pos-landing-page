@@ -62,6 +62,7 @@ export function FilterPopover({
   active,
   popup,
   width = PANEL_W,
+  trigger,
   children,
 }: {
   label: string;
@@ -69,6 +70,8 @@ export function FilterPopover({
   active: boolean;
   popup: "listbox" | "dialog";
   width?: number;
+  /** Isi tombol pengganti "Label: nilai". */
+  trigger?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -157,8 +160,12 @@ export function FilterPopover({
             : "border-border-subtle bg-white text-text-heading hover:border-border-active"
         } ${focusRing}`}
       >
-        <span className={active ? "text-brand-ink/80" : "text-text-muted"}>{label}:</span>
-        <span className="max-w-[170px] truncate font-semibold">{value}</span>
+        {trigger ?? (
+          <>
+            <span className={active ? "text-brand-ink/80" : "text-text-muted"}>{label}:</span>
+            <span className="max-w-[170px] truncate font-semibold">{value}</span>
+          </>
+        )}
         <ChevronDown size={15} aria-hidden className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -171,8 +178,9 @@ export function FilterPopover({
             top: pos.top,
             left: pos.left,
             width: `min(${width}px, calc(100vw - 16px))`,
+            maxHeight: `calc(100dvh - ${pos.top + 8}px)`,
           }}
-          className="fixed z-40 overflow-hidden rounded-[12px] border border-border-subtle bg-white shadow-[0_12px_32px_-8px_rgba(16,24,40,0.18)]"
+          className="fixed z-40 overflow-y-auto overflow-x-hidden rounded-[12px] border border-border-subtle bg-white shadow-[0_12px_32px_-8px_rgba(16,24,40,0.18)]"
         >
           <CloseContext.Provider value={close}>{children}</CloseContext.Provider>
         </div>

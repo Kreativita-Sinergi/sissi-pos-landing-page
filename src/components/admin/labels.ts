@@ -8,6 +8,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "release.upload": "Unggah APK",
   "release.delete": "Hapus APK",
   "business_features.update": "Ubah fitur bisnis",
+  "business.test_mark": "Tandai akun uji",
   "admin.create": "Buat admin",
   "admin.passwd": "Ganti kata sandi",
   "admin.disable": "Nonaktifkan admin",
@@ -26,7 +27,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
 export const AUDIT_ACTION_GROUPS: { id: string; label: string; actions: string[] }[] = [
   { id: "auth", label: "Masuk & keluar", actions: ["auth.login", "auth.login_failed", "auth.logout"] },
   { id: "release", label: "Versi & APK", actions: ["app_version.update", "release.upload", "release.delete"] },
-  { id: "business", label: "Fitur bisnis", actions: ["business_features.update"] },
+  { id: "business", label: "Fitur bisnis", actions: ["business_features.update", "business.test_mark"] },
   {
     id: "admin",
     label: "Kelola admin",

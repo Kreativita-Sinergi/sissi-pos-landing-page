@@ -3,6 +3,7 @@
 // apipos.sissi.id ikut lewat `credentials: 'include'`, header `X-Sissi-Admin: 1` wajib (CSRF).
 // Mode tiruan (NEXT_PUBLIC_ADMIN_MOCK=1) memuat data contoh secara dinamis — tidak ikut terunduh saat mati.
 import { API_BASE_URL, ApiError, type ApiFieldError } from "@/lib/sissiApi";
+import type { BusinessPerformance, MerchantGrowth, MerchantInsights, MerchantRange, PerformanceDays } from "./merchant";
 import type {
   AccountDeletion,
   AdminListItem,
@@ -85,6 +86,10 @@ export interface AdminApi {
   securityReport(id: string, signal?: AbortSignal): Promise<SecurityReport>;
   // Tahap 3
   metrics(q: MetricsQuery, signal?: AbortSignal): Promise<Metrics>;
+  merchantInsights(range: MerchantRange, signal?: AbortSignal): Promise<MerchantInsights>;
+  merchantGrowth(signal?: AbortSignal): Promise<MerchantGrowth>;
+  setTestAccount(id: string, isTest: boolean): Promise<void>;
+  businessPerformance(id: string, q: { days: PerformanceDays; outlet_id?: string }, signal?: AbortSignal): Promise<BusinessPerformance>;
   subscriptions(q: SubscriptionQuery, signal?: AbortSignal): Promise<Paged<AdminSubscription, SubscriptionFacets>>;
   subscription(businessId: string, signal?: AbortSignal): Promise<SubscriptionDetail>;
   recordPayment(businessId: string, body: RecordPaymentInput): Promise<SubscriptionPaymentResult>;
@@ -340,6 +345,14 @@ const httpApi: AdminApi = {
   },
   securityReport: async (id, signal) => (await call<SecurityReport>("GET", `/security-reports/${enc(id)}`, { signal })).data,
   metrics: async (q, signal) => (await call<Metrics>("GET", `/metrics${qs({ ...q })}`, { signal })).data,
+  merchantGrowth: async (signal) => (await call<MerchantGrowth>("GET", "/merchant-growth", { signal })).data,
+  setTestAccount: async (id, isTest) => {
+    await call<{ is_test: boolean }>("PUT", `/businesses/${enc(id)}/test-account`, { body: { is_test: isTest } });
+  },
+  merchantInsights: async (range, signal) =>
+    (await call<MerchantInsights>("GET", `/merchant-insights${qs({ range })}`, { signal })).data,
+  businessPerformance: async (id, q, signal) =>
+    (await call<BusinessPerformance>("GET", `/businesses/${enc(id)}/performance${qs({ ...q })}`, { signal })).data,
   subscriptions: async (q, signal) => {
     const page = q.page ?? 1;
     const perPage = q.per_page ?? 25;
