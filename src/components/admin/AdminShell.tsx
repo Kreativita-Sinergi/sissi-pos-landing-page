@@ -30,15 +30,18 @@ import { ErrorBlock, focusRing, iconBtn, Spinner } from "./ui";
 
 const NAV_GROUPS = [
   {
-    label: "Pantau",
+    label: "",
     items: [
       { href: "/admin", label: "Ringkasan", short: "Ringkasan", icon: LayoutDashboard },
       { href: "/admin/metrik", label: "Metrik", short: "Metrik", icon: ChartLine },
+    ],
+  },
+  {
+    label: "Merchant",
+    items: [
       { href: "/admin/bisnis", label: "Bisnis", short: "Bisnis", icon: Store },
       { href: "/admin/pertumbuhan", label: "Pertumbuhan", short: "Tumbuh", icon: TrendingUp },
-      { href: "/admin/crash", label: "Crash", short: "Crash", icon: Bug },
       { href: "/admin/hapus-akun", label: "Hapus akun", short: "Hapus akun", icon: UserRoundX },
-      { href: "/admin/keamanan", label: "Keamanan", short: "Keamanan", icon: ShieldAlert },
     ],
   },
   {
@@ -49,17 +52,19 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Rilis",
+    label: "Aplikasi",
     items: [
       { href: "/admin/versi", label: "Versi aplikasi", short: "Versi", icon: Smartphone },
       { href: "/admin/apk", label: "APK", short: "APK", icon: Package },
+      { href: "/admin/crash", label: "Crash", short: "Crash", icon: Bug },
     ],
   },
   {
-    label: "Tim",
+    label: "Tim & keamanan",
     items: [
       { href: "/admin/tim", label: "Tim admin", short: "Tim", icon: UsersRound },
       { href: "/admin/audit", label: "Audit", short: "Audit", icon: ScrollText },
+      { href: "/admin/keamanan", label: "Keamanan", short: "Keamanan", icon: ShieldAlert },
     ],
   },
 ];
@@ -205,8 +210,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
             <nav aria-label="Menu admin" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 pt-2">
               {NAV_GROUPS.map((g) => (
-                <div key={g.label}>
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">{g.label}</p>
+                <div key={g.label || "utama"}>
+                  {g.label && <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">{g.label}</p>}
                   <div className="flex flex-col gap-0.5">
                     {g.items.map(({ href, label, icon: Icon }) => {
                       const active = isActive(href);
@@ -215,7 +220,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                           key={href}
                           href={href}
                           aria-current={active ? "page" : undefined}
-                          className={`relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
+                          className={`relative flex min-h-9 items-center gap-3 rounded-[10px] px-3 text-[14px] font-medium transition-colors ${
                             active
                               ? "bg-brand-tint font-semibold text-brand-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-primary"
                               : "text-text-body hover:bg-bg-muted hover:text-text-heading"
