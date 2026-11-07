@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-06** · oleh: Claude Opus 5.5 (dialog bayar: tombol Cek status pembayaran, langkah menunggu dan sukses didesain ulang)
+Terakhir diperbarui: **2026-11-07** · oleh: Claude Opus 5.5 (informasi merchant admin dirilis)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -20,7 +20,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
-- **Admin · informasi merchant (2026-11-07, belum di-commit/push):** Ringkasan menampilkan `MerchantOverview` (aktif hari ini,
+- **Admin · informasi merchant (2026-11-07, DIRILIS ke `main` sebagai `6cf93fd`, cherry-pick khusus admin: 18 commit lain di `development` termasuk dialog bayar Duitku sengaja belum ikut):** Ringkasan menampilkan `MerchantOverview` (aktif hari ini,
   sedang aktif, nilai & jumlah transaksi, grafik 30 hari/12 minggu/12 bulan, merchant bertumbuh tercepat); detail bisnis
   punya tab **Performa** (`BusinessPerformanceTab`: KPI, peta jam ramai, tren 12 minggu, per outlet, saring periode & outlet).
   Halaman baru `/admin/pertumbuhan` (`GrowthView`: merchant bertransaksi, aktivasi, merchant berisiko, per jenis, metode bayar);
