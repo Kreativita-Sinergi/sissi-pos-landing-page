@@ -59,6 +59,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- 2026-11-08 · Admin → Bisnis → Performa: periode **Hari ini** (`periode=1`), pembanding "kemarin di jam yang sama".
 - 2026-11-08 · Uji coba Pro 30 → 14 hari (server `00066`): halaman harga, `HargaSection`, CTA, FAQ, panduan, S&K §3 (versi 1.1), label admin + audit `subscription.trial_shortened`. Dirilis lewat cherry-pick tanpa isi `development` lain (Duitku belum rilis).
 - **2026-11-05 · Reviu `826043f` `/setujui/[token]`** (Claude Opus 5.5): GET hanya membaca, keputusan lewat POST
   (aman dari pemindai tautan email), `noindex` + `no-referrer`. Ditambah header `/setujui/:path*` di `next.config.ts`
