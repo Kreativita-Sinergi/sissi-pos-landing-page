@@ -106,6 +106,9 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- 2026-11-08 · Uji coba Pro 30 → 14 hari (server `00066`): halaman harga, `HargaSection`, CTA, FAQ perbandingan,
+  panduan, Syarat & Ketentuan §3 (versi 1.1, berlaku November 2026), admin (label status, info daftar langganan, aksi
+  audit `subscription.trial_shortened` + filter), mock billing. lint + tsc bersih.
 - **2026-11-06 · Dialog "Pilih cara bayar" dibangun ulang.** Desktop (`lg`+): dialog lebar 880px, kiri semua metode tanpa lipatan (QRIS penuh di atas; Virtual Account, E-wallet, Gerai ritel dua kolom; baris datar logo ±48x28 + nama + biaya + radio), kanan "Ringkasan" (Paket, Harga, Biaya layanan atau "Gratis", Total, tombol "Bayar Rp…") yang mengikuti pilihan. Tanpa gulir di 1360x768 dan 1360x900 dengan 15 metode (dialog 560px). Ponsel: satu kolom, daftar menggulir di dalam dialog, ringkasan + tombol tertempel di bawah, halaman di belakang terkunci. Perilaku: memilih hanya memilih (radio sungguhan, satu grup, panah keyboard); checkout dibuat saat "Bayar" ditekan; QRIS terpilih bawaan, pilihan yang hilang jatuh ke QRIS/pertama. "Bank lainnya", `VaList`, `VA_FIRST`, `VA_FOLD_MIN` dihapus. `Modal` dapat prop opsional `wide` (lebar + tinggi dibatasi layar + kunci gulir halaman); pemanggil lain tidak berubah. e2e `langganan` 19 lulus.
 
 - **2026-11-06 · Paket Pro 6 Bulan (`semiannual`, Rp309.000 disetujui pemilik; bisa diubah lewat `billing_config`).** Dasbor:

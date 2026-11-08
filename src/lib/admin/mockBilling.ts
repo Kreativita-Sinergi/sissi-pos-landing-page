@@ -181,7 +181,7 @@ export function makeBillingState(businesses: BusinessDetail[]): BillingState {
     const createdOff = dayDiff(today, jkt(created));
     const lastOff = b.last_active_at ? dayDiff(today, jkt(Date.parse(b.last_active_at))) : null;
     const engaged = lastOff !== null && lastOff <= 30;
-    const trialEnds = created + 30 * DAY;
+    const trialEnds = created + 14 * DAY;
 
     // Pembayaran: bisnis yang aktif lebih mungkin membayar; perpanjangan menyambung tanpa hari hilang.
     const payments: PaymentRecord[] = [];

@@ -4321,7 +4321,7 @@ export const GUIDES: GuideItem[] = [
         ],
         callout: {
           type: "info",
-          text: "Usaha baru mendapat uji coba Pro selama 30 hari sejak daftar. Selama uji coba semua fitur Pro terbuka.",
+          text: "Usaha baru mendapat uji coba Pro selama 14 hari sejak daftar. Selama uji coba semua fitur Pro terbuka.",
         },
       },
       {

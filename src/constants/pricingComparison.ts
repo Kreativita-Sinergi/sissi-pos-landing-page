@@ -67,7 +67,7 @@ export const PRICING_COMPARISON: PricingComparisonCategory[] = [
 export const PRICING_FAQS = [
   {
     question: "Apakah perlu kartu kredit untuk uji coba?",
-    answer: "Tidak. Uji coba Pro 30 hari langsung aktif sejak daftar, tanpa data pembayaran.",
+    answer: "Tidak. Uji coba Pro 14 hari langsung aktif sejak daftar, tanpa data pembayaran.",
   },
   {
     question: "Apa yang terjadi kalau Pro tidak diperpanjang?",

@@ -211,7 +211,7 @@ export function SubscriptionListView() {
                 </EmptyState>
               ) : (
                 <EmptyState icon={<CreditCard size={22} aria-hidden />} title="Belum ada langganan">
-                  Setiap bisnis baru otomatis mendapat uji coba Pro 30 hari.
+                  Setiap bisnis baru otomatis mendapat uji coba Pro 14 hari.
                 </EmptyState>
               )
             ) : (
