@@ -106,6 +106,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- 2026-11-08 · Admin → Bisnis → Performa: pilihan periode **Hari ini** (`periode=1`); teks pembanding "vs kemarin" /
+  "Dibanding kemarin di jam yang sama". tsc + lint bersih; belum dicek visual.
 - 2026-11-08 · Uji coba Pro 30 → 14 hari (server `00066`): halaman harga, `HargaSection`, CTA, FAQ perbandingan,
   panduan, Syarat & Ketentuan §3 (versi 1.1, berlaku November 2026), admin (label status, info daftar langganan, aksi
   audit `subscription.trial_shortened` + filter), mock billing. lint + tsc bersih.
