@@ -62,7 +62,7 @@ export default function SyaratKetentuanPage() {
                   Syarat dan Ketentuan Penggunaan Sissi
                 </h1>
                 <div className="mt-3 inline-flex items-center px-2.5 py-1 rounded-[6px] bg-[#f3f6f5] text-[13px] font-mono text-[#7d8986]">
-                  Versi 1.0 · Berlaku sejak Oktober 2026
+                  Versi 1.1 · Berlaku sejak November 2026
                 </div>
                 <p className="mt-6 text-[16px] sm:text-[17px] text-[#525866] leading-relaxed">
                   Syarat dan Ketentuan ini mengatur penggunaan aplikasi Sissi dan layanan terkaitnya. Mohon dibaca dengan saksama. Dengan membuat akun atau memakai Sissi, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan di bawah ini.
@@ -105,7 +105,7 @@ export default function SyaratKetentuanPage() {
                     3. Paket, Uji Coba, dan Pembayaran
                   </h2>
                   <p>
-                    Paket Gratis dapat digunakan tanpa batas waktu sesuai batas kuota yang ditentukan. Paket Pro mencakup uji coba gratis selama 30 hari kalender sejak tanggal pendaftaran akun. Setelah masa uji coba, Anda dapat berlangganan Pro dengan membayar biaya bulanan atau tahunan sesuai petunjuk di menu Langganan pada aplikasi. Langganan tidak diperpanjang atau ditagih secara otomatis; bila tidak diperpanjang, akun kembali ke Paket Gratis setelah masa tenggang dan data Anda tetap tersimpan.
+                    Paket Gratis dapat digunakan tanpa batas waktu sesuai batas kuota yang ditentukan. Paket Pro mencakup uji coba gratis selama 14 hari kalender sejak tanggal pendaftaran akun. Setelah masa uji coba, Anda dapat berlangganan Pro dengan membayar biaya bulanan atau tahunan sesuai petunjuk di menu Langganan pada aplikasi. Langganan tidak diperpanjang atau ditagih secara otomatis; bila tidak diperpanjang, akun kembali ke Paket Gratis setelah masa tenggang dan data Anda tetap tersimpan.
                   </p>
                 </section>
 

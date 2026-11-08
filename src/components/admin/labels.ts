@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "subscription.extend": "Tambah hari langganan",
   "subscription.override": "Ubah batas khusus",
   "subscription.launch_trial": "Peluncuran uji coba",
+  "subscription.trial_shortened": "Uji coba dipersingkat ke 14 hari",
   "billing_config.update": "Ubah cara bayar",
 };
 
@@ -43,6 +44,7 @@ export const AUDIT_ACTION_GROUPS: { id: string; label: string; actions: string[]
       "subscription.extend",
       "subscription.override",
       "subscription.launch_trial",
+      "subscription.trial_shortened",
       "billing_config.update",
     ],
   },
@@ -65,7 +67,7 @@ export const SUB_STATUS: Record<string, string> = {
 };
 
 export const SUB_STATUS_HINT: Record<string, string> = {
-  trial: "Pro gratis 30 hari",
+  trial: "Pro gratis 14 hari",
   active: "Pro dibayar",
   grace: "Pro +3 hari setelah habis",
   free: "50 transaksi/bulan",

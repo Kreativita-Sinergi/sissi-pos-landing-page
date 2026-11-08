@@ -90,7 +90,7 @@ export type BusinessSales = {
 
 export type HeatCell = { dow: number; hour: number; count: number; value: number };
 
-export type PerformanceDays = 7 | 30 | 90;
+export type PerformanceDays = 1 | 7 | 30 | 90;
 
 export type BusinessPerformance = {
   range: { days: PerformanceDays; from: string; to: string; tz: string };

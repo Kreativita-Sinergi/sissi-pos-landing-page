@@ -23,6 +23,7 @@ import {
 } from "./ui";
 
 const PERIODS: { value: string; label: string }[] = [
+  { value: "1", label: "Hari ini" },
   { value: "7", label: "7 hari terakhir" },
   { value: "30", label: "30 hari terakhir" },
   { value: "90", label: "90 hari terakhir" },
@@ -30,7 +31,7 @@ const PERIODS: { value: string; label: string }[] = [
 
 export function BusinessPerformanceTab({ b }: { b: BusinessDetail }) {
   const qs = useQueryState();
-  const days = (["7", "90"].includes(qs.get("periode")) ? Number(qs.get("periode")) : 30) as PerformanceDays;
+  const days = (["1", "7", "90"].includes(qs.get("periode")) ? Number(qs.get("periode")) : 30) as PerformanceDays;
   const outletParam = qs.get("outlet");
   const outletId = b.outlets.some((o) => o.id === outletParam) ? outletParam : "";
   const { state, reload } = useLoad<BusinessPerformance>(
@@ -142,7 +143,7 @@ function PerformanceBody({ p }: { p: BusinessPerformance }) {
           </Section>
 
           {multiOutlet && (
-            <Section title="Per outlet" description="Dibanding periode sebelumnya." bodyClass="p-0" className="flex-1">
+            <Section title="Per outlet" description={days === 1 ? "Dibanding kemarin di jam yang sama." : "Dibanding periode sebelumnya."} bodyClass="p-0" className="flex-1">
               <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[460px] text-[14px]">
                   <thead>

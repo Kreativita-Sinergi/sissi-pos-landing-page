@@ -166,7 +166,8 @@ function MetricsSkeleton() {
 // ——— Kartu angka ———
 
 export function Change({ k, days, invert = false, percentPoints = false, short = false }: { k: Kpi; days: number; invert?: boolean; percentPoints?: boolean; short?: boolean }) {
-  const vs = short ? "vs sebelumnya" : `vs ${days} hari sebelumnya`;
+  // days=1 (hari ini) dibandingkan server dengan kemarin sampai jam yang sama.
+  const vs = days === 1 ? (short ? "vs kemarin" : "vs kemarin di jam yang sama") : short ? "vs sebelumnya" : `vs ${days} hari sebelumnya`;
   if (k.value !== null && k.previous !== null && percentPoints) {
     const diff = Math.round((k.value - k.previous) * 1000) / 10;
     return <ChangeChip diff={diff} unit=" poin" vs={vs} invert={invert} />;
