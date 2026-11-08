@@ -26,7 +26,7 @@ export function HargaSection() {
           </h2>
           <p className="mt-4 text-[17px] text-[#525866] leading-relaxed">
             Paket Gratis bisa dipakai selamanya. Semua fitur Pro bisa dicoba
-            gratis 30 hari sejak daftar.
+            gratis 14 hari sejak daftar.
           </p>
         </div>
 
@@ -135,7 +135,7 @@ export function HargaSection() {
                 href={PLAY_STORE_URL}
                 className="mt-6 w-full h-[38px] px-4 rounded-[8px] bg-[#f1702c] hover:bg-[#ff7a45] text-white text-[14px] font-medium flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
               >
-                Coba gratis 30 hari
+                Coba gratis 14 hari
               </Link>
             </div>
           </div>

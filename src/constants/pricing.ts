@@ -34,7 +34,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     periodMonthly: "/bulan",
     periodYearly: "/tahun",
     equivalentNote: "setara Rp49rb per bulan (hemat 2 bulan)",
-    ctaText: "Coba gratis 30 hari",
+    ctaText: "Coba gratis 14 hari",
     ctaVariant: "primary",
   },
 ];

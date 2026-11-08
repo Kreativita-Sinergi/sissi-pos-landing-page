@@ -30,7 +30,7 @@ export default function HargaPage() {
             Harga yang jelas, tanpa biaya tersembunyi
           </h1>
           <p className="text-[18px] sm:text-[19px] text-[#fef1eb] leading-relaxed max-w-[620px] mx-auto mb-10">
-            Mulai gratis. Semua fitur Pro bisa dicoba 30 hari sejak daftar.
+            Mulai gratis. Semua fitur Pro bisa dicoba 14 hari sejak daftar.
           </p>
 
           {/* Billing Switcher */}
@@ -142,7 +142,7 @@ export default function HargaPage() {
                 href="/download"
                 className="w-full text-center py-3.5 px-6 rounded-[12px] bg-[#f1702c] hover:bg-[#ff7a45] text-white font-semibold text-[15px] shadow-sm transition-all mb-8 cursor-pointer"
               >
-                Coba gratis 30 hari
+                Coba gratis 14 hari
               </Link>
 
               <div className="flex flex-col gap-3.5 pt-6 border-t border-[#196b52]/15 mt-auto">
@@ -182,7 +182,7 @@ export default function HargaPage() {
               UJI COBA
             </span>
             <h2 className="text-[32px] sm:text-[40px] font-semibold text-[#292e31] tracking-tight">
-              Begini cara kerja 30 hari gratisnya
+              Begini cara kerja 14 hari gratisnya
             </h2>
           </div>
 
@@ -195,7 +195,7 @@ export default function HargaPage() {
               },
               {
                 step: "2",
-                title: "30 hari semua fitur Pro",
+                title: "14 hari semua fitur Pro",
                 desc: "Dihitung sejak daftar. Tidak perlu kartu kredit.",
               },
               {
