@@ -145,3 +145,32 @@ export function labelOf(map: Record<string, string>, key: string | null | undefi
   if (!key) return "—";
   return map[key] ?? key;
 }
+
+export const CRASH_LEVEL: Record<string, string> = {
+  info: "Info",
+  warning: "Peringatan",
+  error: "Error",
+};
+
+export const crashLevelTone = (l: string | undefined) => (l === "error" ? "danger" : l === "warning" ? "warning" : "neutral");
+
+/** `800x1280@1.5` → `800×1280 @1.5`; tidak sah dikembalikan apa adanya. */
+export function formatScreen(s: string | null | undefined): string {
+  if (!s) return "";
+  const m = /^(\d+)x(\d+)(?:@([\d.]+))?$/.exec(s.trim());
+  return m ? `${m[1]}×${m[2]}${m[3] ? ` @${m[3]}` : ""}` : s;
+}
+
+/** "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5" — bagian kosong dilewati; semua kosong → "". */
+export function deviceLine(d: {
+  brand?: string | null;
+  model?: string | null;
+  os?: string | null;
+  screen?: string | null;
+}): string {
+  const brand = d.brand?.trim() ?? "";
+  const model = d.model?.trim() ?? "";
+  // Model kadang sudah diawali merek ("Samsung SM-T295") — jangan diulang.
+  const name = brand && model.toLowerCase().startsWith(brand.toLowerCase()) ? model : [brand, model].filter(Boolean).join(" ");
+  return [name, d.os?.trim() ?? "", formatScreen(d.screen)].filter(Boolean).join(" · ");
+}

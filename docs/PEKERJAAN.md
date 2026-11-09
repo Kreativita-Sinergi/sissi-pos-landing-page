@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-07** · oleh: Claude Opus 5.5 (informasi merchant admin dirilis)
+Terakhir diperbarui: **2026-11-09** · oleh: Claude Opus 5.5 (#49 data perangkat & galat tertangani di admin)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -19,6 +19,12 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 | _(kosong)_ | | | | |
 
 ## Sedang dikerjakan
+
+- **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
+  baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong
+  untuk app lama = tidak tampil). Crash: badge **Tertangani** + level (Info netral / Peringatan kuning / Error merah) dan
+  `context` untuk `kind=handled`; kejadian menampilkan perangkat; filter baru **Jenis** (`kind`) dan **Level** (`level`)
+  di URL; bawaan tetap semua jenis (perilaku lama). Kontrak: service `954faa2`, `9cd8e2e`.
 
 - **Admin · susunan menu samping (2026-11-07):** grup kini Merchant, Pendapatan, Aplikasi, Tim & keamanan; Ringkasan dan Metrik tanpa judul grup. Alamat halaman tidak berubah.
 
