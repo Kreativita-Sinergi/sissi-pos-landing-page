@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Bug, ChevronDown, CircleCheck, EyeOff, PartyPopper, RotateCcw, SearchX, Store } from "lucide-react";
+import { ArrowLeft, Bug, ChevronDown, CircleCheck, EyeOff, PartyPopper, RotateCcw, SearchX, ShieldCheck, Store } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import type { CrashDetail, CrashEvent, CrashFacets, CrashGroup, CrashStatus, Paged } from "@/lib/admin/types";
 import { ApiError } from "@/lib/sissiApi";
@@ -11,7 +11,7 @@ import { DailyBars, Meter, Sparkline } from "./charts";
 import { ConfirmDialog, Modal } from "./ConfirmDialog";
 import { SearchBox, useQueryState } from "./filters";
 import { compactRange, ClearFiltersButton, DateFilter, FilterBar, FilterInput, FilterSelect } from "./FilterMenu";
-import { CRASH_STATUS, labelOf, ROLES } from "./labels";
+import { CRASH_LEVEL, CRASH_STATUS, crashLevelTone, deviceLine, labelOf, ROLES } from "./labels";
 import { useToast } from "./toast";
 import {
   Badge,
@@ -54,6 +54,14 @@ function GroupBadges({ g, now }: { g: CrashGroup; now: number }) {
   return (
     <>
       {isNew && <Badge tone="brand">Baru</Badge>}
+      {g.kind === "handled" && (
+        <span title="Galat tertangani: kegagalan non-fatal yang ditangkap aplikasi">
+          <Badge>
+            <ShieldCheck size={11} aria-hidden /> Tertangani
+          </Badge>
+        </span>
+      )}
+      {g.kind === "handled" && g.level && <LevelBadge level={g.level} />}
       {relapse && (
         <span title={g.status_note}>
           <Badge tone="warning">
@@ -63,6 +71,10 @@ function GroupBadges({ g, now }: { g: CrashGroup; now: number }) {
       )}
     </>
   );
+}
+
+function LevelBadge({ level }: { level: string }) {
+  return <Badge tone={crashLevelTone(level)}>{labelOf(CRASH_LEVEL, level)}</Badge>;
 }
 
 function buildRange(g: CrashGroup): string {
@@ -78,6 +90,8 @@ export function CrashListView() {
   const qs = useQueryState();
   const status = (qs.get("status") || "open") as StatusTab;
   const platform = qs.get("platform");
+  const kind = qs.get("kind");
+  const level = qs.get("level");
   const build = qs.get("build");
   const q = qs.get("q");
   const from = qs.get("from");
@@ -93,6 +107,8 @@ export function CrashListView() {
         {
           status: status === "open" ? undefined : status,
           platform: platform || undefined,
+          kind: kind || undefined,
+          level: level || undefined,
           build: build || undefined,
           q: q || undefined,
           from: from || undefined,
@@ -104,7 +120,7 @@ export function CrashListView() {
         },
         signal
       ),
-    [status, platform, build, q, from, to, sort, order, page]
+    [status, platform, kind, level, build, q, from, to, sort, order, page]
   );
   const facets = state.data?.facets?.status;
 
@@ -113,7 +129,7 @@ export function CrashListView() {
     qs.update({ sort: field === "last_seen" ? null : field, order: next === "desc" ? null : next });
   };
 
-  const hasFilters = !!(platform || build || from || to);
+  const hasFilters = !!(platform || kind || level || build || from || to);
   const filtered = hasFilters || !!q;
   const clearAll = () => qs.clear(["status", "sort", "order"]);
   const rangeText = from || to ? compactRange(from, to) : "14 hari";
@@ -122,7 +138,7 @@ export function CrashListView() {
     <>
       <PageHeader
         title="Crash"
-        description="Galat aplikasi dikelompokkan per sidik jari. Tandai selesai setelah diperbaiki — grup kembali terbuka otomatis bila kambuh di build lebih baru."
+        description="Galat aplikasi dikelompokkan per sidik jari — crash dan galat tertangani (non-fatal, ditandai Tertangani). Tandai selesai setelah diperbaiki — grup kembali terbuka otomatis bila kambuh di build lebih baru."
       />
 
       <Tabs<StatusTab>
@@ -141,11 +157,11 @@ export function CrashListView() {
         search={
           <SearchBox
             id="crash-q"
-            label="Cari crash menurut pesan, nama file, atau sidik jari"
+            label="Cari crash menurut pesan, nama file, konteks, atau sidik jari"
             className="w-full sm:w-[300px] 2xl:w-[360px]"
             value={q}
             onSearch={(v) => qs.update({ q: v }, "replace")}
-            placeholder="Cari pesan atau file…"
+            placeholder="Cari pesan, file, atau konteks…"
           />
         }
         trailing={
@@ -165,6 +181,27 @@ export function CrashListView() {
           ]}
           selected={platform ? [platform] : []}
           onChange={(n) => qs.update({ platform: n[0] ?? null })}
+        />
+        <FilterSelect
+          label="Jenis"
+          options={[
+            { value: "crash", label: "Crash (tanpa tertangani)" },
+            { value: "flutter", label: "Crash Flutter" },
+            { value: "platform", label: "Crash native" },
+            { value: "handled", label: "Tertangani" },
+          ]}
+          selected={kind ? [kind] : []}
+          onChange={(n) => qs.update({ kind: n[0] ?? null })}
+        />
+        <FilterSelect
+          label="Level"
+          options={[
+            { value: "error", label: "Error" },
+            { value: "warning", label: "Peringatan" },
+            { value: "info", label: "Info" },
+          ]}
+          selected={level ? [level] : []}
+          onChange={(n) => qs.update({ level: n[0] ?? null })}
         />
         <FilterInput
           label="Build"
@@ -303,6 +340,7 @@ function CrashTable({
                     {showStatus && <Badge tone={statusTone(g.status)}>{labelOf(CRASH_STATUS, g.status)}</Badge>}
                     <GroupBadges g={g} now={now} />
                     {g.platform === "ios" && <Badge>iOS</Badge>}
+                    {g.context && <span className="max-w-[45%] truncate font-mono text-text-body">{g.context}</span>}
                     <span className="truncate font-mono">{g.top_frame || (g.kind === "platform" ? "native" : "—")}</span>
                   </p>
                 </td>
@@ -338,6 +376,7 @@ function CrashTable({
               <p className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-text-muted">
                 {showStatus && <Badge tone={statusTone(g.status)}>{labelOf(CRASH_STATUS, g.status)}</Badge>}
                 <GroupBadges g={g} now={now} />
+                {g.context && <span className="max-w-full truncate font-mono text-text-body">{g.context}</span>}
                 <TimeAgo value={g.last_seen_at} />
               </p>
             </Link>
@@ -423,9 +462,14 @@ export function CrashDetailView() {
           <Badge tone={statusTone(g.status)}>{labelOf(CRASH_STATUS, g.status)}</Badge>
           <GroupBadges g={g} now={now} />
           <Badge>{g.platform === "ios" ? "iOS" : "Android"}</Badge>
-          <Badge>{g.kind === "flutter" ? "Flutter" : "Native"}</Badge>
+          {g.kind !== "handled" && <Badge>{g.kind === "flutter" ? "Flutter" : "Native"}</Badge>}
         </div>
         <h1 className="mt-2 break-words font-mono text-[17px] font-bold leading-snug text-text-heading sm:text-[19px]">{g.title}</h1>
+        {g.context && (
+          <p className="mt-1 break-all text-[13px] text-text-muted">
+            Konteks <code className="font-mono text-text-body">{g.context}</code>
+          </p>
+        )}
         {g.top_frame && <p className="mt-1 break-all font-mono text-[13px] text-text-muted">{g.top_frame}</p>}
         <div className="mt-4">
           <StatusControl group={g} latestBuild={latestBuild} onChange={(group) => setData({ ...state.data!, detail: { ...detail, group } })} />
@@ -497,7 +541,7 @@ export function CrashDetailView() {
           ) : (
             <ul className="divide-y divide-border-subtle">
               {detail.events.map((e, i) => (
-                <EventRow key={e.id} e={e} defaultOpen={i === 0} />
+                <EventRow key={e.id} e={e} defaultOpen={i === 0} handled={g.kind === "handled"} />
               ))}
             </ul>
           )}
@@ -515,8 +559,9 @@ function formatShort(iso: string): string {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" }).format(new Date(iso));
 }
 
-function EventRow({ e, defaultOpen }: { e: CrashEvent; defaultOpen: boolean }) {
+function EventRow({ e, defaultOpen, handled }: { e: CrashEvent; defaultOpen: boolean; handled: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const device = deviceLine({ brand: e.device_brand, model: e.device_model, os: e.os_version, screen: e.device_screen });
   const id = `ev-${e.id}`;
   return (
     <li className="px-4 py-3 sm:px-5">
@@ -532,7 +577,8 @@ function EventRow({ e, defaultOpen }: { e: CrashEvent; defaultOpen: boolean }) {
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-text-body">
             <TimeAgo value={e.received_at} className="font-semibold text-text-heading" />
             <span className="tabular-nums">build {e.build ?? "?"}{e.version ? ` · v${e.version}` : ""}</span>
-            <span className="text-text-muted">{e.os_version}</span>
+            {handled && e.level && <LevelBadge level={e.level} />}
+            {device && <span className="min-w-0 break-words text-text-muted">{device}</span>}
             {e.role && <Badge>{labelOf(ROLES, e.role)}</Badge>}
             {e.business && <span className="truncate text-text-muted">{e.business.name ?? "bisnis dihapus"}</span>}
           </span>

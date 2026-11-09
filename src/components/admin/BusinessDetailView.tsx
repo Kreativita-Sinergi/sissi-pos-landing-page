@@ -24,7 +24,7 @@ import { ActivityDot } from "./BusinessListView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useQueryState } from "./filters";
 import { BusinessPerformanceTab } from "./BusinessPerformanceTab";
-import { AUDIT_ACTIONS, BUSINESS_TYPES, DEVICE_MODES, labelOf, OUTLET_STATUS, PROVIDERS, ROLES } from "./labels";
+import { AUDIT_ACTIONS, BUSINESS_TYPES, DEVICE_MODES, deviceLine, labelOf, OUTLET_STATUS, PROVIDERS, ROLES } from "./labels";
 import { SubscriptionTab } from "./SubscriptionTab";
 import { useToast } from "./toast";
 import {
@@ -322,6 +322,13 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 // ——— Outlet & perangkat ———
 
+// Kosong (app lama belum mengirim data perangkat) → tidak tampil apa pun.
+function DeviceInfo({ app }: { app: BusinessDetail["devices"][number]["app"] }) {
+  const line = app ? deviceLine({ brand: app.device_brand, model: app.device_model, os: app.os_version, screen: app.screen }) : "";
+  if (!line) return null;
+  return <p className="mt-0.5 break-words text-[12.5px] text-text-body">{line}</p>;
+}
+
 function BuildBadge({ app, version }: { app: BusinessDetail["devices"][number]["app"]; version: AppVersionConfig | null }) {
   if (!app) return <Badge>build ?</Badge>;
   const label = `${app.build}${app.version ? ` · v${app.version}` : ""}`;
@@ -386,6 +393,7 @@ function DevicesTab({ b, version }: { b: BusinessDetail; version: AppVersionConf
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-text-heading">{d.name}</p>
                     <p className="text-[13px] text-text-muted">{labelOf(DEVICE_MODES, d.mode)}</p>
+                    <DeviceInfo app={d.app ?? null} />
                   </div>
                   <span className="flex flex-wrap items-center gap-1.5">
                     <BuildBadge app={d.app ?? null} version={version} />

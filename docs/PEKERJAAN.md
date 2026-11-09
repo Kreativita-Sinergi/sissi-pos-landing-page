@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-05** · oleh: Claude Opus 5.5 (navigasi & tata letak dasbor pemilik)
+Terakhir diperbarui: **2026-11-09** · oleh: Claude Opus 5.5 (#49 data perangkat & galat tertangani di admin)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -20,7 +20,44 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
-- _(kosong)_
+- **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
+  baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong
+  untuk app lama = tidak tampil). Crash: badge **Tertangani** + level (Info netral / Peringatan kuning / Error merah) dan
+  `context` untuk `kind=handled`; kejadian menampilkan perangkat; filter baru **Jenis** (`kind`) dan **Level** (`level`)
+  di URL; bawaan tetap semua jenis (perilaku lama). Kontrak: service `954faa2`, `9cd8e2e`.
+
+- **Admin · susunan menu samping (2026-11-07):** grup kini Merchant, Pendapatan, Aplikasi, Tim & keamanan; Ringkasan dan Metrik tanpa judul grup. Alamat halaman tidak berubah.
+
+- **Admin · informasi merchant (2026-11-07, DIRILIS ke `main` sebagai `6cf93fd`, cherry-pick khusus admin: 18 commit lain di `development` termasuk dialog bayar Duitku sengaja belum ikut):** Ringkasan menampilkan `MerchantOverview` (aktif hari ini,
+  sedang aktif, nilai & jumlah transaksi, grafik 30 hari/12 minggu/12 bulan, merchant bertumbuh tercepat); detail bisnis
+  punya tab **Performa** (`BusinessPerformanceTab`: KPI, peta jam ramai, tren 12 minggu, per outlet, saring periode & outlet).
+  Halaman baru `/admin/pertumbuhan` (`GrowthView`: merchant bertransaksi, aktivasi, merchant berisiko, per jenis, metode bayar);
+  merchant berisiko juga di Ringkasan; daftar bisnis punya kolom nilai & pertumbuhan, dan semua saringan (termasuk akun uji) masuk satu panel Filter + label filter aktif;
+  tab Performa punya produk & metode bayar; sakelar akun uji di tab Fitur. Ringkasan dikelompokkan Merchant/Langganan/Aplikasi,
+  kartu "Total bisnis" dihapus (angkanya ada di kartu Bisnis aktif hari ini). Pertumbuhan memakai pola kelompok yang sama:
+  Perlu dihubungi, Perkembangan, Perbandingan. Tab Performa: peta jam mengikuti jam yang ada transaksinya, "Per outlet" hanya
+  bila outlet > 1, tata letak dua kolom (analisis kiri, metode bayar & produk kanan). Kontrak: `../sissi-pos-service/docs/api.md` "Admin platform — informasi merchant".
+
+- **Langganan · kartu Pemakaian (2026-11-06):** outlet ditulis `1 dari 1 outlet` dengan keterangan kuota; bilah hanya saat melebihi kuota; catatan `enforced` tidak lagi ditampilkan ke pemilik.
+
+- **Langganan · cek status & desain ulang dialog bayar (2026-11-06):** langkah menunggu memakai tata letak dua panel yang
+  sama dengan "Pilih cara bayar" (satu kolom di ponsel, QR langsung terlihat): kiri cara bayar (QRIS dengan logo, atau
+  nomor VA/kode besar dengan tombol Salin) + langkah bernomor; kanan status "Menunggu pembayaran", pil sisa waktu (VA dan
+  ritel: "Berlaku sampai <tanggal jam>"), ringkasan Paket/Harga/Biaya layanan/Total, dan tombol **Cek status pembayaran**
+  (`POST .../refresh`). Setelah hasil masih pending: catatan tenang dan hitung mundur "Cek lagi dalam N dtk" dari
+  `next_refresh_at` (dibatasi 31 dtk dari saat diterima agar jam klien yang meleset tidak mengunci tombol). 429/502 tampil
+  ramah. Langkah sukses: centang beranimasi (hanya bila gerak diizinkan) dan kartu rincian. Setelah lunas, lencana paket
+  di sidebar diperbarui lewat `refreshSession` yang sudah ada (tanpa muat ulang). Mock: refresh pertama pending, kedua lunas.
+  e2e `langganan:` ditambah empat tes.
+
+- **Langganan · tata letak (2026-11-06):** `/dasbor/langganan` dua kolom: kartu bayar + riwayat di kiri, pemakaian + fitur di kanan; pilih outlet disembunyikan di halaman ini. Pembayaran ujung ke ujung tetap belum teruji.
+
+- **Langganan · logo metode (2026-11-06):** logo QRIS, Indomaret, dan Alfamart disimpan di `public/logos/pembayaran/` (sumber Wikimedia Commons: `QRIS_Logo.svg` CC0, `Indomaret.svg`, `Alfamart.svg`, `Gopay_logo_(2019).svg`; BCA dari Duitku) karena logo gabungan Duitku terlalu kecil terbaca; metode lain tetap dari `images.duitku.com`. Logo adalah merek dagang pemiliknya: pastikan ketentuan pemakaian logo QRIS ke Duitku sebelum produksi.
+
+- **P1 · Dialog bayar langganan online (Duitku) di `/dasbor` — terimplementasi, BELUM E2E, belum dirilis (2026-11-06).**
+  `PayDialog` + mock/tes browser dengan stub selesai (commit `f31737c..3ca0ad4`). Belum dijalankan terhadap API Duitku
+  sungguhan (sandbox maupun produksi). Rilis menunggu service (`../sissi-pos-service/docs/PEKERJAAN.md`) dideploy dan E2E
+  selesai. Backlog di bawah.
 
 ## Berikutnya
 
@@ -31,7 +68,23 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
-- _(kosong)_
+- **P1 · Duitku langganan, sebelum rilis:** jalankan E2E aplikasi di sandbox, termasuk QRIS `SP` dengan pindai
+  sungguhan memakai APK staging Shopee; ulangi E2E dan bukti `amount` callback dengan kredensial produksi.
+- **P2 · Duitku, kepastian di luar kode:** konfirmasi ke Duitku atau konsultan bahwa membebankan biaya layanan ke
+  pelanggan pada metode non-QRIS diperbolehkan (PBI 23/6/PBI/2021 Pasal 52; teks resmi belum dibaca); cek pengaturan
+  portal untuk `BT A1 DA LA JP` (biaya 0 sehingga disembunyikan); teks PPN masih ada di `/harga`, `HargaSection`,
+  panduan, dan app, kewajiban PPN dikonfirmasi ke akuntan; app Flutter masih menampilkan pembayaran manual;
+  `resultCode` dan `reference` callback tidak ditandatangani Duitku, pengerasan diputuskan sebelum produksi; belum ada
+  alert untuk log error rekonsiliasi berhenti (sisi service).
+- **P3 · Temuan minor dialog yang ditunda** (teks kedaluwarsa, pengalihan e-wallet setelah dialog ditutup, galat non-404
+  `?checkout=`, dan siklus `backToPick` sudah diperbaiki 2026-11-06): selisih jam klien vs `expires_at`; cakupan e2e
+  `amount_mismatch`/`failed`/paid telat belum ada; `mock.ts` memakai `this.paymentMethods` dan import inline,
+  `PAYMENT_STATUS` hanya `recorded|void`.
+
+- **P3 · Pastikan kecamatan alamat kantor:** situs menulis "Kec. Tampan" sesuai pemilik, tetapi satu sumber tak resmi
+  menempatkan Simpang Baru di Kec. Binawidya setelah pemekaran. Perda Pekanbaru No. 2/2020 belum terbaca. Kode pos
+  28293 juga dari sumber tak resmi. Nilai ada di `OFFICE_ADDRESS_AREA` (`src/constants/site.ts`). Titik tautan Google
+  Maps (pencarian teks alamat) juga perlu dicek pemilik.
 
 ## Keputusan
 
@@ -59,8 +112,21 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
-- 2026-11-08 · Admin → Bisnis → Performa: periode **Hari ini** (`periode=1`), pembanding "kemarin di jam yang sama".
-- 2026-11-08 · Uji coba Pro 30 → 14 hari (server `00066`): halaman harga, `HargaSection`, CTA, FAQ, panduan, S&K §3 (versi 1.1), label admin + audit `subscription.trial_shortened`. Dirilis lewat cherry-pick tanpa isi `development` lain (Duitku belum rilis).
+- 2026-11-08 · Admin → Bisnis → Performa: pilihan periode **Hari ini** (`periode=1`); teks pembanding "vs kemarin" /
+  "Dibanding kemarin di jam yang sama". tsc + lint bersih; belum dicek visual.
+- 2026-11-08 · Uji coba Pro 30 → 14 hari (server `00066`): halaman harga, `HargaSection`, CTA, FAQ perbandingan,
+  panduan, Syarat & Ketentuan §3 (versi 1.1, berlaku November 2026), admin (label status, info daftar langganan, aksi
+  audit `subscription.trial_shortened` + filter), mock billing. lint + tsc bersih.
+- **2026-11-06 · Dialog "Pilih cara bayar" dibangun ulang.** Desktop (`lg`+): dialog lebar 880px, kiri semua metode tanpa lipatan (QRIS penuh di atas; Virtual Account, E-wallet, Gerai ritel dua kolom; baris datar logo ±48x28 + nama + biaya + radio), kanan "Ringkasan" (Paket, Harga, Biaya layanan atau "Gratis", Total, tombol "Bayar Rp…") yang mengikuti pilihan. Tanpa gulir di 1360x768 dan 1360x900 dengan 15 metode (dialog 560px). Ponsel: satu kolom, daftar menggulir di dalam dialog, ringkasan + tombol tertempel di bawah, halaman di belakang terkunci. Perilaku: memilih hanya memilih (radio sungguhan, satu grup, panah keyboard); checkout dibuat saat "Bayar" ditekan; QRIS terpilih bawaan, pilihan yang hilang jatuh ke QRIS/pertama. "Bank lainnya", `VaList`, `VA_FIRST`, `VA_FOLD_MIN` dihapus. `Modal` dapat prop opsional `wide` (lebar + tinggi dibatasi layar + kunci gulir halaman); pemanggil lain tidak berubah. e2e `langganan` 19 lulus.
+
+- **2026-11-06 · Paket Pro 6 Bulan (`semiannual`, Rp309.000 disetujui pemilik; bisa diubah lewat `billing_config`).** Dasbor:
+  tiga kartu Bulanan / 6 Bulan / Tahunan (tiga kolom dari `sm`, bertumpuk di ponsel; helper "RpX/bulan" dan "Hemat RpX" dihitung
+  dari harga API; server lama tanpa `prices.semiannual` jadi dua kartu), pelanggan aktif 6 bulan terpilih otomatis, dialog "Pro 6 Bulan".
+  Admin: kolom harga 6 bulan di "Cara bayar & harga", siklus 6 Bulan di catat pembayaran & filter, MRR dibagi 6. Publik: `/harga` dan
+  `HargaSection` menampilkan 6 Bulan (Rp309rb, setara Rp51,5rb/bulan, hemat Rp45rb); teks PPN tidak berubah. e2e `langganan` 15 lulus.
+
+- **2026-11-06 · Alamat di kontak `/tentang`** (Claude Opus 5.5): kotak "Alamat" selebar dua kolom di bawah WhatsApp &
+  Email; nama perumahan tebal, wilayah abu-abu, tautan "Buka di Google Maps" (`OFFICE_*` di `src/constants/site.ts`).
 - **2026-11-05 · Reviu `826043f` `/setujui/[token]`** (Claude Opus 5.5): GET hanya membaca, keputusan lewat POST
   (aman dari pemindai tautan email), `noindex` + `no-referrer`. Ditambah header `/setujui/:path*` di `next.config.ts`
   (`X-Frame-Options: DENY`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer`) seperti `/undangan`. Catatan:
