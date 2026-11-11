@@ -10,6 +10,7 @@
 //   cabang    dua outlet (outlet kedua ber-aturan Tolak)
 //   putus     percobaan absen pertama gagal jaringan (uji ulang dengan Idempotency-Key yang sama)
 //   luarjadwal tidak punya shift hari ini → UNSCHEDULED_CONFIRM, lalu tercatat "di luar jadwal"
+//   belumatur pemilik belum menyimpan Jam kerja (`work_hours_set: false`, telat tidak dihitung)
 //   libur     hari ini libur yang ditetapkan pemilik → OFF_DAY_CONFIRM, lalu tercatat "di luar jadwal"
 //   shift     shift "Pagi" mulai 25 menit lalu (toleransi 10) → LATE_CONFIRM + alasan opsional
 //             (gabung "luarjadwal"/"shift" dengan jarak jauh di DevTools untuk uji berantai OUTSIDE_AREA_CONFIRM → jadwal)
@@ -239,7 +240,8 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           : {
               work_start: "08:00",
               work_end: "17:00",
-              late_tolerance_min: 10,
+              late_tolerance_min: s.scenario.includes("belumatur") ? null : 10,
+              work_hours_set: !s.scenario.includes("belumatur"),
               off_day: s.scenario.includes("libur") || (weekday === 0 && !s.scenario.includes("luarjadwal")),
               shift: null,
               unscheduled: s.scenario.includes("luarjadwal"),

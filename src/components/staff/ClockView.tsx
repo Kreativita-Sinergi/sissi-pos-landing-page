@@ -345,6 +345,13 @@ export function ClockView() {
               <dt className="text-[12px] text-text-muted">Jadwal</dt>
               <dd className="text-[15px] font-semibold text-text-heading">Hari libur</dd>
             </div>
+          ) : !today.rules.shift && today.rules.work_hours_set === false ? (
+            // Jam kerja bawaan 08:00 bukan pilihan pemilik → jangan tampilkan sebagai jadwal.
+            <div className="col-span-2 px-3 py-3">
+              <dt className="text-[12px] text-text-muted">Jadwal</dt>
+              <dd className="text-[15px] font-semibold text-text-heading">Jam kerja belum diatur pemilik</dd>
+              <dd className="mt-0.5 text-[12.5px] text-text-muted">Absen tetap tercatat, tidak dihitung telat.</dd>
+            </div>
           ) : today.rules.unscheduled ? (
             // Di luar jadwal: jangan tampilkan Jam kerja global seolah-olah shift (kontrak 2026-11-11).
             <div className="col-span-2 px-3 py-3">
@@ -371,7 +378,10 @@ export function ClockView() {
             </>
           )}
         </dl>
-        {!today.rules.off_day && !today.rules.unscheduled && today.rules.late_tolerance_min !== 0 && (
+        {!today.rules.off_day &&
+          !today.rules.unscheduled &&
+          !(!today.rules.shift && today.rules.work_hours_set === false) &&
+          today.rules.late_tolerance_min !== 0 && (
           <p className="border-t border-border-subtle px-4 py-2 text-center text-[12.5px] text-text-muted">
             {today.rules.late_tolerance_min === null ? "Telat tidak dihitung" : `Toleransi terlambat ${today.rules.late_tolerance_min} menit`}
           </p>

@@ -405,6 +405,27 @@ export function readTimezone(settings: unknown): TimezoneChoice {
   return (TIMEZONE_CHOICES as readonly string[]).includes(v) ? (v as TimezoneChoice) : "Asia/Jakarta";
 }
 
+/** Zona waktu pernah dipilih (`settings.timezone` terisi). Kosong → tampil "Belum dipilih (memakai WIB)". */
+export function hasTimezone(settings: unknown): boolean {
+  return str(obj(settings).timezone) !== "";
+}
+
+/**
+ * Nilai balik loyalti efektif: poin per Rp 1.000 × nilai 1 poin (Rp) / 1.000 → persen belanja yang kembali ke
+ * pelanggan. `null` bila isian tidak sah.
+ */
+export function loyaltyReturnPercent(pointsPerThousand: number, pointValue: number): number | null {
+  if (!Number.isFinite(pointsPerThousand) || !Number.isFinite(pointValue) || pointsPerThousand < 0 || pointValue < 0) return null;
+  return (pointsPerThousand * pointValue) / 10;
+}
+
+/** "≈ 10% belanja kembali ke pelanggan" (maks. 2 desimal, format Indonesia). */
+export function loyaltyReturnText(pointsPerThousand: number, pointValue: number): string | null {
+  const p = loyaltyReturnPercent(pointsPerThousand, pointValue);
+  if (p === null) return null;
+  return `≈ ${p.toLocaleString("id-ID", { maximumFractionDigits: 2 })}% belanja kembali ke pelanggan`;
+}
+
 // ——— Angka ———
 
 /** Basis poin → teks persen Indonesia: 1000 → "10", 1150 → "11,5". */
