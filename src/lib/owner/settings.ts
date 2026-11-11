@@ -284,8 +284,10 @@ export function mergeTaxes(settings: unknown, taxes: Tax[]): Obj[] {
 export function mergeAttendance(settings: unknown, rules: AttendanceRules): Obj {
   const prev = obj(obj(settings).attendance).late_tolerance_min;
   const tolerance = rules.late_tolerance_min ?? (typeof prev === "number" && prev >= 0 ? prev : 10);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- turunan baca saja, bukan kunci pengaturan.
+  const { has_work_hours, ...section } = rules;
   return {
-    ...mergeSection(settings, "attendance", { ...rules, late_tolerance_min: tolerance }),
+    ...mergeSection(settings, "attendance", { ...section, late_tolerance_min: tolerance }),
     late_counting: rules.late_tolerance_min !== null,
   };
 }
@@ -312,6 +314,12 @@ export type AttendanceRules = {
   late_tolerance_min: number | null;
   /** 1 = Senin … 7 = Minggu. */
   off_days: number[];
+  /**
+   * `false` = Jam kerja belum pernah disimpan (kunci `attendance` tidak ada): hari yang ikut Jam kerja global tidak
+   * dihitung telat (api.md "Absen di luar jadwal & konfirmasi telat", server `HasWorkHours`). Nilai form tetap bawaan.
+   * Tidak ditulis ke pengaturan (`mergeAttendance` membuangnya; menyimpan selalu menulis kunci `attendance`).
+   */
+  has_work_hours?: boolean;
 };
 
 export function readLoyalty(settings: unknown): Loyalty {
@@ -353,6 +361,7 @@ export function readAttendance(settings: unknown): AttendanceRules {
     off_days: Array.isArray(s.off_days)
       ? [...new Set(s.off_days.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7))].sort()
       : [7],
+    has_work_hours: isObj(root.attendance),
   };
 }
 
