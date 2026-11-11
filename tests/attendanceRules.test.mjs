@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
-const { computeRecap, dayPlan, evaluateClockIn, planLabel, recapFor, toAssignments } = await import("../src/lib/owner/team.ts");
+const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isUnscheduled, planLabel, recapFor, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
 const BASE = { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_days: [7] };
@@ -161,4 +161,49 @@ test("recapFor & planFor menghormati jadwal per tanggal", () => {
   // Senin dijadwalkan libur → dilewati; Rabu (id shift tetap hilang → Jam kerja) & Kamis (dijadwalkan) ditulis.
   assert.deepEqual(plan.offDays, [MON]);
   assert.deepEqual(plan.written, [TUE, "2026-11-04", "2026-11-05"]);
+});
+
+// ——— Di luar jadwal (2026-11-11): hari tanpa catatan yang di luar jadwal = libur, bukan alpa ———
+
+const UNSCHED_ROWS = [
+  // e3 tanpa shift tetap: dijadwalkan shift Senin 2/11 & libur Jumat 13/11; Selasa 10/11 "Ikut jam kerja" (default).
+  { id: "u1", employee_id: "e3", date: MON, kind: "shift", name: "Pagi", start: "08:00", end: "16:00", deleted_at: null },
+  { id: "u2", employee_id: "e3", date: "2026-11-13", kind: "off", name: "", start: "", end: "", deleted_at: null },
+  { id: "u3", employee_id: "e3", date: "2026-11-10", kind: "default", name: "", start: "", end: "", deleted_at: null },
+  // Tombstone tidak menandai "memakai jadwal".
+  { id: "u4", employee_id: "e4", date: MON, kind: "shift", name: "Pagi", start: "08:00", end: "16:00", deleted_at: "2026-11-01T00:00:00Z" },
+];
+const unschedShifts = () => ({ ...readShiftPatterns(SETTINGS), assignments: toAssignments(UNSCHED_ROWS), defaults: toDefaultDays(UNSCHED_ROWS) });
+
+test("isUnscheduled cermin server: jendela ±7 hari, default, shift tetap (id hilang), libur pola", () => {
+  const sh = unschedShifts();
+  assert.equal(isUnscheduled(TUE, sh, "e3"), true); // 3/11: shift 2/11 dalam 7 hari, tanpa baris
+  assert.equal(isUnscheduled(MON, sh, "e3"), false); // dijadwalkan shift
+  assert.equal(isUnscheduled("2026-11-10", sh, "e3"), false); // default = pilihan sengaja pemilik
+  assert.equal(isUnscheduled("2026-11-20", sh, "e3"), true); // 13/11 (off) dalam 7 hari
+  assert.equal(isUnscheduled("2026-11-21", sh, "e3"), false); // > 7 hari dari jadwal mana pun
+  assert.equal(isUnscheduled("2026-10-26", sh, "e3"), true); // tepi periode: jadwal 2/11 bulan berikutnya ikut dibaca
+  assert.equal(isUnscheduled(TUE, sh, "e4"), false); // hanya tombstone
+  assert.equal(isUnscheduled(TUE, sh, "e9"), false); // tanpa jadwal sama sekali
+  assert.equal(isUnscheduled("2026-11-04", sh, "e1"), true); // shift tetap Rabu: semua templat hilang
+  assert.equal(isUnscheduled("2026-11-05", sh, "e1"), false); // shift tetap Kamis kosong = libur, bukan di luar jadwal
+  assert.equal(isUnscheduled(MON, sh, "e1"), false); // shift tetap berlaku
+});
+
+test("recap & gaji: di luar jadwal bukan alpa; ber-shift tanpa absen tetap alpa; tanpa jadwal tetap alpa", () => {
+  const data = { attendances: [], rules: BASE, shifts: unschedShifts() };
+  const kinds = (id) => new Map(recapFor({ id, created_at: "2026-10-01T00:00:00Z" }, "2026-11", data, "2026-11-30").days.map((d) => [d.day, d.kind]));
+  const e3 = kinds("e3");
+  assert.equal(e3.get(TUE), "off"); // di luar jadwal
+  assert.equal(e3.get(MON), "absent"); // ber-shift tanpa absen
+  assert.equal(e3.get("2026-11-10"), "absent"); // default → Jam kerja global, hari kerja
+  const e9 = kinds("e9");
+  assert.equal(e9.get(TUE), "absent"); // tanpa jadwal → aturan lama
+  // Potongan "alpa × hari" mengikuti rekap.
+  const recap = recapFor({ id: "e3", created_at: "2026-10-01T00:00:00Z" }, "2026-11", data, "2026-11-30");
+  const absent = recap.days.filter((d) => d.kind === "absent").length;
+  const slip = computePayslip({ type: "monthly", amount: 10_000_000, late_per_minute: 0, absent_per_day: 1000, allowance_per_day: 0, overtime_per_hour: 0 }, recap);
+  const item = slip.items.find((i) => i.type === "absent");
+  assert.equal(item?.quantity ?? 0, absent);
+  assert.ok(!recap.days.some((d) => d.day === TUE && d.kind === "absent"));
 });

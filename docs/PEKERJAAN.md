@@ -29,6 +29,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   tanda "Di luar jadwal" & alasan telat (hari ini & catatan per karyawan). Mock: skenario `luarjadwal`, `shift`;
   e2e karyawan +3 tes (13/13). **Rilis menunggu service** dideploy (kontrak `../sissi-pos-service/docs/api.md`
   "Absen di luar jadwal & konfirmasi telat"); web aman terhadap server lama (field opsional).
+  Lanjutan: rekap & gaji dasbor (`recapFor`/`computeRecap`) memakai `isUnscheduled` (cermin `unscheduled` di service
+  `internal/staffweb/rules.go`; jendela ±7 hari, `default`, shift tetap dengan templat hilang) → hari tanpa catatan
+  yang di luar jadwal = libur, bukan alpa, dan tidak dipotong "alpa × hari". `ShiftSchedule.defaults` (baris
+  `kind: "default"`) ditambahkan untuk itu.
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong
