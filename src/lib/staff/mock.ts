@@ -4,6 +4,7 @@
 //   telat     sudah absen masuk, terlambat 17 menit (via Website)
 //   pulang    sudah masuk (PIN di perangkat toko) & pulang (Website, tanpa lokasi)
 //   kemarin   absen masuk kemarin belum pulang
+//   lupa      lupa absen pulang 2 hari lalu (terbuka, lewat jam selesai): pilih pulang (shift itu) atau masuk sekarang
 //   izin      hari ini tercatat izin (absen ditutup)
 //   tolak     outlet ber-aturan "Tolak" (di luar radius / tanpa lokasi → OUTSIDE_AREA)
 //   gratis    paket Gratis (locked)
@@ -132,6 +133,9 @@ function fresh(identifier: string, remember: boolean): MockState {
   else if (has("kemarin")) {
     const y = addDays(today, -1);
     rows.push(row({ date: y, outlet_id: o.id, outlet_name: o.name, clock_in_at: at(y, "13:02"), clock_in_via: "web", clock_in_geo: geoAt(20) }));
+  } else if (has("lupa")) {
+    const d = addDays(today, -2);
+    rows.push(row({ date: d, outlet_id: o.id, outlet_name: o.name, clock_in_at: at(d, "08:01"), clock_in_via: "web", clock_in_geo: geoAt(20), due_out_at: at(d, "17:00") }));
   } else if (has("izin")) rows.push(row({ date: today, outlet_id: o.id, outlet_name: o.name, status: "permit", source: "manual", note: "Urusan keluarga" }));
   let shiftStart: string | undefined;
   if (has("shift")) {
@@ -163,13 +167,24 @@ function session(s: MockState): StaffSession {
   };
 }
 
-/** Baris absen yang relevan hari ini: baris hari ini, atau baris kemarin yang masih terbuka (< 20 jam). */
+/**
+ * Baris absen yang relevan hari ini (cermin server 2026-11-11): baris hari ini bila sudah ada jam masuk, selainnya
+ * absen terakhir (≤ 31 hari) yang masih terbuka (tanpa batas 20 jam).
+ */
 function current(s: MockState, today: string): StaffAttendance | null {
   const t = s.rows.find((r) => r.date === today);
-  if (t) return t;
-  const y = s.rows.find((r) => r.date === addDays(today, -1) && r.clock_in_at && !r.clock_out_at);
-  if (y && Date.now() - Date.parse(y.clock_in_at!) < 20 * 36e5) return y;
-  return null;
+  if (t?.clock_in_at) return t;
+  const last = s.rows
+    .filter((r) => r.date < today && r.date >= addDays(today, -31) && r.clock_in_at)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  if (last && !last.clock_out_at && !["permit", "sick", "leave", "absent"].includes(last.status)) return last;
+  return t ?? null;
+}
+
+/** Tandai Tidak absen pulang: baris terbuka yang punya absen masuk sesudahnya. */
+function annotate(s: MockState) {
+  const latest = s.rows.reduce<string | null>((a, r) => (r.clock_in_at && (a === null || r.date > a) ? r.date : a), null);
+  s.rows = s.rows.map((r) => ({ ...r, missed_clock_out: !!r.clock_in_at && !r.clock_out_at && latest !== null && latest > r.date }));
 }
 
 export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
@@ -248,6 +263,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
             },
         geo: { enabled: o.enabled, radius_m: 100, outside: o.outside, has_location: true },
         attendance: a,
+        can_clock_in: !s.rows.some((r) => r.date === date && (r.clock_in_at || ["permit", "sick", "leave", "absent"].includes(r.status))),
         locked: s.scenario.includes("gratis"),
       };
       return result;
@@ -288,9 +304,10 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
 
       let out: StaffAttendance;
       if (body.action === "in") {
-        if (a && a.date === date && (a.status === "permit" || a.status === "sick" || a.status === "leave" || a.status === "absent") && !a.clock_in_at)
+        const t = s.rows.find((r) => r.date === date);
+        if (t && (t.status === "permit" || t.status === "sick" || t.status === "leave" || t.status === "absent") && !t.clock_in_at)
           throw staffError("Hari ini sudah tercatat izin/sakit/cuti/alpa", 422, "ATTENDANCE_DAY_CLOSED");
-        if (a && a.date === date && a.clock_in_at) throw staffError("Sudah absen masuk", 409, "ALREADY_CLOCKED");
+        if (s.rows.some((r) => r.date === date && r.clock_in_at)) throw staffError("Sudah absen masuk", 409, "ALREADY_CLOCKED");
         const { hm } = zonedClock(now, TZ);
         const [h, m] = hm.split(":").map(Number);
         const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
@@ -324,7 +341,9 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           unscheduled,
           late_reason: late ? reason : "",
         });
-        s.rows = [...s.rows.filter((r) => r.date !== date), out];
+        s.rows = [...s.rows.filter((r) => r.date !== date), { ...out, due_out_at: s.shiftStart ? null : at(date, "17:00") }];
+        annotate(s);
+        out = s.rows.find((r) => r.date === date)!;
       } else {
         if (!a || !a.clock_in_at) {
           if (a && a.date === date && a.status !== "ontime" && a.status !== "late")
@@ -390,7 +409,13 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           })
         );
       }
-      for (const r of s.rows) if (r.date.startsWith(month) && !items.some((i) => i.date === r.date)) items.push(r);
+      // Baris tersimpan (skenario/absen di mode tiruan) menggantikan baris contoh di tanggal yang sama.
+      for (const r of s.rows) {
+        if (!r.date.startsWith(month)) continue;
+        const i = items.findIndex((x) => x.date === r.date);
+        if (i >= 0) items[i] = r;
+        else items.push(r);
+      }
       items.sort((a, b) => (a.date < b.date ? 1 : -1));
       const count = (st: string) => items.filter((i) => i.status === st).length;
       const result: StaffHistory = {
@@ -406,6 +431,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           leave: count("leave"),
           absent: count("absent"),
           unscheduled: items.filter((i) => i.unscheduled).length,
+          missed_clock_out: items.filter((i) => i.missed_clock_out).length,
         },
       };
       return result;

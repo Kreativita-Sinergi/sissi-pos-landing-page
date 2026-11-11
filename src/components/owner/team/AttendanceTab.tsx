@@ -11,8 +11,13 @@ import {
   DAY_LETTER,
   dayPlan,
   durationLabel,
+  clockOutState,
+  dueOutAt,
   isoWeekday,
   isUnscheduled,
+  latestClockInDate,
+  openPreviousAttendance,
+  type ClockOutState,
   manualMinDay,
   monthOf,
   planLabel,
@@ -168,7 +173,13 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                   </div>
                   {/* Keadaan selalu tampil; telat = lencana tambahan (membungkus ke baris kedua di layar sempit). */}
                   <span className="flex max-w-[50%] shrink-0 flex-wrap items-center justify-end gap-1">
-                    <TodayBadge row={r} unscheduled={!r && isUnscheduled(today, ctx.data.shifts, e.id)} />
+                    <TodayBadge
+                    row={r}
+                    unscheduled={!r && isUnscheduled(today, ctx.data.shifts, e.id)}
+                    state={r ? clockOutState(r, dueOutAt(r, dayPlan(rules, r.date, ctx.data.shifts, e.id), rules), latestClockInDate(ctx.data.attendances, e.id)) : null}
+                    prevOpen={r ? null : openPreviousAttendance(ctx.data.attendances, e.id, today)}
+                    today={today}
+                  />
                     {r?.status === "late" && r.late_minutes > 0 && <Badge tone="warning">Telat {durationLabel(r.late_minutes)}</Badge>}
                   </span>
                   <button
@@ -190,9 +201,27 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
   );
 }
 
-function TodayBadge({ row, unscheduled = false }: { row: Attendance | undefined; unscheduled?: boolean }) {
+function TodayBadge({
+  row,
+  unscheduled = false,
+  state,
+  prevOpen,
+  today,
+}: {
+  row: Attendance | undefined;
+  unscheduled?: boolean;
+  state: ClockOutState | null;
+  prevOpen: Attendance | null;
+  today: string;
+}) {
+  // Absen tanggal sebelumnya masih terbuka dan belum masuk hari ini (api.md "Absen pulang terlupa").
+  if (prevOpen) {
+    const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+    return <Badge tone="warning">Belum absen pulang ({prevOpen.date === yesterday ? "kemarin" : formatDayLong(prevOpen.date)})</Badge>;
+  }
   // Di luar jadwal tanpa absen: bukan "Belum masuk" (tidak wajib masuk; bila masuk tercatat "Di luar jadwal").
   if (!row) return <Badge>{unscheduled ? "Tanpa shift hari ini" : "Belum masuk"}</Badge>;
+  if (state === "due") return <Badge tone="warning">Belum absen pulang</Badge>;
   if (row.status === "permit" || row.status === "sick" || row.status === "leave") return <Badge tone="brand">{STATUS_LABEL[row.status]}</Badge>;
   if (row.status === "absent") return <Badge tone="danger">Alpa</Badge>;
   if (row.clock_out_at) return <Badge>Selesai</Badge>;
@@ -347,6 +376,7 @@ function DayList({
   onManual: (employeeId: string | null, date: string | null) => void;
 }) {
   const rows = days.filter((d) => d.row).reverse();
+  const latest = latestClockInDate(ctx.data.attendances, e.id);
   const names = new Map(ctx.data.employees.map((x) => [x.id, x.name]));
   return (
     <Section className="mt-4" title={`Catatan ${e.name}`} bodyClass="">
@@ -389,6 +419,7 @@ function DayList({
                         <Badge>Di luar jadwal</Badge>
                       </span>
                     )}
+                    {row && <ClockOutBadge state={clockOutState(row, dueOutAt(row, dayPlan(ctx.data.rules, row.date, ctx.data.shifts, e.id), ctx.data.rules), latest)} />}
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle tabular-nums`}>
                     {row?.clock_in_at ? `${clockLabel(row.clock_in_at)} – ${clockLabel(row.clock_out_at)}` : "—"}
@@ -426,6 +457,16 @@ function DayList({
         </div>
       )}
     </Section>
+  );
+}
+
+/** Lencana Belum absen pulang / Tidak absen pulang untuk tabel catatan (Bekerja & Selesai tidak ditandai). */
+function ClockOutBadge({ state }: { state: ClockOutState | null }) {
+  if (state !== "due" && state !== "missed") return null;
+  return (
+    <span className="ml-1.5">
+      <Badge tone={state === "missed" ? "danger" : "warning"}>{state === "missed" ? "Tidak absen pulang" : "Belum absen pulang"}</Badge>
+    </span>
   );
 }
 

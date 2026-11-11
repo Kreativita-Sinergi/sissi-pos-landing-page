@@ -233,6 +233,36 @@ test("Jam kerja belum diatur pemilik → tidak tampil jam masuk 08:00", async ()
   await page.close();
 });
 
+test("lupa absen pulang → pilih 'Absen masuk sekarang' (konfirmasi) → yang lama Tidak absen pulang di riwayat", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "lupa@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Belum absen pulang");
+  await waitText(page, "Absen pulang (shift");
+  await noOverflow(page, "lupa pulang 360");
+  await shot(page, "absen-lupa-pulang-360");
+  await clickButton(page, "Absen masuk sekarang");
+  await waitText(page, "akan tercatat tidak absen pulang");
+  await page.evaluate(() => [...document.querySelectorAll("dialog button")].find((b) => b.innerText.includes("Absen masuk sekarang")).click());
+  await waitText(page, "Absen masuk tercatat");
+  await page.goto(`${BASE}/karyawan/riwayat`, { waitUntil: "networkidle2" });
+  await waitText(page, "Tidak absen pulang");
+  await waitText(page, "1 tidak absen pulang");
+  await page.close();
+});
+
+test("lupa absen pulang → 'Absen pulang (shift …)' menutup absen lama", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "lupa@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await clickButton(page, "Absen pulang (shift");
+  await waitText(page, "Absen pulang tercatat");
+  await waitText(page, "Absen Masuk");
+  await page.close();
+});
+
 test("paket Gratis → terkunci, tombol mati", async () => {
   const page = await fresh();
   await login(page, "gratis@contoh.id");

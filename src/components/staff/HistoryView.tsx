@@ -129,7 +129,12 @@ function Summary({ data }: { data: StaffHistory }) {
     },
     { label: "Terlambat", value: s.late, hint: s.late_minutes ? `total ${durationLabel(s.late_minutes)}` : undefined, tone: s.late ? "text-warning" : undefined },
     { label: "Izin/sakit/cuti", value: away, hint: away ? `${s.permit} izin · ${s.sick} sakit · ${s.leave} cuti` : undefined },
-    { label: "Alpa", value: s.absent, tone: s.absent ? "text-danger" : undefined },
+    {
+      label: "Alpa",
+      value: s.absent,
+      hint: s.missed_clock_out ? `${s.missed_clock_out} tidak absen pulang` : undefined,
+      tone: s.absent ? "text-danger" : undefined,
+    },
   ];
   return (
     <section aria-label={`Ringkasan ${monthLabel(data.month)}`} className="rounded-[18px] border border-border-subtle bg-white">
@@ -165,6 +170,7 @@ function HistoryRow({ row, tz, showOutlet }: { row: StaffAttendance; tz: string;
           <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>{STATUS_LABEL[row.status] ?? row.status}</Badge>
           {row.status === "late" && row.late_minutes > 0 && <span className="text-[12.5px] font-semibold text-warning">{durationLabel(row.late_minutes)}</span>}
           {row.unscheduled && <Badge tone="neutral">Di luar jadwal</Badge>}
+          {row.missed_clock_out && <Badge tone="danger">Tidak absen pulang</Badge>}
           {worked && (
             <span className="text-[15px] font-semibold text-text-heading tabular-nums">
               {formatTime(row.clock_in_at, tz)} – {row.clock_out_at ? formatTime(row.clock_out_at, tz) : <span className="text-[13px] font-normal text-text-muted">belum pulang</span>}

@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 const { missingLocation, viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
 const { acceptErrorMessage, clockErrorMessage, detailNumber, detailText, formatDistance, isNetworkError, lateAsk, lateAskText, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
-const { clockOffset, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
+const { clockOffset, clockState, formatDateShort, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
 
 const IN = "2026-11-02T01:05:00Z";
 const OUT = "2026-11-02T10:02:00Z";
@@ -178,4 +178,17 @@ test("durationLabel bersama: < 60 → mnt; ≥ 60 → j + mnt; menit 0 → j saj
 test("OFF_DAY_CONFIRM: pesan cadangan hari libur", () => {
   const m = clockErrorMessage({ code: "OFF_DAY_CONFIRM" }, { action: "in", sentGeo: true });
   assert.equal(m.title, "Hari ini jadwalmu libur");
+});
+
+test("clockState web karyawan: Bekerja / Belum absen pulang (lewat due_out_at) / Tidak absen pulang / Selesai", () => {
+  const due = "2026-11-02T10:00:00Z";
+  const open = { clock_in_at: IN, clock_out_at: null, due_out_at: due, missed_clock_out: false };
+  assert.equal(clockState(null, Date.parse(due)), null);
+  assert.equal(clockState(open, Date.parse(due) - 1), "working");
+  assert.equal(clockState(open, Date.parse(due)), "due");
+  assert.equal(clockState({ ...open, missed_clock_out: true }, 0), "missed");
+  assert.equal(clockState({ ...open, clock_out_at: OUT }, Date.parse(due)), "done");
+  // Server lama: tanpa field → Bekerja.
+  assert.equal(clockState({ clock_in_at: IN, clock_out_at: null }, Date.parse(due) + 864e5), "working");
+  assert.equal(formatDateShort("2026-11-09"), "9 Nov");
 });

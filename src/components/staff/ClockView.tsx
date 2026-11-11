@@ -9,7 +9,17 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { missingLocation, viaLabel } from "@/lib/attendanceVia";
 import { durationLabel } from "@/lib/duration";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
-import { clockOffset, formatDateLong, formatTime, nextStep, STATUS_LABEL, zonedClock, zonedDate } from "@/lib/staff/clock";
+import {
+  clockOffset,
+  clockState,
+  formatDateLong,
+  formatDateShort,
+  formatTime,
+  nextStep,
+  STATUS_LABEL,
+  zonedClock,
+  zonedDate,
+} from "@/lib/staff/clock";
 import {
   clockErrorMessage,
   detailNumber,
@@ -64,6 +74,8 @@ export function ClockView() {
   const [offDayAsk, setOffDayAsk] = useState<Pending | null>(null);
   const [lateAsk, setLateAsk] = useState<{ p: Pending; info: LateAsk } | null>(null);
   const [lateReason, setLateReason] = useState("");
+  /** Absen terbuka tanggal sebelumnya + pilih "Absen masuk sekarang": konfirmasi dulu (yang lama jadi Tidak absen pulang). */
+  const [skipAsk, setSkipAsk] = useState<string | null>(null);
   const reqId = useRef(0);
   /** Outlet pilihan karyawan (undefined = bawaan server). */
   const outletRef = useRef<string | undefined>(undefined);
@@ -392,11 +404,11 @@ export function ClockView() {
       <section aria-labelledby="status-title" className="rounded-[18px] border border-border-subtle bg-white">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-subtle px-5 py-3">
           <h2 id="status-title" className="text-[15px] font-semibold text-text-heading">
-            {step.kind === "out" && step.carried ? "Absen kemarin belum pulang" : "Status hari ini"}
+            {step.kind === "out" && step.carried && a ? `Absen ${formatDateLong(a.date)}` : "Status hari ini"}
           </h2>
           {/* Keadaan selalu tampil (Belum absen / Sedang bekerja / Selesai) + lencana telat di sampingnya. */}
           <span className="flex flex-wrap items-center justify-end gap-1">
-            <StatusBadge row={a} step={step.kind} />
+            <StatusBadge row={a} step={step.kind} now={now ?? Date.now()} />
             {a?.status === "late" && a.late_minutes > 0 && step.kind !== "closed" && <Badge tone="warning">Telat {durationLabel(a.late_minutes)}</Badge>}
           </span>
         </div>
@@ -478,17 +490,25 @@ export function ClockView() {
             } ${focusRing}`}
           >
             {busy ? <Spinner size={20} /> : step.kind === "in" ? <LogIn size={22} aria-hidden /> : <LogOut size={22} aria-hidden />}
-            {phase === "locating" ? "Mencari lokasi…" : phase === "sending" ? "Mengirim…" : step.kind === "in" ? "Absen Masuk" : "Absen Pulang"}
+            {phase === "locating"
+              ? "Mencari lokasi…"
+              : phase === "sending"
+                ? "Mengirim…"
+                : step.kind === "in"
+                  ? "Absen Masuk"
+                  : step.carried && a
+                    ? `Absen pulang (shift ${formatDateShort(a.date)})`
+                    : "Absen Pulang"}
           </button>
-          {step.kind === "out" && step.carried && (
-            // Absen kemarin masih terbuka tidak menghalangi masuk hari ini (server hanya melihat baris hari ini).
+          {step.kind === "out" && step.carried && a && today.can_clock_in !== false && (
+            // Absen sebelumnya masih terbuka tidak menghalangi masuk hari ini; yang lama lalu menjadi Tidak absen pulang.
             <button
               type="button"
-              onClick={() => clock("in")}
+              onClick={() => setSkipAsk(a.date)}
               disabled={busy}
               className={`mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[14px] border border-border-subtle bg-white px-4 text-[15px] font-semibold text-text-heading hover:border-border-active disabled:opacity-60 ${focusRing}`}
             >
-              <LogIn size={18} aria-hidden /> Lewati, absen masuk hari ini
+              <LogIn size={18} aria-hidden /> Absen masuk sekarang
             </button>
           )}
           <p id="geo-hint" className="mt-2.5 flex items-start gap-1.5 text-[12.5px] leading-relaxed text-text-muted">
@@ -539,6 +559,20 @@ export function ClockView() {
           {unschedAsk?.workStart ? ` memakai jam kerja umum (mulai ${unschedAsk.workStart}), tidak dihitung telat` : ", tidak dihitung telat"}. Pemilik bisa
           melihatnya.
         </p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!skipAsk}
+        title="Absen masuk sekarang?"
+        confirmLabel="Absen masuk sekarang"
+        onConfirm={() => {
+          setSkipAsk(null);
+          void clock("in");
+        }}
+        onClose={() => setSkipAsk(null)}
+      >
+        <p>Absen {skipAsk ? formatDateLong(skipAsk) : ""} akan tercatat tidak absen pulang.</p>
+        <p className="mt-2">Hanya pemilik yang bisa mengoreksinya nanti.</p>
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -597,10 +631,13 @@ function tzLabel(tz: string): string {
   return tz;
 }
 
-function StatusBadge({ row, step }: { row: StaffAttendance | null; step: string }) {
+function StatusBadge({ row, step, now }: { row: StaffAttendance | null; step: string; now: number }) {
   if (step === "closed" && row) return <Badge tone="brand">{STATUS_LABEL[row.status] ?? row.status}</Badge>;
-  if (!row || !row.clock_in_at) return <Badge>Belum absen</Badge>;
-  if (row.clock_out_at) return <Badge>Selesai</Badge>;
+  const state = clockState(row, now);
+  if (state === null) return <Badge>Belum absen</Badge>;
+  if (state === "done") return <Badge>Selesai</Badge>;
+  if (state === "missed") return <Badge tone="danger">Tidak absen pulang</Badge>;
+  if (state === "due") return <Badge tone="warning">Belum absen pulang</Badge>;
   return <Badge tone="success">Sedang bekerja</Badge>;
 }
 
