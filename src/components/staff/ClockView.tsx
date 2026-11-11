@@ -7,6 +7,7 @@ import { Badge, focusRing, Notice, Spinner } from "@/components/admin/ui";
 import { Select } from "@/components/owner/Select";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { missingLocation, viaLabel } from "@/lib/attendanceVia";
+import { durationLabel } from "@/lib/duration";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
 import { clockOffset, formatDateLong, formatTime, nextStep, STATUS_LABEL, zonedClock, zonedDate } from "@/lib/staff/clock";
 import {
@@ -149,7 +150,7 @@ export function ClockView() {
       const at = formatTime(p.body.action === "in" ? row.clock_in_at : row.clock_out_at, tz);
       const late =
         p.body.action === "in" && row.status === "late"
-          ? ` · terlambat ${row.late_minutes} menit`
+          ? ` · terlambat ${durationLabel(row.late_minutes)}`
           : p.body.action === "in" && row.unscheduled
             ? " · di luar jadwal"
             : "";
@@ -369,7 +370,11 @@ export function ClockView() {
           <h2 id="status-title" className="text-[15px] font-semibold text-text-heading">
             {step.kind === "out" && step.carried ? "Absen kemarin belum pulang" : "Status hari ini"}
           </h2>
-          <StatusBadge row={a} step={step.kind} />
+          {/* Keadaan selalu tampil (Belum absen / Sedang bekerja / Selesai) + lencana telat di sampingnya. */}
+          <span className="flex flex-wrap items-center justify-end gap-1">
+            <StatusBadge row={a} step={step.kind} />
+            {a?.status === "late" && a.late_minutes > 0 && step.kind !== "closed" && <Badge tone="warning">Telat {durationLabel(a.late_minutes)}</Badge>}
+          </span>
         </div>
         <ul className="divide-y divide-border-subtle">
           <ClockLine
@@ -379,10 +384,9 @@ export function ClockView() {
             source={a?.source}
             via={a?.clock_in_via ?? null}
             geo={a?.clock_in_geo ?? null}
-            late={a?.status === "late" ? a.late_minutes : 0}
             unscheduled={!!a?.unscheduled}
           />
-          <ClockLine label="Pulang" at={a?.clock_out_at ?? null} tz={tz} source={a?.source} via={a?.clock_out_via ?? null} geo={a?.clock_out_geo ?? null} late={0} />
+          <ClockLine label="Pulang" at={a?.clock_out_at ?? null} tz={tz} source={a?.source} via={a?.clock_out_via ?? null} geo={a?.clock_out_geo ?? null} />
         </ul>
         {a && a.outlet_id !== today.outlet_id && a.outlet_name && (
           <p className="border-t border-border-subtle px-5 py-2.5 text-[12.5px] text-text-muted">Tercatat di {a.outlet_name}.</p>
@@ -572,7 +576,6 @@ function ClockLine({
   source,
   via,
   geo,
-  late,
   unscheduled = false,
 }: {
   label: string;
@@ -581,7 +584,6 @@ function ClockLine({
   source: string | undefined;
   via: string | null;
   geo: StaffGeo | null;
-  late: number;
   unscheduled?: boolean;
 }) {
   return (
@@ -590,7 +592,6 @@ function ClockLine({
       <span className="text-[20px] font-bold text-text-heading tabular-nums">{formatTime(at, tz)}</span>
       {at && (
         <span className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
-          {late > 0 && <Badge tone="warning">Telat {late} menit</Badge>}
           {unscheduled && <Badge tone="neutral">Di luar jadwal</Badge>}
           {source && <Badge>{viaLabel(source, via)}</Badge>}
           {source && missingLocation(source, via, geo) && (

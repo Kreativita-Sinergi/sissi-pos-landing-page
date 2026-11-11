@@ -153,7 +153,6 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                         !r && isUnscheduled(today, ctx.data.shifts, e.id) ? "Tanpa shift hari ini" : null,
                         r?.clock_in_at ? `Masuk ${clockLabel(r.clock_in_at)}` : null,
                         r?.clock_out_at ? `Pulang ${clockLabel(r.clock_out_at)}` : null,
-                        r?.status === "late" ? `Telat ${r.late_minutes} mnt` : null,
                         r?.unscheduled ? "Di luar jadwal" : null,
                         r?.status === "late" && r.late_reason ? `Alasan: ${r.late_reason}` : null,
                         r ? (viaText(r) ?? (r.source === "manual" ? "Dicatat pemilik" : null)) : null,
@@ -162,7 +161,11 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                         .join(" · ")}
                     </p>
                   </div>
-                  <TodayBadge row={r} unscheduled={!r && isUnscheduled(today, ctx.data.shifts, e.id)} />
+                  {/* Keadaan selalu tampil; telat = lencana tambahan (membungkus ke baris kedua di layar sempit). */}
+                  <span className="flex max-w-[50%] shrink-0 flex-wrap items-center justify-end gap-1">
+                    <TodayBadge row={r} unscheduled={!r && isUnscheduled(today, ctx.data.shifts, e.id)} />
+                    {r?.status === "late" && r.late_minutes > 0 && <Badge tone="warning">Telat {durationLabel(r.late_minutes)}</Badge>}
+                  </span>
                   <button
                     type="button"
                     className={iconBtn}
@@ -375,7 +378,7 @@ function DayList({
                   <td className={`${tdClass} border-b border-border-subtle whitespace-nowrap`}>{formatDayLong(day)}</td>
                   <td className={`${tdClass} border-b border-border-subtle`}>
                     <DayBadge kind={kind} />
-                    {row?.status === "late" && <span className="ml-1.5 text-[12.5px] text-warning">{row.late_minutes} mnt</span>}
+                    {row?.status === "late" && <span className="ml-1.5 text-[12.5px] text-warning">{durationLabel(row.late_minutes)}</span>}
                     {row?.unscheduled && (
                       <span className="ml-1.5">
                         <Badge>Di luar jadwal</Badge>

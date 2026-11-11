@@ -176,7 +176,7 @@ test("telat dari shift → dialog dengan alasan (hitung karakter) → tercatat t
   await clickButton(page, "Absen Masuk");
   await waitText(page, "Kamu terlambat");
   const t = await text(page);
-  assert(/Shift Pagi mulai \d\d:\d\d \(toleransi 10 menit\)\. Kamu telat \d+ menit\./.test(t), "isi dialog telat tidak lengkap");
+  assert(/Shift Pagi mulai \d\d:\d\d \(toleransi 10 menit\)\. Kamu telat (\d+ j( \d+ mnt)?|\d+ mnt)\./.test(t), "isi dialog telat tidak lengkap");
   await page.type("#late-reason", "Ban bocor");
   await waitText(page, "9/200");
   await shot(page, "absen-telat-konfirmasi-360");
@@ -225,7 +225,7 @@ test("galat jaringan sekali → diulang otomatis dengan kunci sama", async () =>
 test("sudah masuk telat + multi-outlet; riwayat 13 pilihan bulan tanpa meluber", async () => {
   const page = await fresh();
   await login(page, "cabang-telat@contoh.id");
-  await waitText(page, "Telat 17 menit");
+  await waitText(page, "Telat 17 mnt");
   assert(await page.$("button#outlet"), "pemilih outlet tidak ada");
   await shot(page, "absen-telat-cabang-360");
   await page.goto(`${BASE}/karyawan/riwayat`, { waitUntil: "networkidle2" });

@@ -10,7 +10,9 @@ import { Select } from "@/components/owner/Select";
 import {
   clockLabel,
   dayPlan,
+  durationLabel,
   evaluateClockIn,
+  isUnscheduled,
   manualClockMinutes,
   manualMinDay,
   parseClockMinutes,
@@ -145,7 +147,9 @@ function ManualForm({
   const plan = dayPlan(ctx.data.rules, date, ctx.data.shifts, employeeId);
   // Menit relatif tengah malam `date` (≥ 1440 = esok hari): shift malam masuk 00:30 → D+1, pulang relatif jam masuk.
   const at = present && inMin !== null ? manualClockMinutes(plan, inMin, outMin) : null;
-  const verdict = at ? evaluateClockIn(ctx.data.rules, date, at.inAt, plan) : null;
+  // Tanggal di luar jadwal + hadir → otomatis tepat waktu & bertanda "di luar jadwal" (tanpa dialog).
+  const dayUnscheduled = !!employeeId && isUnscheduled(date, ctx.data.shifts, employeeId);
+  const verdict = at ? evaluateClockIn(ctx.data.rules, date, at.inAt, plan, dayUnscheduled) : null;
   const inNextDay = !!at && at.inAt >= 1440;
   const outNextDay = !!at && at.outAt !== null && at.outAt >= 1440;
 
@@ -181,6 +185,7 @@ function ManualForm({
           clock_in_at: clockIn,
           clock_out_at: clockOut,
           late_minutes: verdict?.late_minutes ?? 0,
+          day_unscheduled: dayUnscheduled,
           note: f.note.trim(),
           reason: f.reason.trim(),
           edited_by: owner.id,
@@ -279,8 +284,10 @@ function ManualForm({
           {verdict && (
             <p className={`mt-1.5 text-[13px] ${verdict.status === "late" ? "text-warning" : "text-text-muted"}`}>
               {verdict.status === "late"
-                ? `Tercatat terlambat ${verdict.late_minutes} menit menurut jam kerja.`
-                : "Tercatat tepat waktu menurut jam kerja."}
+                ? `Tercatat terlambat ${durationLabel(verdict.late_minutes)} menurut jam kerja.`
+                : dayUnscheduled
+                  ? "Tidak ada shift di tanggal ini: tercatat tepat waktu dengan tanda “Di luar jadwal”."
+                  : "Tercatat tepat waktu menurut jam kerja."}
             </p>
           )}
         </div>

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
-const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isUnscheduled, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
+const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isUnscheduled, manualFlags, payItemLabel, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
 const BASE = { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_days: [7] };
@@ -256,4 +256,22 @@ test("pengingat: templat ada, tanpa pola, tanpa penugasan shift di [hari ini−7
   assert.equal(shiftsUnassigned(withRow("2026-11-12", "off"), today), true); // libur bukan penugasan shift
   assert.equal(shiftsUnassigned({ ...tpl, patterns: { e1: { 1: ["p"] } }, assignments: {} }, today), false); // ada pola
   assert.equal(shiftsUnassigned({ templates: [], patterns: {}, assignments: {} }, today), false); // tanpa templat
+});
+
+test("absen manual: di luar jadwal → ontime + unscheduled; status lain false; koreksi mempertahankan tanda & alasan", () => {
+  // evaluateClockIn dengan tanda di luar jadwal: tidak pernah telat.
+  assert.deepEqual(evaluateClockIn(BASE, MON, 13 * 60, dayPlan(BASE, MON), true), { status: "ontime", late_minutes: 0 });
+  assert.deepEqual(manualFlags("ontime", true, null), { unscheduled: true, late_reason: "" });
+  assert.deepEqual(manualFlags("late", true, null), { unscheduled: false, late_reason: "" });
+  assert.deepEqual(manualFlags("sick", true, null), { unscheduled: false, late_reason: "" });
+  // Koreksi baris yang sudah di luar jadwal & tetap ontime → tetap true (walau tanggal kini berjadwal).
+  assert.deepEqual(manualFlags("ontime", false, { status: "ontime", unscheduled: true, late_reason: "" }), { unscheduled: true, late_reason: "" });
+  assert.deepEqual(manualFlags("permit", false, { status: "ontime", unscheduled: true, late_reason: "" }), { unscheduled: false, late_reason: "" });
+  // Alasan telat baris lama: dipertahankan bila tetap late, dikosongkan bila tidak.
+  const lateRow = { status: "late", unscheduled: false, late_reason: "Ban bocor" };
+  assert.equal(manualFlags("late", false, lateRow).late_reason, "Ban bocor");
+  assert.equal(manualFlags("ontime", false, lateRow).late_reason, "");
+  assert.equal(manualFlags("ontime", false, lateRow).unscheduled, false);
+  // Format durasi bersama di slip.
+  assert.equal(payItemLabel({ type: "late", amount: 0, quantity: 784, rate: 0 }, "monthly"), "Terlambat · 13 j 4 mnt");
 });
