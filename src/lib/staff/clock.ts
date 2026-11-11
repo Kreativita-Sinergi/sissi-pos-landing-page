@@ -131,6 +131,27 @@ export function nextStep(today: Pick<StaffToday, "date" | "attendance">): NextSt
   return { kind: "done" };
 }
 
+export type ClockState = "working" | "due" | "missed" | "done";
+
+/**
+ * Keadaan absen pulang baris (api.md "Absen pulang terlupa"): Selesai / Tidak absen pulang (`missed_clock_out`) /
+ * Belum absen pulang (lewat `due_out_at`) / Bekerja. `null` = belum ada jam masuk. Field lama tidak ada → false/null.
+ */
+export function clockState(a: Pick<StaffAttendance, "clock_in_at" | "clock_out_at" | "due_out_at" | "missed_clock_out"> | null, now: number): ClockState | null {
+  if (!a || !a.clock_in_at) return null;
+  if (a.clock_out_at) return "done";
+  if (a.missed_clock_out) return "missed";
+  const due = a.due_out_at ? Date.parse(a.due_out_at) : NaN;
+  if (Number.isFinite(due) && now >= due) return "due";
+  return "working";
+}
+
+/** "2026-11-09" → "9 Nov" (tombol absen pulang shift sebelumnya). */
+export function formatDateShort(date: string): string {
+  const p = ymd(date);
+  return p ? `${p[2]} ${MONTHS_SHORT[p[1] - 1]}` : date;
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   ontime: "Tepat waktu",
   late: "Terlambat",

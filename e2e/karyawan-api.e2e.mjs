@@ -191,7 +191,9 @@ await step("2 Absen Masuk (lokasi dekat) → status tampil", async () => {
   await waitText(rani, "Absen Pulang");
   const t = await rani.evaluate(() => document.body.innerText);
   assert(t.includes("Website"), "label Website tidak tampil");
-  uiLate = Number(/Telat (\d+) menit/.exec(t)?.[1] ?? 0);
+  // Format durasi bersama: "25 mnt" / "1 j 5 mnt" / "2 j".
+  const m = /Telat (?:(\d+) j)? ?(?:(\d+) mnt)?/.exec(t);
+  uiLate = m ? Number(m[1] ?? 0) * 60 + Number(m[2] ?? 0) : 0;
   await shot(rani, "nyata-masuk");
 });
 

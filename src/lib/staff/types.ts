@@ -43,6 +43,14 @@ export type StaffAttendance = {
   clock_in_geo: StaffGeo | null;
   clock_out_geo: StaffGeo | null;
   note: string;
+  /** Absen masuk di luar jadwal (sejak 2026-11-11; server lama tidak mengirim). Tetap terhitung hadir tepat waktu. */
+  unscheduled?: boolean;
+  /** Alasan telat dari karyawan (≤ 200; sejak 2026-11-11). */
+  late_reason?: string;
+  /** Jam selesai aturan efektif tanggal baris (RFC 3339); `null`/tidak ada = tanpa jam selesai (sejak 2026-11-11). */
+  due_out_at?: string | null;
+  /** Tidak absen pulang: belum pulang dan sudah ada absen masuk di tanggal sesudahnya (sejak 2026-11-11). */
+  missed_clock_out?: boolean;
 };
 
 export type StaffToday = {
@@ -60,9 +68,16 @@ export type StaffToday = {
     late_tolerance_min: number | null;
     off_day: boolean;
     shift?: { name: string; start: string; end: string } | null;
+    /** Hari ini di luar jadwal (sejak 2026-11-11): karyawan memakai jadwal tetapi tidak punya shift hari ini. */
+    unscheduled?: boolean;
+    /** `false` = pemilik belum pernah menyimpan Jam kerja (sejak 2026-11-11; tidak dikirim server lama → anggap true). */
+    work_hours_set?: boolean;
   };
   geo: { enabled: boolean; radius_m: number; outside: "flag" | "reject"; has_location: boolean };
+  /** Absen hari ini bila sudah ada jam masuk, selainnya absen terakhir yang masih terbuka (bisa beberapa hari lalu). */
   attendance: StaffAttendance | null;
+  /** Absen masuk hari ini boleh (sejak 2026-11-11; server lama tidak mengirim → anggap true). */
+  can_clock_in?: boolean;
   locked: boolean;
 };
 
@@ -74,6 +89,13 @@ export type ClockInput = {
   geo: ClockGeoInput | null;
   /** Karyawan sudah menyetujui "di luar area, tetap absen?" (jawaban atas 409 OUTSIDE_AREA_CONFIRM). */
   confirm_outside?: boolean;
+  /** Jawaban atas 409 UNSCHEDULED_CONFIRM ("tidak punya shift hari ini, tetap catat?"). */
+  confirm_unscheduled?: boolean;
+  /** Jawaban atas 409 LATE_CONFIRM; `late_reason` opsional (≤ 200). */
+  confirm_late?: boolean;
+  /** Jawaban atas 409 OFF_DAY_CONFIRM ("hari ini jadwalmu libur, tetap catat?"). */
+  confirm_off_day?: boolean;
+  late_reason?: string;
 };
 
 export type StaffHistorySummary = {
@@ -85,6 +107,10 @@ export type StaffHistorySummary = {
   sick: number;
   leave: number;
   absent: number;
+  /** Jumlah baris Tidak absen pulang (sejak 2026-11-11). */
+  missed_clock_out?: number;
+  /** Jumlah baris di luar jadwal (sudah termasuk di `ontime`; sejak 2026-11-11). */
+  unscheduled?: number;
 };
 
 export type StaffHistory = { month: string; items: StaffAttendance[]; summary: StaffHistorySummary };

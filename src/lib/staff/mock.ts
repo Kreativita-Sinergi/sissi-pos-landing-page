@@ -4,11 +4,17 @@
 //   telat     sudah absen masuk, terlambat 17 menit (via Website)
 //   pulang    sudah masuk (PIN di perangkat toko) & pulang (Website, tanpa lokasi)
 //   kemarin   absen masuk kemarin belum pulang
+//   lupa      lupa absen pulang 2 hari lalu (terbuka, lewat jam selesai): pilih pulang (shift itu) atau masuk sekarang
 //   izin      hari ini tercatat izin (absen ditutup)
 //   tolak     outlet ber-aturan "Tolak" (di luar radius / tanpa lokasi → OUTSIDE_AREA)
 //   gratis    paket Gratis (locked)
 //   cabang    dua outlet (outlet kedua ber-aturan Tolak)
 //   putus     percobaan absen pertama gagal jaringan (uji ulang dengan Idempotency-Key yang sama)
+//   luarjadwal tidak punya shift hari ini → UNSCHEDULED_CONFIRM, lalu tercatat "di luar jadwal"
+//   belumatur pemilik belum menyimpan Jam kerja (`work_hours_set: false`, telat tidak dihitung)
+//   libur     hari ini libur yang ditetapkan pemilik → OFF_DAY_CONFIRM, lalu tercatat "di luar jadwal"
+//   shift     shift "Pagi" mulai 25 menit lalu (toleransi 10) → LATE_CONFIRM + alasan opsional
+//             (gabung "luarjadwal"/"shift" dengan jarak jauh di DevTools untuk uji berantai OUTSIDE_AREA_CONFIRM → jadwal)
 //   pemilik   → STAFF_ONLY · nonaktif → EMPLOYEE_LOGIN_DISABLED · batas → RATE_LIMITED
 // Kata sandi "salah" → INVALID_CREDENTIALS. Undangan: kode berawalan 0000 → INVITE_INVALID.
 import { staffError, type StaffApi } from "./api";
@@ -30,6 +36,8 @@ type MockState = {
   /** Idempotency-Key → hasil (putar ulang respons pertama, seperti server). */
   replies: Record<string, StaffAttendance>;
   remember: boolean;
+  /** Skenario `shift`: jam mulai shift hari ini (HH:MM, ditetapkan saat masuk). */
+  shiftStart?: string;
 };
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -91,6 +99,8 @@ function row(p: Partial<StaffAttendance> & Pick<StaffAttendance, "date" | "outle
     clock_in_geo: null,
     clock_out_geo: null,
     note: "",
+    unscheduled: false,
+    late_reason: "",
     ...p,
   };
 }
@@ -104,7 +114,7 @@ function fresh(identifier: string, remember: boolean): MockState {
   const o = outlets[0];
   const rows: StaffAttendance[] = [];
   if (has("telat"))
-    rows.push(row({ date: today, outlet_id: o.id, outlet_name: o.name, clock_in_at: at(today, "08:17"), status: "late", late_minutes: 17, clock_in_via: "web", clock_in_geo: geoAt(32) }));
+    rows.push(row({ date: today, outlet_id: o.id, outlet_name: o.name, clock_in_at: at(today, "08:17"), status: "late", late_minutes: 17, clock_in_via: "web", clock_in_geo: geoAt(32), late_reason: "Macet di Jl. Kemang Raya" }));
   else if (has("pulang"))
     rows.push(
       row({
@@ -123,9 +133,19 @@ function fresh(identifier: string, remember: boolean): MockState {
   else if (has("kemarin")) {
     const y = addDays(today, -1);
     rows.push(row({ date: y, outlet_id: o.id, outlet_name: o.name, clock_in_at: at(y, "13:02"), clock_in_via: "web", clock_in_geo: geoAt(20) }));
+  } else if (has("lupa")) {
+    const d = addDays(today, -2);
+    rows.push(row({ date: d, outlet_id: o.id, outlet_name: o.name, clock_in_at: at(d, "08:01"), clock_in_via: "web", clock_in_geo: geoAt(20), due_out_at: at(d, "17:00") }));
   } else if (has("izin")) rows.push(row({ date: today, outlet_id: o.id, outlet_name: o.name, status: "permit", source: "manual", note: "Urusan keluarga" }));
+  let shiftStart: string | undefined;
+  if (has("shift")) {
+    const [h, m] = zonedClock(Date.now(), TZ).hm.split(":").map(Number);
+    const t = Math.max(0, h * 60 + m - 25);
+    shiftStart = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  }
   return {
     scenario: s,
+    shiftStart,
     name: has("budi") ? "Budi Santoso" : "Rani Amalia",
     outlets,
     rows,
@@ -147,13 +167,24 @@ function session(s: MockState): StaffSession {
   };
 }
 
-/** Baris absen yang relevan hari ini: baris hari ini, atau baris kemarin yang masih terbuka (< 20 jam). */
+/**
+ * Baris absen yang relevan hari ini (cermin server 2026-11-11): baris hari ini bila sudah ada jam masuk, selainnya
+ * absen terakhir (≤ 31 hari) yang masih terbuka (tanpa batas 20 jam).
+ */
 function current(s: MockState, today: string): StaffAttendance | null {
   const t = s.rows.find((r) => r.date === today);
-  if (t) return t;
-  const y = s.rows.find((r) => r.date === addDays(today, -1) && r.clock_in_at && !r.clock_out_at);
-  if (y && Date.now() - Date.parse(y.clock_in_at!) < 20 * 36e5) return y;
-  return null;
+  if (t?.clock_in_at) return t;
+  const last = s.rows
+    .filter((r) => r.date < today && r.date >= addDays(today, -31) && r.clock_in_at)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  if (last && !last.clock_out_at && !["permit", "sick", "leave", "absent"].includes(last.status)) return last;
+  return t ?? null;
+}
+
+/** Tandai Tidak absen pulang: baris terbuka yang punya absen masuk sesudahnya. */
+function annotate(s: MockState) {
+  const latest = s.rows.reduce<string | null>((a, r) => (r.clock_in_at && (a === null || r.date > a) ? r.date : a), null);
+  s.rows = s.rows.map((r) => ({ ...r, missed_clock_out: !!r.clock_in_at && !r.clock_out_at && latest !== null && latest > r.date }));
 }
 
 export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
@@ -219,9 +250,20 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
         now: new Date(now).toISOString(),
         date,
         outlet_id: o.id,
-        rules: { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_day: weekday === 0, shift: null },
+        rules: s.shiftStart
+          ? { work_start: s.shiftStart, work_end: "23:59", late_tolerance_min: 10, off_day: false, shift: { name: "Pagi", start: s.shiftStart, end: "23:59" }, unscheduled: false }
+          : {
+              work_start: "08:00",
+              work_end: "17:00",
+              late_tolerance_min: s.scenario.includes("belumatur") ? null : 10,
+              work_hours_set: !s.scenario.includes("belumatur"),
+              off_day: s.scenario.includes("libur") || (weekday === 0 && !s.scenario.includes("luarjadwal")),
+              shift: null,
+              unscheduled: s.scenario.includes("luarjadwal"),
+            },
         geo: { enabled: o.enabled, radius_m: 100, outside: o.outside, has_location: true },
         attendance: a,
+        can_clock_in: !s.rows.some((r) => r.date === date && (r.clock_in_at || ["permit", "sick", "leave", "absent"].includes(r.status))),
         locked: s.scenario.includes("gratis"),
       };
       return result;
@@ -262,14 +304,31 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
 
       let out: StaffAttendance;
       if (body.action === "in") {
-        if (a && a.date === date && (a.status === "permit" || a.status === "sick" || a.status === "leave" || a.status === "absent") && !a.clock_in_at)
+        const t = s.rows.find((r) => r.date === date);
+        if (t && (t.status === "permit" || t.status === "sick" || t.status === "leave" || t.status === "absent") && !t.clock_in_at)
           throw staffError("Hari ini sudah tercatat izin/sakit/cuti/alpa", 422, "ATTENDANCE_DAY_CLOSED");
-        if (a && a.date === date && a.clock_in_at) throw staffError("Sudah absen masuk", 409, "ALREADY_CLOCKED");
+        if (s.rows.some((r) => r.date === date && r.clock_in_at)) throw staffError("Sudah absen masuk", 409, "ALREADY_CLOCKED");
         const { hm } = zonedClock(now, TZ);
         const [h, m] = hm.split(":").map(Number);
-        const diff = h * 60 + m - 8 * 60;
         const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
-        const late = weekday !== 0 && diff > 10;
+        // Jadwal (sesudah cek lokasi, cermin server): di luar jadwal / telat dari shift → minta konfirmasi dulu.
+        const offDay = !s.shiftStart && s.scenario.includes("libur");
+        if (offDay && !body.confirm_off_day) throw staffError("Hari ini jadwalmu libur. Tetap catat masuk kerja?", 409, "OFF_DAY_CONFIRM");
+        const unscheduled = offDay || (!s.shiftStart && s.scenario.includes("luarjadwal"));
+        if (unscheduled && !offDay && !body.confirm_unscheduled)
+          throw staffError("Kamu tidak punya shift hari ini. Tetap catat masuk kerja?", 409, "UNSCHEDULED_CONFIRM", [{ field: "work_start", message: "08:00" }]);
+        const [sh, sm] = (s.shiftStart ?? "08:00").split(":").map(Number);
+        const diff = h * 60 + m - (sh * 60 + sm);
+        const late = !unscheduled && (s.shiftStart ? true : weekday !== 0) && diff > 10;
+        if (late && s.shiftStart && !body.confirm_late)
+          throw staffError(`Kamu telat ${diff} menit dari shift Pagi.`, 409, "LATE_CONFIRM", [
+            { field: "late_minutes", message: String(diff) },
+            { field: "shift_name", message: "Pagi" },
+            { field: "shift_start", message: s.shiftStart },
+            { field: "late_tolerance_min", message: "10" },
+          ]);
+        const reason = (body.late_reason ?? "").trim();
+        if (reason.length > 200) throw staffError("Input tidak valid", 422, "VALIDATION_ERROR", [{ field: "late_reason", message: "Maksimal 200 karakter" }]);
         out = row({
           date,
           outlet_id: o.id,
@@ -279,8 +338,12 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           late_minutes: late ? Math.min(diff, 1440) : 0,
           clock_in_via: "web",
           clock_in_geo: geo,
+          unscheduled,
+          late_reason: late ? reason : "",
         });
-        s.rows = [...s.rows.filter((r) => r.date !== date), out];
+        s.rows = [...s.rows.filter((r) => r.date !== date), { ...out, due_out_at: s.shiftStart ? null : at(date, "17:00") }];
+        annotate(s);
+        out = s.rows.find((r) => r.date === date)!;
       } else {
         if (!a || !a.clock_in_at) {
           if (a && a.date === date && a.status !== "ontime" && a.status !== "late")
@@ -341,10 +404,18 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
             clock_in_geo: kind === 0 || (kind === 1 && seed % 3 === 0) ? null : geoAt(15 + seed),
             clock_out_geo: kind === 0 && !(seed % 2) ? null : geoAt(20 + seed),
             note: seed === 9 ? "Tukar shift dengan Budi" : "",
+            unscheduled: !late && seed === 14,
+            late_reason: late && seed === 6 ? "Hujan deras, motor mogok" : "",
           })
         );
       }
-      for (const r of s.rows) if (r.date.startsWith(month) && !items.some((i) => i.date === r.date)) items.push(r);
+      // Baris tersimpan (skenario/absen di mode tiruan) menggantikan baris contoh di tanggal yang sama.
+      for (const r of s.rows) {
+        if (!r.date.startsWith(month)) continue;
+        const i = items.findIndex((x) => x.date === r.date);
+        if (i >= 0) items[i] = r;
+        else items.push(r);
+      }
       items.sort((a, b) => (a.date < b.date ? 1 : -1));
       const count = (st: string) => items.filter((i) => i.status === st).length;
       const result: StaffHistory = {
@@ -359,6 +430,8 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
           sick: count("sick"),
           leave: count("leave"),
           absent: count("absent"),
+          unscheduled: items.filter((i) => i.unscheduled).length,
+          missed_clock_out: items.filter((i) => i.missed_clock_out).length,
         },
       };
       return result;

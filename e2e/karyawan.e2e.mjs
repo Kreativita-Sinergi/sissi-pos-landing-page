@@ -150,6 +150,119 @@ test("aturan Boleh + lokasi jauh → dialog 'tetap absen?' → tercatat di luar 
   await page.close();
 });
 
+test("tidak punya shift hari ini → info di layar, dialog konfirmasi → tercatat di luar jadwal", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "luarjadwal@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Tidak ada shift hari ini");
+  assert(!(await text(page)).includes("Jadwal masuk"), "jam kerja global tampil seolah-olah shift");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Tetap catat masuk kerja?");
+  await shot(page, "absen-luar-jadwal-konfirmasi-360");
+  await noOverflow(page, "dialog di luar jadwal 360");
+  await clickButton(page, "Tetap catat masuk");
+  await waitText(page, "Absen masuk tercatat");
+  await waitText(page, "Di luar jadwal");
+  await page.close();
+});
+
+test("telat dari shift → dialog dengan alasan (hitung karakter) → tercatat telat + alasan", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "shift@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Shift Pagi");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu terlambat");
+  const t = await text(page);
+  assert(/Shift Pagi mulai \d\d:\d\d \(toleransi 10 menit\)\. Kamu telat (\d+ j( \d+ mnt)?|\d+ mnt)\./.test(t), "isi dialog telat tidak lengkap");
+  await page.type("#late-reason", "Ban bocor");
+  await waitText(page, "9/200");
+  await shot(page, "absen-telat-konfirmasi-360");
+  await noOverflow(page, "dialog telat 360");
+  await clickButton(page, "Catat absen masuk");
+  await waitText(page, "Absen masuk tercatat");
+  await waitText(page, "Alasan telat: Ban bocor");
+  await page.close();
+});
+
+test("hari libur dari pemilik → dialog 'jadwalmu libur' → tercatat di luar jadwal; berantai dengan di luar area", async () => {
+  const page = await fresh();
+  await page.setGeolocation(FAR);
+  await login(page, "libur@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Hari libur");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu di luar area outlet");
+  await clickButton(page, "Tetap absen masuk");
+  await waitText(page, "Tetap catat masuk kerja?");
+  assert((await text(page)).includes("Hari ini jadwalmu libur"), "dialog libur tidak tampil");
+  await shot(page, "absen-libur-konfirmasi-360");
+  await clickButton(page, "Tetap catat masuk");
+  await waitText(page, "Absen masuk tercatat");
+  const t = await text(page);
+  assert(t.includes("di luar area") && t.includes("Di luar jadwal"), "tanda di luar area / di luar jadwal hilang");
+  await page.close();
+});
+
+test("berantai: di luar area (Boleh) lalu tidak ada shift → kedua flag terkirim", async () => {
+  const page = await fresh();
+  await page.setGeolocation(FAR);
+  await login(page, "luarjadwal-jauh@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu di luar area outlet");
+  await clickButton(page, "Tetap absen masuk");
+  await waitText(page, "Tetap catat masuk kerja?");
+  await clickButton(page, "Tetap catat masuk");
+  await waitText(page, "Absen masuk tercatat");
+  const t = await text(page);
+  assert(t.includes("di luar area") && t.includes("Di luar jadwal"), "tanda di luar area / di luar jadwal hilang");
+  await page.close();
+});
+
+test("Jam kerja belum diatur pemilik → tidak tampil jam masuk 08:00", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "belumatur@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Jam kerja belum diatur pemilik");
+  const t = await text(page);
+  assert(!t.includes("Jadwal masuk") && !t.includes("Toleransi terlambat"), "jam kerja bawaan tampil seolah-olah diatur");
+  await page.close();
+});
+
+test("lupa absen pulang → pilih 'Absen masuk sekarang' (konfirmasi) → yang lama Tidak absen pulang di riwayat", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "lupa@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Belum absen pulang");
+  await waitText(page, "Absen pulang (shift");
+  await noOverflow(page, "lupa pulang 360");
+  await shot(page, "absen-lupa-pulang-360");
+  await clickButton(page, "Absen masuk sekarang");
+  await waitText(page, "akan tercatat tidak absen pulang");
+  await page.evaluate(() => [...document.querySelectorAll("dialog button")].find((b) => b.innerText.includes("Absen masuk sekarang")).click());
+  await waitText(page, "Absen masuk tercatat");
+  await page.goto(`${BASE}/karyawan/riwayat`, { waitUntil: "networkidle2" });
+  await waitText(page, "Tidak absen pulang");
+  await waitText(page, "1 tidak absen pulang");
+  await page.close();
+});
+
+test("lupa absen pulang → 'Absen pulang (shift …)' menutup absen lama", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "lupa@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await clickButton(page, "Absen pulang (shift");
+  await waitText(page, "Absen pulang tercatat");
+  await waitText(page, "Absen Masuk");
+  await page.close();
+});
+
 test("paket Gratis → terkunci, tombol mati", async () => {
   const page = await fresh();
   await login(page, "gratis@contoh.id");
@@ -172,7 +285,7 @@ test("galat jaringan sekali → diulang otomatis dengan kunci sama", async () =>
 test("sudah masuk telat + multi-outlet; riwayat 13 pilihan bulan tanpa meluber", async () => {
   const page = await fresh();
   await login(page, "cabang-telat@contoh.id");
-  await waitText(page, "Telat 17 menit");
+  await waitText(page, "Telat 17 mnt");
   assert(await page.$("button#outlet"), "pemilih outlet tidak ada");
   await shot(page, "absen-telat-cabang-360");
   await page.goto(`${BASE}/karyawan/riwayat`, { waitUntil: "networkidle2" });

@@ -136,7 +136,18 @@ export type BusinessSubscriptionBrief = {
   billing_cycle: BillingCycle | null;
 };
 
-export type DeviceApp = { build: number; version: string | null; platform: string; seen_at: string };
+export type DeviceApp = {
+  build: number;
+  version: string | null;
+  platform: string;
+  seen_at: string;
+  // Data perangkat (aditif 2026-11-09) — null/tidak ada pada app lama.
+  device_brand?: string | null;
+  device_model?: string | null;
+  os_version?: string | null;
+  /** `800x1280@1.5` (lebar×tinggi dp @ rasio piksel). */
+  screen?: string | null;
+};
 
 export type BusinessDetail = Omit<BusinessSummary, "owner" | "deletion"> & {
   owner:
@@ -265,9 +276,16 @@ export type CreateAdminResult = TempPassword & { admin: AdminListItem };
 
 export type CrashStatus = "open" | "resolved" | "ignored";
 
+export type CrashKind = "flutter" | "platform" | "handled";
+export type CrashLevel = "info" | "warning" | "error";
+
 export type CrashGroup = {
   fingerprint: string;
-  kind: "flutter" | "platform";
+  kind: CrashKind;
+  /** Pengenal alur galat tertangani (mis. `qris_pick`); `""` untuk crash. */
+  context?: string;
+  /** Level tertinggi yang pernah dilaporkan; crash selalu `error`. */
+  level?: CrashLevel;
   platform: string;
   title: string;
   top_frame: string;
@@ -289,6 +307,9 @@ export type CrashGroup = {
 export type CrashQuery = {
   status?: string;
   platform?: string;
+  /** `crash` = semua selain `handled`; kosong = semua. */
+  kind?: string;
+  level?: string;
   build?: string;
   from?: string;
   to?: string;
@@ -311,6 +332,13 @@ export type CrashEvent = {
   os_version: string;
   flavor: string;
   kind: string;
+  context?: string;
+  /** Level kejadian ini (bisa lebih rendah dari level grup). */
+  level?: CrashLevel;
+  // Data perangkat (aditif 2026-11-09) — `""` = tidak diketahui.
+  device_brand?: string;
+  device_model?: string;
+  device_screen?: string;
   business: { id: string; name: string | null } | null;
   role: string | null;
   message: string;

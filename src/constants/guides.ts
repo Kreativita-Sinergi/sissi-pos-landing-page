@@ -3756,7 +3756,7 @@ export const GUIDES: GuideItem[] = [
           "Untuk tanggal tertentu saja, ketuk kotaknya di jadwal untuk mengganti shift atau meliburkan hari itu (tampil oranye).",
         ],
         points: [
-          "Telat dan lembur dihitung dari jam shift masing-masing karyawan.",
+          "Telat dan jam pulang dihitung dari jam shift masing-masing karyawan; lembur dari pengajuan yang disetujui.",
           "Shift malam: absen masuk lewat tengah malam (mis. 00:30 untuk shift 22:00) dihitung ke shift kemarin.",
         ],
       },

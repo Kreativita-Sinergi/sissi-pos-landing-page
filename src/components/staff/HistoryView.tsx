@@ -7,6 +7,7 @@ import { Select } from "@/components/owner/Select";
 import { viaSummary } from "@/lib/attendanceVia";
 import { staffApi, StaffApiError } from "@/lib/staff/api";
 import { dateParts, formatTime, monthLabel, monthOptions, STATUS_LABEL } from "@/lib/staff/clock";
+import { durationLabel } from "@/lib/duration";
 import { clockErrorMessage } from "@/lib/staff/errors";
 import type { StaffAttendance, StaffHistory } from "@/lib/staff/types";
 import { useStaff } from "./StaffShell";
@@ -121,10 +122,19 @@ function Summary({ data }: { data: StaffHistory }) {
   const s = data.summary;
   const away = s.permit + s.sick + s.leave;
   const cells: { label: string; value: React.ReactNode; hint?: string; tone?: string }[] = [
-    { label: "Hadir", value: s.present, hint: `${s.ontime} tepat waktu` },
-    { label: "Terlambat", value: s.late, hint: s.late_minutes ? `total ${s.late_minutes} menit` : undefined, tone: s.late ? "text-warning" : undefined },
+    {
+      label: "Hadir",
+      value: s.present,
+      hint: s.unscheduled ? `${s.ontime} tepat waktu · ${s.unscheduled} di luar jadwal` : `${s.ontime} tepat waktu`,
+    },
+    { label: "Terlambat", value: s.late, hint: s.late_minutes ? `total ${durationLabel(s.late_minutes)}` : undefined, tone: s.late ? "text-warning" : undefined },
     { label: "Izin/sakit/cuti", value: away, hint: away ? `${s.permit} izin · ${s.sick} sakit · ${s.leave} cuti` : undefined },
-    { label: "Alpa", value: s.absent, tone: s.absent ? "text-danger" : undefined },
+    {
+      label: "Alpa",
+      value: s.absent,
+      hint: s.missed_clock_out ? `${s.missed_clock_out} tidak absen pulang` : undefined,
+      tone: s.absent ? "text-danger" : undefined,
+    },
   ];
   return (
     <section aria-label={`Ringkasan ${monthLabel(data.month)}`} className="rounded-[18px] border border-border-subtle bg-white">
@@ -158,7 +168,9 @@ function HistoryRow({ row, tz, showOutlet }: { row: StaffAttendance; tz: string;
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>{STATUS_LABEL[row.status] ?? row.status}</Badge>
-          {row.status === "late" && row.late_minutes > 0 && <span className="text-[12.5px] font-semibold text-warning">{row.late_minutes} menit</span>}
+          {row.status === "late" && row.late_minutes > 0 && <span className="text-[12.5px] font-semibold text-warning">{durationLabel(row.late_minutes)}</span>}
+          {row.unscheduled && <Badge tone="neutral">Di luar jadwal</Badge>}
+          {row.missed_clock_out && <Badge tone="danger">Tidak absen pulang</Badge>}
           {worked && (
             <span className="text-[15px] font-semibold text-text-heading tabular-nums">
               {formatTime(row.clock_in_at, tz)} – {row.clock_out_at ? formatTime(row.clock_out_at, tz) : <span className="text-[13px] font-normal text-text-muted">belum pulang</span>}
@@ -176,6 +188,7 @@ function HistoryRow({ row, tz, showOutlet }: { row: StaffAttendance; tz: string;
             {showOutlet && row.outlet_name && <span className="text-text-muted">{via ? "· " : ""}{row.outlet_name}</span>}
           </p>
         )}
+        {row.status === "late" && row.late_reason && <p className="mt-1 text-[12.5px] break-words text-text-body">Alasan: {row.late_reason}</p>}
         {row.note && <p className="mt-1 text-[12.5px] break-words text-text-muted">{row.note}</p>}
       </div>
     </li>

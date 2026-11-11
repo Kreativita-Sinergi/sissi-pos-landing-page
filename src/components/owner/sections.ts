@@ -22,7 +22,7 @@ export const TEAM_SECTIONS = [
   { id: "karyawan", label: "Karyawan", description: "Akun dan PIN kasir karyawan." },
   { id: "kehadiran", label: "Kehadiran", description: "Catatan absen masuk dan pulang karyawan." },
   { id: "jadwal", label: "Jadwal", description: "Susun jadwal shift karyawan." },
-  { id: "pengajuan", label: "Pengajuan", description: "Pengajuan izin dan cuti dari karyawan." },
+  { id: "pengajuan", label: "Pengajuan", description: "Pengajuan izin, cuti, dan lembur dari karyawan." },
   { id: "gaji", label: "Gaji", description: "Ringkasan gaji dan slip karyawan per bulan." },
 ] as const;
 

@@ -11,7 +11,13 @@ import {
   DAY_LETTER,
   dayPlan,
   durationLabel,
+  clockOutState,
+  dueOutAt,
   isoWeekday,
+  isUnscheduled,
+  latestClockInDate,
+  openPreviousAttendance,
+  type ClockOutState,
   manualMinDay,
   monthOf,
   planLabel,
@@ -119,14 +125,19 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
   const rows = list.map((e) => byEmp.get(e.id));
   const present = rows.filter((r) => r && (r.status === "ontime" || r.status === "late")).length;
   const late = rows.filter((r) => r?.status === "late").length;
-  const away = rows.filter((r) => r && r.status !== "ontime" && r.status !== "late").length;
+  const permit = rows.filter((r) => r && (r.status === "permit" || r.status === "sick" || r.status === "leave")).length;
+  const absent = rows.filter((r) => r?.status === "absent").length;
+  // Belum absen = tanpa catatan dan hari ini diharapkan masuk (bukan libur, bukan di luar jadwal).
+  const notYet = list.filter((e, i) => !rows[i] && !dayPlan(rules, today, ctx.data.shifts, e.id).off && !isUnscheduled(today, ctx.data.shifts, e.id)).length;
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Hadir" value={present} hint={`dari ${list.length} karyawan aktif`} />
         <StatCard label="Terlambat" value={late} tone={late ? "warning" : "neutral"} />
-        <StatCard label="Izin / alpa" value={away} />
+        <StatCard label="Izin" value={permit} hint="izin, sakit, cuti" />
+        <StatCard label="Alpa" value={absent} tone={absent ? "danger" : "neutral"} />
+        <StatCard label="Belum absen" value={notYet} />
       </div>
       <Section
         className="mt-4"
@@ -149,16 +160,28 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                       {[
                         ROLE_LABEL[e.role],
                         planLabel(dayPlan(rules, today, ctx.data.shifts, e.id)),
+                        !r && isUnscheduled(today, ctx.data.shifts, e.id) ? "Tanpa shift hari ini" : null,
                         r?.clock_in_at ? `Masuk ${clockLabel(r.clock_in_at)}` : null,
                         r?.clock_out_at ? `Pulang ${clockLabel(r.clock_out_at)}` : null,
-                        r?.status === "late" ? `Telat ${r.late_minutes} mnt` : null,
+                        r?.unscheduled ? "Di luar jadwal" : null,
+                        r?.status === "late" && r.late_reason ? `Alasan: ${r.late_reason}` : null,
                         r ? (viaText(r) ?? (r.source === "manual" ? "Dicatat pemilik" : null)) : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                   </div>
-                  <TodayBadge row={r} />
+                  {/* Keadaan selalu tampil; telat = lencana tambahan (membungkus ke baris kedua di layar sempit). */}
+                  <span className="flex max-w-[50%] shrink-0 flex-wrap items-center justify-end gap-1">
+                    <TodayBadge
+                    row={r}
+                    unscheduled={!r && isUnscheduled(today, ctx.data.shifts, e.id)}
+                    state={r ? clockOutState(r, dueOutAt(r, dayPlan(rules, r.date, ctx.data.shifts, e.id), rules), latestClockInDate(ctx.data.attendances, e.id)) : null}
+                    prevOpen={r ? null : openPreviousAttendance(ctx.data.attendances, e.id, today)}
+                    today={today}
+                  />
+                    {r?.status === "late" && r.late_minutes > 0 && <Badge tone="warning">Telat {durationLabel(r.late_minutes)}</Badge>}
+                  </span>
                   <button
                     type="button"
                     className={iconBtn}
@@ -178,8 +201,27 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
   );
 }
 
-function TodayBadge({ row }: { row: Attendance | undefined }) {
-  if (!row) return <Badge>Belum masuk</Badge>;
+function TodayBadge({
+  row,
+  unscheduled = false,
+  state,
+  prevOpen,
+  today,
+}: {
+  row: Attendance | undefined;
+  unscheduled?: boolean;
+  state: ClockOutState | null;
+  prevOpen: Attendance | null;
+  today: string;
+}) {
+  // Absen tanggal sebelumnya masih terbuka dan belum masuk hari ini (api.md "Absen pulang terlupa").
+  if (prevOpen) {
+    const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+    return <Badge tone="warning">Belum absen pulang ({prevOpen.date === yesterday ? "kemarin" : formatDayLong(prevOpen.date)})</Badge>;
+  }
+  // Di luar jadwal tanpa absen: bukan "Belum masuk" (tidak wajib masuk; bila masuk tercatat "Di luar jadwal").
+  if (!row) return <Badge>{unscheduled ? "Tanpa shift hari ini" : "Belum masuk"}</Badge>;
+  if (state === "due") return <Badge tone="warning">Belum absen pulang</Badge>;
   if (row.status === "permit" || row.status === "sick" || row.status === "leave") return <Badge tone="brand">{STATUS_LABEL[row.status]}</Badge>;
   if (row.status === "absent") return <Badge tone="danger">Alpa</Badge>;
   if (row.clock_out_at) return <Badge>Selesai</Badge>;
@@ -330,10 +372,12 @@ function DayList({
 }: {
   ctx: TeamCtx;
   e: Employee;
-  days: { day: string; kind: DayKind; row: Attendance | null }[];
+  days: { day: string; kind: DayKind; row: Attendance | null; overtime?: number }[];
   onManual: (employeeId: string | null, date: string | null) => void;
 }) {
-  const rows = days.filter((d) => d.row).reverse();
+  // Tanggal dengan catatan absen atau lembur disetujui.
+  const rows = days.filter((d) => d.row || d.overtime).reverse();
+  const latest = latestClockInDate(ctx.data.attendances, e.id);
   const names = new Map(ctx.data.employees.map((x) => [x.id, x.name]));
   return (
     <Section className="mt-4" title={`Catatan ${e.name}`} bodyClass="">
@@ -365,12 +409,23 @@ function DayList({
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ day, kind, row }) => (
+              {rows.map(({ day, kind, row, overtime }) => (
                 <tr key={day}>
                   <td className={`${tdClass} border-b border-border-subtle whitespace-nowrap`}>{formatDayLong(day)}</td>
                   <td className={`${tdClass} border-b border-border-subtle`}>
                     <DayBadge kind={kind} />
-                    {row?.status === "late" && <span className="ml-1.5 text-[12.5px] text-warning">{row.late_minutes} mnt</span>}
+                    {row?.status === "late" && <span className="ml-1.5 text-[12.5px] text-warning">{durationLabel(row.late_minutes)}</span>}
+                    {row?.unscheduled && (
+                      <span className="ml-1.5">
+                        <Badge>Di luar jadwal</Badge>
+                      </span>
+                    )}
+                    {!!overtime && (
+                      <span className="ml-1.5">
+                        <Badge tone="brand">Lembur {durationLabel(overtime)}</Badge>
+                      </span>
+                    )}
+                    {row && <ClockOutBadge state={clockOutState(row, dueOutAt(row, dayPlan(ctx.data.rules, row.date, ctx.data.shifts, e.id), ctx.data.rules), latest)} />}
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle tabular-nums`}>
                     {row?.clock_in_at ? `${clockLabel(row.clock_in_at)} – ${clockLabel(row.clock_out_at)}` : "—"}
@@ -379,6 +434,7 @@ function DayList({
                     <ViaCell row={row} />
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle text-[13px] text-text-body`}>
+                    {row?.status === "late" && row.late_reason && <span className="block">Alasan telat: {row.late_reason}</span>}
                     {row?.note && <span className="block">{row.note}</span>}
                     {row?.source === "manual" && (
                       <span className="block text-text-muted">
@@ -386,7 +442,7 @@ function DayList({
                         {row.edited_by ? ` (${names.get(row.edited_by) ?? "pemilik"})` : ""}
                       </span>
                     )}
-                    {!row?.note && row?.source !== "manual" && <span className="text-text-muted">—</span>}
+                    {!row?.note && row?.source !== "manual" && !(row?.status === "late" && row.late_reason) && <span className="text-text-muted">—</span>}
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle text-right`}>
                     <button
@@ -407,6 +463,16 @@ function DayList({
         </div>
       )}
     </Section>
+  );
+}
+
+/** Lencana Belum absen pulang / Tidak absen pulang untuk tabel catatan (Bekerja & Selesai tidak ditandai). */
+function ClockOutBadge({ state }: { state: ClockOutState | null }) {
+  if (state !== "due" && state !== "missed") return null;
+  return (
+    <span className="ml-1.5">
+      <Badge tone={state === "missed" ? "danger" : "warning"}>{state === "missed" ? "Tidak absen pulang" : "Belum absen pulang"}</Badge>
+    </span>
   );
 }
 

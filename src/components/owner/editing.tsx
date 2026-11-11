@@ -47,6 +47,7 @@ export function EditSection({
   dirty,
   saving,
   canSave = true,
+  unsaved = false,
   error,
   onSave,
   onReset,
@@ -60,6 +61,8 @@ export function EditSection({
   saving: boolean;
   /** false = ada isian tidak sah (tombol Simpan mati). */
   canSave?: boolean;
+  /** true = belum pernah disimpan: Simpan aktif walau nilai bawaan, status "Belum diatur". */
+  unsaved?: boolean;
   error?: React.ReactNode;
   onSave: () => void;
   onReset: () => void;
@@ -81,7 +84,7 @@ export function EditSection({
         className="p-4 sm:p-5"
         onSubmit={(e) => {
           e.preventDefault();
-          if (dirty && canSave && !saving) onSave();
+          if ((dirty || unsaved) && canSave && !saving) onSave();
         }}
       >
         <div className="flex flex-col gap-4">{children}</div>
@@ -96,6 +99,8 @@ export function EditSection({
           <p className="mr-auto text-[13px] text-text-muted" aria-live="polite">
             {dirty ? (
               <span className="font-semibold text-warning">Perubahan belum disimpan</span>
+            ) : unsaved ? (
+              <span className="font-semibold text-warning">Belum diatur</span>
             ) : (
               <span className="inline-flex items-center gap-1">
                 <Check size={14} aria-hidden /> Tersimpan
@@ -107,7 +112,7 @@ export function EditSection({
               Batalkan
             </button>
           )}
-          <button type="submit" className={btn.primary} disabled={!dirty || !canSave || saving}>
+          <button type="submit" className={btn.primary} disabled={!(dirty || unsaved) || !canSave || saving}>
             {saving && <Spinner />}
             Simpan
           </button>

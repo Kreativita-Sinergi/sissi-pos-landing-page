@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { missingLocation, viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
-const { acceptErrorMessage, clockErrorMessage, detailNumber, formatDistance, isNetworkError, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
-const { clockOffset, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
+const { acceptErrorMessage, clockErrorMessage, detailNumber, detailText, formatDistance, isNetworkError, lateAsk, lateAskText, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
+const { clockOffset, clockState, formatDateShort, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
 
 const IN = "2026-11-02T01:05:00Z";
 const OUT = "2026-11-02T10:02:00Z";
@@ -131,4 +131,64 @@ test("next hanya di bawah /karyawan (cegah open redirect)", () => {
   assert.equal(safeStaffNext("/karyawan/masuk"), "/karyawan");
   assert.equal(safeStaffNext("/karyawanx"), "/karyawan");
   assert.equal(safeStaffNext(null), "/karyawan");
+});
+
+test("LATE_CONFIRM: isi dialog dari details (nama shift, jam mulai, toleransi, menit telat)", () => {
+  const err = {
+    code: "LATE_CONFIRM",
+    details: [
+      { field: "late_minutes", message: "25" },
+      { field: "shift_name", message: "Pagi" },
+      { field: "shift_start", message: "08:00" },
+      { field: "late_tolerance_min", message: "10" },
+    ],
+  };
+  const a = lateAsk(err);
+  assert.deepEqual(a, { minutes: 25, shiftName: "Pagi", shiftStart: "08:00", tolerance: 10 });
+  assert.equal(lateAskText(a), "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 mnt.");
+  // details kosong (server lama/rusak) → tetap kalimat yang masuk akal.
+  assert.equal(lateAskText(lateAsk({ code: "LATE_CONFIRM", details: [] })), "Kamu terlambat.");
+  assert.match(clockErrorMessage(err, { action: "in", sentGeo: true }).text, /telat 25 mnt/);
+});
+
+test("UNSCHEDULED_CONFIRM: work_start dibaca sebagai teks; pesan cadangan menyebut tidak ada shift", () => {
+  const err = { code: "UNSCHEDULED_CONFIRM", details: [{ field: "work_start", message: "08:00" }] };
+  assert.equal(detailText(err, "work_start"), "08:00");
+  assert.equal(detailText(err, "shift_name"), null);
+  assert.match(clockErrorMessage(err, { action: "in", sentGeo: true }).title, /Tidak ada shift/);
+});
+
+test("VALIDATION_ERROR late_reason → pesan batas 200 karakter", () => {
+  const m = clockErrorMessage({ code: "VALIDATION_ERROR", details: [{ field: "late_reason", message: "x" }] }, { action: "in", sentGeo: true });
+  assert.match(m.text, /200 karakter/);
+});
+
+test("durationLabel bersama: < 60 → mnt; ≥ 60 → j + mnt; menit 0 → j saja; dialog telat ikut", async () => {
+  const { durationLabel } = await import("../src/lib/duration.ts");
+  assert.equal(durationLabel(25), "25 mnt");
+  assert.equal(durationLabel(0), "0 mnt");
+  assert.equal(durationLabel(59), "59 mnt");
+  assert.equal(durationLabel(60), "1 j");
+  assert.equal(durationLabel(120), "2 j");
+  assert.equal(durationLabel(784), "13 j 4 mnt");
+  assert.equal(durationLabel(-5), "0 mnt");
+  assert.equal(lateAskText({ minutes: 784, shiftName: "Pagi", shiftStart: "07:00", tolerance: 10 }), "Shift Pagi mulai 07:00 (toleransi 10 menit). Kamu telat 13 j 4 mnt.");
+});
+
+test("OFF_DAY_CONFIRM: pesan cadangan hari libur", () => {
+  const m = clockErrorMessage({ code: "OFF_DAY_CONFIRM" }, { action: "in", sentGeo: true });
+  assert.equal(m.title, "Hari ini jadwalmu libur");
+});
+
+test("clockState web karyawan: Bekerja / Belum absen pulang (lewat due_out_at) / Tidak absen pulang / Selesai", () => {
+  const due = "2026-11-02T10:00:00Z";
+  const open = { clock_in_at: IN, clock_out_at: null, due_out_at: due, missed_clock_out: false };
+  assert.equal(clockState(null, Date.parse(due)), null);
+  assert.equal(clockState(open, Date.parse(due) - 1), "working");
+  assert.equal(clockState(open, Date.parse(due)), "due");
+  assert.equal(clockState({ ...open, missed_clock_out: true }, 0), "missed");
+  assert.equal(clockState({ ...open, clock_out_at: OUT }, Date.parse(due)), "done");
+  // Server lama: tanpa field → Bekerja.
+  assert.equal(clockState({ clock_in_at: IN, clock_out_at: null }, Date.parse(due) + 864e5), "working");
+  assert.equal(formatDateShort("2026-11-09"), "9 Nov");
 });

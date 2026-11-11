@@ -13,8 +13,10 @@
 // PIN: hanya dikirim sekali sebagai `pin` (polos, di-hash server) saat disimpan. `pin_hash` dari pull dibuang segera
 // setelah ditarik (yang disimpan di memori hanya `has_pin`), dan PIN tidak pernah disimpan di browser.
 
+import { durationLabel } from "../duration";
 import { pullAll, pushChanges } from "./api";
 import { toLeave, type LeaveRequest } from "./leavePlan";
+import { approvedOvertimeByDay, toOvertime, type OvertimeRequest } from "./overtimePlan";
 import { readAttendance, readShiftPatterns, type AttendanceRules, type ShiftPatterns } from "./settings";
 import type { AttendanceVia } from "../attendanceVia";
 import type { ChangeResult, SyncRecord, WritableEntity } from "./types";
@@ -93,6 +95,10 @@ export type Attendance = SyncRecord & {
   clock_out_geo?: AttendanceGeo | null;
   /** Pengajuan disetujui yang menghasilkan absen manual ini (null selainnya). */
   leave_request_id?: string | null;
+  /** Absen masuk di luar jadwal (sejak 2026-11-11, migrasi 00069; baris lama tidak punya). Tetap terhitung tepat waktu. */
+  unscheduled?: boolean;
+  /** Alasan telat dari karyawan (≤ 200; hanya bermakna bila `status` = late). */
+  late_reason?: string;
 };
 
 export type PayslipLine = { label: string; kind: "earning" | "deduction"; amount: number };
@@ -120,6 +126,8 @@ export type TeamData = {
   payslips: Payslip[];
   /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
   leaves: LeaveRequest[];
+  /** Pengajuan/catatan lembur (tahap 2; kunci Pro `staff`). */
+  overtime: OvertimeRequest[];
   rules: AttendanceRules;
   /** Shift tetap mingguan (`shift_patterns`) + jadwal per tanggal (`shift_assignments`). */
   shifts: ShiftSchedule;
@@ -130,7 +138,14 @@ export type TeamData = {
   assignmentRecords: SyncRecord[];
 };
 
-export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_requests" | "shift_assignments" | "business_settings";
+export type TeamEntity =
+  | "employees"
+  | "attendances"
+  | "payslips"
+  | "leave_requests"
+  | "shift_assignments"
+  | "business_settings"
+  | "overtime_requests";
 
 /**
  * Pengecualian jadwal satu karyawan pada satu tanggal (`shift_assignments`, api.md "Jadwal shift per karyawan").
@@ -139,7 +154,23 @@ export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_reque
 export type ShiftAssignmentLite = { kind: "shift" | "off"; name: string; start: string; end: string };
 
 /** Shift tetap + jadwal per tanggal: `assignments[employee_id]["YYYY-MM-DD"]`. */
-export type ShiftSchedule = ShiftPatterns & { assignments?: Record<string, Record<string, ShiftAssignmentLite>> };
+export type ShiftSchedule = ShiftPatterns & {
+  assignments?: Record<string, Record<string, ShiftAssignmentLite>>;
+  /** Tanggal ber-baris `kind: "default"` ("Ikut jam kerja", sengaja) per karyawan — hanya untuk `isUnscheduled`. */
+  defaults?: Record<string, Record<string, true>>;
+};
+
+/** Record `shift_assignments` → tanggal ber-`kind: "default"` per karyawan (tombstone dibuang). */
+export function toDefaultDays(rows: SyncRecord[]): Record<string, Record<string, true>> {
+  const out: Record<string, Record<string, true>> = {};
+  for (const r of rows) {
+    if (r.deleted_at || r.kind !== "default") continue;
+    const emp = typeof r.employee_id === "string" ? r.employee_id : "";
+    const date = typeof r.date === "string" ? r.date.slice(0, 10) : "";
+    if (emp && /^\d{4}-\d{2}-\d{2}$/.test(date)) (out[emp] ??= {})[date] = true;
+  }
+  return out;
+}
 
 /** Record `shift_assignments` → peta per karyawan per tanggal; tombstone & `default` dibuang. */
 export function toAssignments(rows: SyncRecord[]): Record<string, Record<string, ShiftAssignmentLite>> {
@@ -225,7 +256,7 @@ function toOutlet(r: SyncRecord): OutletLite {
 
 /** Tarik semua data tim. `staff=false` (paket Gratis) → kehadiran & slip tidak ditarik. */
 export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<TeamData> {
-  const [emp, att, slips, leaves, settings, outlets, assigns] = await Promise.all([
+  const [emp, att, slips, leaves, settings, outlets, assigns, overtime] = await Promise.all([
     pullAll("employees", signal),
     staff ? pullAll("attendances", signal) : Promise.resolve([]),
     staff ? pullAll("payslips", signal) : Promise.resolve([]),
@@ -233,14 +264,16 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     pullAll("business_settings", signal),
     pullAll("outlets", signal),
     staff ? pullAll("shift_assignments", signal) : Promise.resolve([]),
+    staff ? pullAll("overtime_requests", signal) : Promise.resolve([]),
   ]);
   return {
     employees: emp.map(toEmployee),
     attendances: att.map(toAttendance),
     payslips: slips.map(toPayslip),
     leaves: leaves.map(toLeave),
+    overtime: overtime.filter((r) => !r.deleted_at).map(toOvertime),
     rules: readAttendance(settings[0]?.settings),
-    shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns) },
+    shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns), defaults: toDefaultDays(assigns) },
     outlets: outlets.map(toOutlet),
     settingsRecord: settings[0] ?? null,
     assignmentRecords: assigns,
@@ -259,16 +292,17 @@ export function mergeRecord(data: TeamData, entity: TeamEntity, rec: SyncRecord)
   if (entity === "employees") return { ...data, employees: upsert(data.employees, toEmployee(rec)) };
   if (entity === "attendances") return { ...data, attendances: upsert(data.attendances, toAttendance(rec)) };
   if (entity === "leave_requests") return { ...data, leaves: upsert(data.leaves, toLeave(rec)) };
+  if (entity === "overtime_requests") return { ...data, overtime: upsert(data.overtime, toOvertime(rec)) };
   if (entity === "shift_assignments") {
     const assignmentRecords = upsert(data.assignmentRecords, rec);
-    return { ...data, assignmentRecords, shifts: { ...data.shifts, assignments: toAssignments(assignmentRecords) } };
+    return { ...data, assignmentRecords, shifts: { ...data.shifts, assignments: toAssignments(assignmentRecords), defaults: toDefaultDays(assignmentRecords) } };
   }
   if (entity === "business_settings") {
     return {
       ...data,
       settingsRecord: rec,
       rules: readAttendance(rec.settings),
-      shifts: { ...readShiftPatterns(rec.settings), assignments: data.shifts.assignments },
+      shifts: { ...readShiftPatterns(rec.settings), assignments: data.shifts.assignments, defaults: data.shifts.defaults },
     };
   }
   return { ...data, payslips: upsert(data.payslips, toPayslip(rec)) };
@@ -393,6 +427,66 @@ export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftSched
   return { off: rules.off_days.includes(weekday), start, end: spanEnd(start, endMinute(rules)), source: "global" };
 }
 
+/**
+ * Hari libur yang ditetapkan pemilik (api.md "Absen di luar jadwal" butir 3): jadwal `off`, libur di shift tetap, atau
+ * `off_days` Jam kerja yang pernah disimpan. Libur Minggu bawaan (Jam kerja belum disimpan) → `false`. Hadir di hari
+ * ini → ontime + `unscheduled: true` (tanda "Di luar jadwal").
+ */
+export function isOwnerOffDay(plan: DayPlan, rules: AttendanceRules): boolean {
+  return plan.off && (plan.source !== "global" || rules.has_work_hours !== false);
+}
+
+/**
+ * Pengingat pemilik: ada templat shift, tetapi belum ada shift tetap dan belum ada penugasan `shift` pada
+ * [today−7, today+14] → "Templat shift sudah dibuat, tetapi belum ditugaskan ke karyawan." (api.md).
+ */
+export function shiftsUnassigned(shifts: ShiftSchedule | null | undefined, today: string): boolean {
+  if (!shifts || shifts.templates.length === 0 || Object.keys(shifts.patterns).length > 0) return false;
+  const from = shiftDay(today, -7);
+  const to = shiftDay(today, 14);
+  for (const days of Object.values(shifts.assignments ?? {})) {
+    for (const [d, a] of Object.entries(days)) if (a.kind === "shift" && d >= from && d <= to) return false;
+  }
+  return true;
+}
+
+/** Rentang hari sebelum & sesudah tanggal yang menandai karyawan "memakai jadwal" (server `scheduleWindow`). */
+const SCHEDULE_WINDOW = 7;
+
+/**
+ * Di luar jadwal (api.md "Absen di luar jadwal & konfirmasi telat"; cermin `unscheduled` di service
+ * `internal/staffweb/rules.go`): karyawan memakai jadwal (punya shift tetap, atau jadwal `shift`/`off` dalam ±7 hari
+ * selain `day`, atau bisnis punya ≥ 1 templat shift sah) tetapi `day` jatuh ke Jam kerja global — tanpa baris `shift`/`off`/`default` di `day` dan shift tetap
+ * tidak berlaku (pola yang semua templat hari itu terhapus juga di luar jadwal). Hari tanpa shift di pola = libur,
+ * bukan di luar jadwal. Jadwal ±7 hari di tepi periode ikut dibaca dari `shifts.assignments` (semua tanggal).
+ */
+export function isUnscheduled(day: string, shifts: ShiftSchedule | null | undefined, employeeId: string): boolean {
+  const as = shifts?.assignments?.[employeeId];
+  const a = as?.[day];
+  if (a?.kind === "shift" || a?.kind === "off" || shifts?.defaults?.[employeeId]?.[day]) return false;
+  const p = shifts?.patterns[employeeId];
+  if (p) {
+    const ids = p[String(isoWeekday(day))] ?? [];
+    if (ids.length === 0) return false;
+    const known = new Set(shifts!.templates.map((t) => t.id));
+    return !ids.some((id) => known.has(id));
+  }
+  // Bisnis yang sudah membuat templat shift (sah) dianggap memakai jadwal, walau belum ditugaskan (2026-11-11 lanjutan).
+  if ((shifts?.templates.length ?? 0) > 0) return true;
+  if (!as) return false;
+  for (let i = -SCHEDULE_WINDOW; i <= SCHEDULE_WINDOW; i++) {
+    if (i === 0) continue;
+    const k = as[shiftDay(day, i)]?.kind;
+    if (k === "shift" || k === "off") return true;
+  }
+  return false;
+}
+
+const shiftDay = (day: string, n: number) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+
 const hhmm = (min: number) => {
   const m = ((min % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -441,15 +535,20 @@ export function todayHoursLabel(rules: AttendanceRules, day: string, shifts: Shi
 /**
  * Absen masuk pada menit lokal `minute` hari `day`: terlambat bila lewat jam mulai efektif + toleransi; menit telat
  * dihitung dari jam mulai. Hari libur tidak pernah terlambat; toleransi `null` = telat tidak dihitung. Cermin
- * `evaluateClockIn`. `plan` bawaan = Jam kerja global.
+ * `evaluateClockIn`. `plan` bawaan = Jam kerja global. `has_work_hours: false` + Jam kerja global = tidak telat.
  */
 export function evaluateClockIn(
   rules: AttendanceRules,
   day: string,
   minute: number,
-  plan: DayPlan = dayPlan(rules, day)
+  plan: DayPlan = dayPlan(rules, day),
+  unscheduled = false
 ): { status: "ontime" | "late"; late_minutes: number } {
-  if (plan.off || rules.late_tolerance_min === null) return { status: "ontime", late_minutes: 0 };
+  // Di luar jadwal (`isUnscheduled`) → tepat waktu, tidak dihitung telat (api.md "Absen di luar jadwal").
+  if (unscheduled) return { status: "ontime", late_minutes: 0 };
+  // Jam kerja belum pernah disimpan → hari ikut Jam kerja global tidak dihitung telat (shift tetap dihitung).
+  if (plan.off || rules.late_tolerance_min === null || (plan.source === "global" && rules.has_work_hours === false))
+    return { status: "ontime", late_minutes: 0 };
   const late = minute - plan.start;
   if (late > rules.late_tolerance_min) return { status: "late", late_minutes: Math.min(late, 1440) };
   return { status: "ontime", late_minutes: 0 };
@@ -458,10 +557,79 @@ export function evaluateClockIn(
 export type DayKind = AttendanceStatus | "off" | "upcoming";
 
 export type Recap = {
-  days: { day: string; kind: DayKind; row: Attendance | null }[];
+  /** `overtime` = menit lembur disetujui bertanggal itu (tahap 2). */
+  days: { day: string; kind: DayKind; row: Attendance | null; overtime?: number }[];
   late_minutes: number;
+  /** Menit kerja nyata (masuk → pulang). */
   worked_minutes: number;
+  /**
+   * Menit kerja biasa untuk gaji per jam (api.md "Absen pulang terlupa"): dibatasi sampai jam selesai baris; baris
+   * Tidak/Belum absen pulang = sampai jam selesai bila ada jadwal/Jam kerja, 0 bila tanpa.
+   */
+  regular_minutes: number;
+  /** Lembur disetujui (Σ `minutes` `overtime_requests` approved di periode) — bukan dari jam pulang (tahap 2). */
   overtime_minutes: number;
+  /** Jumlah baris Tidak absen pulang (ada absen masuk di tanggal sesudahnya). */
+  missed_clock_out: number;
+};
+
+export type ClockOutState = "working" | "due" | "missed" | "done";
+
+const EXCUSED = new Set(["permit", "sick", "leave", "absent"]);
+
+/**
+ * Jam selesai baris absen (ms) = jam selesai aturan efektif tanggal baris (shift lewat tengah malam → esok hari);
+ * `null` bila hari libur atau Jam kerja belum disimpan tanpa shift. Cermin `annotate` service (`due_out_at`).
+ */
+export function dueOutAt(row: Pick<Attendance, "date">, plan: DayPlan, rules: AttendanceRules): number | null {
+  if (plan.off || (plan.source === "global" && rules.has_work_hours === false)) return null;
+  return zonedAt(row.date, plan.end);
+}
+
+/** Tanggal absen masuk terakhir karyawan (`null` bila belum pernah). */
+export function latestClockInDate(rows: Attendance[], employeeId: string): string | null {
+  let out: string | null = null;
+  for (const r of rows) if (r.employee_id === employeeId && r.clock_in_at && (out === null || r.date > out)) out = r.date;
+  return out;
+}
+
+/**
+ * Keadaan absen pulang (api.md "Absen pulang terlupa"): Selesai = sudah pulang; Tidak absen pulang = belum pulang dan
+ * ada absen masuk di tanggal sesudahnya; Belum absen pulang = belum pulang dan lewat jam selesai; selainnya Bekerja.
+ * `null` = tanpa jam masuk atau izin/sakit/cuti/alpa.
+ */
+export function clockOutState(
+  row: Pick<Attendance, "date" | "status" | "clock_in_at" | "clock_out_at">,
+  due: number | null,
+  latestIn: string | null,
+  now = Date.now()
+): ClockOutState | null {
+  if (!row.clock_in_at || EXCUSED.has(row.status)) return null;
+  if (row.clock_out_at) return "done";
+  if (latestIn !== null && latestIn > row.date) return "missed";
+  if (due !== null && now >= due) return "due";
+  return "working";
+}
+
+/**
+ * Absen terbuka sebelum `today` yang belum ditutup dan belum ada absen masuk sesudahnya (≤ 31 hari) — cermin
+ * `current` service. Untuk papan hari ini: "Belum absen pulang (kemarin)".
+ */
+export function openPreviousAttendance(rows: Attendance[], employeeId: string, today: string): Attendance | null {
+  const min = shiftDayBack(today, 31);
+  let last: Attendance | null = null;
+  for (const r of rows) {
+    if (r.employee_id !== employeeId || !r.clock_in_at || r.date >= today || r.date < min) continue;
+    if (!last || r.date > last.date) last = r;
+  }
+  if (!last || last.clock_out_at || EXCUSED.has(last.status)) return null;
+  const latest = latestClockInDate(rows, employeeId);
+  return latest !== null && latest > last.date ? null : last;
+}
+
+const shiftDayBack = (day: string, n: number) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - n)).toISOString().slice(0, 10);
 };
 
 export const recapCount = (r: Recap, kind: DayKind) => r.days.filter((d) => d.kind === kind).length;
@@ -470,7 +638,8 @@ export const recapPresent = (r: Recap) => recapCount(r, "ontime") + recapCount(r
 /**
  * Rekap satu karyawan untuk tiap hari di `days`. Hari tanpa catatan: libur bila hari libur mingguan, "belum tiba" bila
  * setelah hari ini / sebelum karyawan ada (`since`), hari ini belum berakhir = belum tiba, selain itu alpa. Hari libur
- * yang tetap masuk dihitung hadir. Cermin `AttendanceRecap.compute`.
+ * yang tetap masuk dihitung hadir. Hari di luar jadwal (`unscheduledOf`, lihat `isUnscheduled`) tanpa catatan = libur,
+ * bukan alpa (keputusan pemilik 2026-11-11; juga tidak dipotong "alpa × hari"). Cermin `AttendanceRecap.compute`.
  */
 export function computeRecap(
   days: string[],
@@ -478,17 +647,26 @@ export function computeRecap(
   rules: AttendanceRules,
   today: string,
   since: string | null,
-  planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day)
+  planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day),
+  unscheduledOf: (day: string) => boolean = () => false,
+  opts: { now?: number; latestClockIn?: string | null; overtimeByDay?: Map<string, number> } = {}
 ): Recap {
   const byDate = new Map(rows.map((r) => [r.date, r]));
-  const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, overtime_minutes: 0 };
+  const now = opts.now ?? Date.now();
+  const latestIn = opts.latestClockIn !== undefined ? opts.latestClockIn : rows.reduce<string | null>((a, r) => (r.clock_in_at && (a === null || r.date > a) ? r.date : a), null);
+  const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, regular_minutes: 0, overtime_minutes: 0, missed_clock_out: 0 };
+  // Jam kerja belum pernah disimpan: hari ikut Jam kerja global tidak dihitung alpa & lembur (api.md "Jam kerja belum
+  // pernah disimpan"); hari ber-shift tetap seperti biasa.
+  const unsetGlobal = (day: string) => rules.has_work_hours === false && planOf(day).source === "global";
   for (const day of days) {
     const row = byDate.get(day) ?? null;
     if (!row) {
       let kind: DayKind;
       if (day > today || (since !== null && day < since)) kind = "upcoming";
-      else if (planOf(day).off) kind = "off";
+      else if (planOf(day).off || unscheduledOf(day)) kind = "off";
       else if (day === today) kind = "upcoming";
+      // Tanpa catatan & tanpa aturan dari pemilik → "belum ada catatan" (bukan alpa, tidak dipotong).
+      else if (unsetGlobal(day)) kind = "upcoming";
       else kind = "absent";
       out.days.push({ day, kind, row: null });
       continue;
@@ -499,12 +677,29 @@ export function computeRecap(
     if (status === "late") out.late_minutes += row.late_minutes;
     const inAt = row.clock_in_at ? Date.parse(row.clock_in_at) : NaN;
     const outAt = row.clock_out_at ? Date.parse(row.clock_out_at) : NaN;
-    if (Number.isNaN(inAt) || Number.isNaN(outAt) || outAt < inAt) continue;
-    out.worked_minutes += Math.floor((outAt - inAt) / 60_000);
-    const end = zonedAt(day, planOf(day).end);
-    if (outAt > end) {
-      const from = inAt > end ? inAt : end;
-      out.overtime_minutes += Math.floor((outAt - from) / 60_000);
+    const due = dueOutAt(row, planOf(day), rules);
+    const state = clockOutState(row, due, latestIn, now);
+    if (state === "missed") out.missed_clock_out++;
+    if (Number.isNaN(inAt)) continue;
+    if (Number.isNaN(outAt)) {
+      // Tidak/Belum absen pulang: dibayar sampai jam selesai bila ada; tanpa jam selesai = 0; tanpa lembur.
+      if ((state === "missed" || state === "due") && due !== null && due > inAt) out.regular_minutes += Math.floor((due - inAt) / 60_000);
+      continue;
+    }
+    if (outAt < inAt) continue;
+    const worked = Math.floor((outAt - inAt) / 60_000);
+    out.worked_minutes += worked;
+    // Menit biasa: sampai jam selesai baris (pulang lebih lambat tidak menambah upah biasa); tanpa jam selesai = masuk …
+    // pulang. Lembur tidak lagi dihitung dari jam pulang (tahap 2: lembur = pengajuan disetujui).
+    out.regular_minutes += due !== null ? Math.max(0, Math.floor(((outAt > due ? due : outAt) - inAt) / 60_000)) : worked;
+  }
+  // Lembur disetujui bertanggal di periode.
+  if (opts.overtimeByDay) {
+    const inPeriod = new Set(days);
+    for (const [d, m] of opts.overtimeByDay) if (inPeriod.has(d)) out.overtime_minutes += m;
+    for (const d of out.days) {
+      const m = opts.overtimeByDay.get(d.day);
+      if (m) d.overtime = m;
     }
   }
   return out;
@@ -525,15 +720,18 @@ export const perMinute = (minutes: number, ratePerHour: number) => Math.floor((m
 
 /**
  * Slip dari pengaturan gaji & rekap (fungsi murni; cermin `computePayslip`):
- * - bulanan: gaji pokok tetap; harian: upah × hari hadir; per jam: upah × jam kerja reguler (tanpa lembur).
- * - tunjangan hadir × hari hadir; lembur = menit setelah jam selesai × tarif.
+ * - bulanan: gaji pokok tetap; harian: upah × hari hadir; per jam: upah × menit biasa (`regular_minutes`: masuk …
+ *   min(pulang, jam selesai); tanpa jam selesai = masuk … pulang).
+ * - tunjangan hadir × hari hadir.
+ * - lembur (tahap 2) = Σ lembur disetujui di periode × tarif lembur / 60. Per jam: tarif lembur 0 → dibayar tarif per
+ *   jam biasa; harian/bulanan: tarif lembur 0 → tidak dibayar (tetap tercatat di rekap).
  * - potongan: telat × menit, alpa × hari (izin/sakit/cuti tidak dipotong).
  * - total potongan dibatasi pendapatan (gaji bersih tidak pernah negatif).
  */
 export function computePayslip(c: PayrollConfig, recap: Recap): PayslipDraft {
   if (c.type === "none") return EMPTY_DRAFT;
   const present = recapPresent(recap);
-  const regular = Math.max(0, recap.worked_minutes - recap.overtime_minutes);
+  const regular = recap.regular_minutes;
   const items: PayItem[] = [
     c.type === "monthly"
       ? { type: "base", amount: c.amount, quantity: 0, rate: 0 }
@@ -544,8 +742,9 @@ export function computePayslip(c: PayrollConfig, recap: Recap): PayslipDraft {
   if (c.allowance_per_day > 0 && present > 0) {
     items.push({ type: "allowance", amount: present * c.allowance_per_day, quantity: present, rate: c.allowance_per_day });
   }
-  if (c.overtime_per_hour > 0 && recap.overtime_minutes > 0) {
-    items.push({ type: "overtime", amount: perMinute(recap.overtime_minutes, c.overtime_per_hour), quantity: recap.overtime_minutes, rate: c.overtime_per_hour });
+  const otRate = c.overtime_per_hour > 0 ? c.overtime_per_hour : c.type === "hourly" ? c.amount : 0;
+  if (otRate > 0 && recap.overtime_minutes > 0) {
+    items.push({ type: "overtime", amount: perMinute(recap.overtime_minutes, otRate), quantity: recap.overtime_minutes, rate: otRate });
   }
   const gross = items.reduce((a, i) => a + i.amount, 0);
   let room = gross;
@@ -658,14 +857,8 @@ export function appRupiah(n: number): string {
   return `${n < 0 ? "-" : ""}Rp ${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
-/** "1 j 30 mnt" / "45 mnt" — `durationLabel`. */
-export function durationLabel(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m} mnt`;
-  if (m === 0) return `${h} j`;
-  return `${h} j ${m} mnt`;
-}
+/** "1 j 30 mnt" / "45 mnt" — `durationLabel` (fungsi bersama `src/lib/duration.ts`). */
+export { durationLabel };
 
 /** Ringkasan satu baris: "Harian · Rp 150.000/hari" — `payrollSummary`. */
 export function payrollSummary(c: PayrollConfig): string {
@@ -685,9 +878,9 @@ export function payItemLabel(item: PayItem, type: PayType): string {
     case "allowance":
       return `Tunjangan hadir · ${item.quantity} hari`;
     case "overtime":
-      return `Lembur · ${durationLabel(item.quantity)}`;
+      return `Lembur · ${durationLabel(item.quantity)} × ${appRupiah(item.rate)}/jam`;
     case "late":
-      return `Terlambat · ${item.quantity} mnt`;
+      return `Terlambat · ${durationLabel(item.quantity)}`;
     case "absent":
       return `Alpa · ${item.quantity} hari`;
   }
@@ -706,6 +899,7 @@ export function recapFacts(r: Recap): [string, string][] {
     ["Sakit", `${recapCount(r, "sick")}`],
     ["Cuti", `${recapCount(r, "leave")}`],
     ["Alpa", `${recapCount(r, "absent")}`],
+    ["Tidak absen pulang", `${r.missed_clock_out}`],
     ["Libur", `${recapCount(r, "off")}`],
   ];
   return all.filter((f, i) => i === 0 || !f[1].startsWith("0"));
@@ -844,6 +1038,8 @@ export function savePayroll(e: Employee, c: PayrollConfig): Promise<TeamOutcome>
 
 export type ManualAttendance = {
   employee_id: string;
+  /** Tanggal di luar jadwal (`isUnscheduled`) dan hadir dengan jam masuk → ontime + `unscheduled: true`. */
+  day_unscheduled?: boolean;
   date: string;
   status: AttendanceStatus;
   clock_in_at: string | null;
@@ -853,6 +1049,22 @@ export type ManualAttendance = {
   reason: string;
   edited_by: string;
 };
+
+/**
+ * Tanda di luar jadwal & alasan telat untuk absen manual: `unscheduled` hanya untuk `ontime` — dari tanggal di luar
+ * jadwal, atau dipertahankan dari baris lama yang sudah `unscheduled`; `late_reason` baris lama dipertahankan bila
+ * tetap `late`, selainnya `""` (server juga memaksa begitu).
+ */
+export function manualFlags(
+  status: AttendanceStatus,
+  dayUnscheduled: boolean,
+  existing: Pick<Attendance, "status" | "unscheduled" | "late_reason"> | null
+): { unscheduled: boolean; late_reason: string } {
+  return {
+    unscheduled: status === "ontime" && (dayUnscheduled || existing?.unscheduled === true),
+    late_reason: status === "late" && existing?.status === "late" ? (existing.late_reason ?? "") : "",
+  };
+}
 
 /** Absen manual / koreksi (pemilik; alasan wajib) — `saveManual`. */
 export async function saveManualAttendance(
@@ -874,6 +1086,7 @@ export async function saveManualAttendance(
       clock_in_at: m.clock_in_at,
       clock_out_at: clockOut,
       late_minutes: late,
+      ...manualFlags(m.status, !!m.day_unscheduled && !!m.clock_in_at, ctx.existing),
       note: m.note,
       edit_reason: m.reason,
       edited_by: m.edited_by,
@@ -939,7 +1152,7 @@ export type PayrollRow = {
 export function recapFor(
   e: Employee,
   month: string,
-  data: Pick<TeamData, "attendances" | "rules" | "shifts">,
+  data: Pick<TeamData, "attendances" | "rules" | "shifts"> & { overtime?: OvertimeRequest[] },
   today = zonedToday()
 ): Recap {
   const m = monthOf(month);
@@ -949,7 +1162,9 @@ export function recapFor(
     data.rules,
     today,
     zonedDay(e.created_at) || null,
-    (day) => dayPlan(data.rules, day, data.shifts, e.id)
+    (day) => dayPlan(data.rules, day, data.shifts, e.id),
+    (day) => isUnscheduled(day, data.shifts, e.id),
+    { latestClockIn: latestClockInDate(data.attendances, e.id), overtimeByDay: approvedOvertimeByDay(data.overtime ?? [], e.id) }
   );
 }
 
