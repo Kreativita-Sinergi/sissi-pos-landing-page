@@ -13,6 +13,7 @@
 // PIN: hanya dikirim sekali sebagai `pin` (polos, di-hash server) saat disimpan. `pin_hash` dari pull dibuang segera
 // setelah ditarik (yang disimpan di memori hanya `has_pin`), dan PIN tidak pernah disimpan di browser.
 
+import { durationLabel } from "../duration";
 import { pullAll, pushChanges } from "./api";
 import { toLeave, type LeaveRequest } from "./leavePlan";
 import { readAttendance, readShiftPatterns, type AttendanceRules, type ShiftPatterns } from "./settings";
@@ -518,8 +519,11 @@ export function evaluateClockIn(
   rules: AttendanceRules,
   day: string,
   minute: number,
-  plan: DayPlan = dayPlan(rules, day)
+  plan: DayPlan = dayPlan(rules, day),
+  unscheduled = false
 ): { status: "ontime" | "late"; late_minutes: number } {
+  // Di luar jadwal (`isUnscheduled`) → tepat waktu, tidak dihitung telat (api.md "Absen di luar jadwal").
+  if (unscheduled) return { status: "ontime", late_minutes: 0 };
   // Jam kerja belum pernah disimpan → hari ikut Jam kerja global tidak dihitung telat (shift tetap dihitung).
   if (plan.off || rules.late_tolerance_min === null || (plan.source === "global" && rules.has_work_hours === false))
     return { status: "ontime", late_minutes: 0 };
@@ -733,14 +737,8 @@ export function appRupiah(n: number): string {
   return `${n < 0 ? "-" : ""}Rp ${Math.abs(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
-/** "1 j 30 mnt" / "45 mnt" — `durationLabel`. */
-export function durationLabel(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m} mnt`;
-  if (m === 0) return `${h} j`;
-  return `${h} j ${m} mnt`;
-}
+/** "1 j 30 mnt" / "45 mnt" — `durationLabel` (fungsi bersama `src/lib/duration.ts`). */
+export { durationLabel };
 
 /** Ringkasan satu baris: "Harian · Rp 150.000/hari" — `payrollSummary`. */
 export function payrollSummary(c: PayrollConfig): string {
@@ -762,7 +760,7 @@ export function payItemLabel(item: PayItem, type: PayType): string {
     case "overtime":
       return `Lembur · ${durationLabel(item.quantity)}`;
     case "late":
-      return `Terlambat · ${item.quantity} mnt`;
+      return `Terlambat · ${durationLabel(item.quantity)}`;
     case "absent":
       return `Alpa · ${item.quantity} hari`;
   }
@@ -919,6 +917,8 @@ export function savePayroll(e: Employee, c: PayrollConfig): Promise<TeamOutcome>
 
 export type ManualAttendance = {
   employee_id: string;
+  /** Tanggal di luar jadwal (`isUnscheduled`) dan hadir dengan jam masuk → ontime + `unscheduled: true`. */
+  day_unscheduled?: boolean;
   date: string;
   status: AttendanceStatus;
   clock_in_at: string | null;
@@ -928,6 +928,22 @@ export type ManualAttendance = {
   reason: string;
   edited_by: string;
 };
+
+/**
+ * Tanda di luar jadwal & alasan telat untuk absen manual: `unscheduled` hanya untuk `ontime` — dari tanggal di luar
+ * jadwal, atau dipertahankan dari baris lama yang sudah `unscheduled`; `late_reason` baris lama dipertahankan bila
+ * tetap `late`, selainnya `""` (server juga memaksa begitu).
+ */
+export function manualFlags(
+  status: AttendanceStatus,
+  dayUnscheduled: boolean,
+  existing: Pick<Attendance, "status" | "unscheduled" | "late_reason"> | null
+): { unscheduled: boolean; late_reason: string } {
+  return {
+    unscheduled: status === "ontime" && (dayUnscheduled || existing?.unscheduled === true),
+    late_reason: status === "late" && existing?.status === "late" ? (existing.late_reason ?? "") : "",
+  };
+}
 
 /** Absen manual / koreksi (pemilik; alasan wajib) — `saveManual`. */
 export async function saveManualAttendance(
@@ -949,6 +965,7 @@ export async function saveManualAttendance(
       clock_in_at: m.clock_in_at,
       clock_out_at: clockOut,
       late_minutes: late,
+      ...manualFlags(m.status, !!m.day_unscheduled && !!m.clock_in_at, ctx.existing),
       note: m.note,
       edit_reason: m.reason,
       edited_by: m.edited_by,

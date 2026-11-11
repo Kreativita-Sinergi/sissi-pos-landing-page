@@ -38,6 +38,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   tidak dihitung telat di `evaluateClockIn` (dialog absen manual); form tetap menampilkan bawaan, simpan selalu menulis
   `attendance` dan tidak menulis `has_work_hours`. Papan hari ini: di luar jadwal tanpa absen = "Tanpa shift hari ini".
   Pengingat `shiftsUnassigned` di Tim (semua tab kecuali Jadwal) dengan tautan ke Tim › Jadwal.
+  Lanjutan 3: absen manual pemilik pada tanggal di luar jadwal + hadir → otomatis ontime + `unscheduled: true`
+  (`manualFlags`: koreksi baris unscheduled yang tetap ontime mempertahankan tanda; `late_reason` lama dipertahankan
+  bila tetap late). Papan "Kehadiran hari ini" & status web karyawan: lencana keadaan selalu tampil + lencana kuning
+  "Telat …" di sampingnya. Durasi telat memakai satu fungsi `src/lib/duration.ts` (`25 mnt`, `13 j 4 mnt`, `2 j`) di
+  dasbor (papan, catatan, dialog manual, slip) dan web karyawan (status, riwayat, ringkasan, dialog LATE_CONFIRM).
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong

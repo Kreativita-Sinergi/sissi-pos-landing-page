@@ -1,4 +1,6 @@
-// Pemetaan galat web karyawan → pesan Bahasa Indonesia. Murni (tanpa impor runtime) agar bisa dites unit.
+// Pemetaan galat web karyawan → pesan Bahasa Indonesia. Murni (hanya impor fungsi murni) agar bisa dites unit.
+import { durationLabel } from "../duration";
+
 // Galat dibaca secara "duck typing" (code/status/details/retryAfter) — cocok dengan ApiError & StaffApiError.
 
 export type ErrorLike = {
@@ -125,7 +127,7 @@ export function lateAsk(err: unknown): LateAsk {
   };
 }
 
-/** "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 menit." — bagian yang tidak ada dilewati. */
+/** "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 mnt." (≥ 60 → "1 j 5 mnt") — bagian yang tidak ada dilewati. */
 export function lateAskText(a: LateAsk): string {
   const parts: string[] = [];
   if (a.shiftName || a.shiftStart) {
@@ -134,7 +136,7 @@ export function lateAskText(a: LateAsk): string {
     if (a.tolerance !== null) t += ` (toleransi ${a.tolerance} menit)`;
     parts.push(`${t}.`);
   }
-  parts.push(a.minutes !== null ? `Kamu telat ${a.minutes} menit.` : "Kamu terlambat.");
+  parts.push(a.minutes !== null ? `Kamu telat ${durationLabel(a.minutes)}.` : "Kamu terlambat.");
   return parts.join(" ");
 }
 

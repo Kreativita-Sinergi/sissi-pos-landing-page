@@ -145,10 +145,10 @@ test("LATE_CONFIRM: isi dialog dari details (nama shift, jam mulai, toleransi, m
   };
   const a = lateAsk(err);
   assert.deepEqual(a, { minutes: 25, shiftName: "Pagi", shiftStart: "08:00", tolerance: 10 });
-  assert.equal(lateAskText(a), "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 menit.");
+  assert.equal(lateAskText(a), "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 mnt.");
   // details kosong (server lama/rusak) → tetap kalimat yang masuk akal.
   assert.equal(lateAskText(lateAsk({ code: "LATE_CONFIRM", details: [] })), "Kamu terlambat.");
-  assert.match(clockErrorMessage(err, { action: "in", sentGeo: true }).text, /telat 25 menit/);
+  assert.match(clockErrorMessage(err, { action: "in", sentGeo: true }).text, /telat 25 mnt/);
 });
 
 test("UNSCHEDULED_CONFIRM: work_start dibaca sebagai teks; pesan cadangan menyebut tidak ada shift", () => {
@@ -161,4 +161,16 @@ test("UNSCHEDULED_CONFIRM: work_start dibaca sebagai teks; pesan cadangan menyeb
 test("VALIDATION_ERROR late_reason → pesan batas 200 karakter", () => {
   const m = clockErrorMessage({ code: "VALIDATION_ERROR", details: [{ field: "late_reason", message: "x" }] }, { action: "in", sentGeo: true });
   assert.match(m.text, /200 karakter/);
+});
+
+test("durationLabel bersama: < 60 → mnt; ≥ 60 → j + mnt; menit 0 → j saja; dialog telat ikut", async () => {
+  const { durationLabel } = await import("../src/lib/duration.ts");
+  assert.equal(durationLabel(25), "25 mnt");
+  assert.equal(durationLabel(0), "0 mnt");
+  assert.equal(durationLabel(59), "59 mnt");
+  assert.equal(durationLabel(60), "1 j");
+  assert.equal(durationLabel(120), "2 j");
+  assert.equal(durationLabel(784), "13 j 4 mnt");
+  assert.equal(durationLabel(-5), "0 mnt");
+  assert.equal(lateAskText({ minutes: 784, shiftName: "Pagi", shiftStart: "07:00", tolerance: 10 }), "Shift Pagi mulai 07:00 (toleransi 10 menit). Kamu telat 13 j 4 mnt.");
 });
