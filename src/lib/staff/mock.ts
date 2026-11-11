@@ -10,6 +10,7 @@
 //   cabang    dua outlet (outlet kedua ber-aturan Tolak)
 //   putus     percobaan absen pertama gagal jaringan (uji ulang dengan Idempotency-Key yang sama)
 //   luarjadwal tidak punya shift hari ini → UNSCHEDULED_CONFIRM, lalu tercatat "di luar jadwal"
+//   libur     hari ini libur yang ditetapkan pemilik → OFF_DAY_CONFIRM, lalu tercatat "di luar jadwal"
 //   shift     shift "Pagi" mulai 25 menit lalu (toleransi 10) → LATE_CONFIRM + alasan opsional
 //             (gabung "luarjadwal"/"shift" dengan jarak jauh di DevTools untuk uji berantai OUTSIDE_AREA_CONFIRM → jadwal)
 //   pemilik   → STAFF_ONLY · nonaktif → EMPLOYEE_LOGIN_DISABLED · batas → RATE_LIMITED
@@ -239,7 +240,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
               work_start: "08:00",
               work_end: "17:00",
               late_tolerance_min: 10,
-              off_day: weekday === 0 && !s.scenario.includes("luarjadwal"),
+              off_day: s.scenario.includes("libur") || (weekday === 0 && !s.scenario.includes("luarjadwal")),
               shift: null,
               unscheduled: s.scenario.includes("luarjadwal"),
             },
@@ -292,8 +293,10 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
         const [h, m] = hm.split(":").map(Number);
         const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
         // Jadwal (sesudah cek lokasi, cermin server): di luar jadwal / telat dari shift → minta konfirmasi dulu.
-        const unscheduled = !s.shiftStart && s.scenario.includes("luarjadwal");
-        if (unscheduled && !body.confirm_unscheduled)
+        const offDay = !s.shiftStart && s.scenario.includes("libur");
+        if (offDay && !body.confirm_off_day) throw staffError("Hari ini jadwalmu libur. Tetap catat masuk kerja?", 409, "OFF_DAY_CONFIRM");
+        const unscheduled = offDay || (!s.shiftStart && s.scenario.includes("luarjadwal"));
+        if (unscheduled && !offDay && !body.confirm_unscheduled)
           throw staffError("Kamu tidak punya shift hari ini. Tetap catat masuk kerja?", 409, "UNSCHEDULED_CONFIRM", [{ field: "work_start", message: "08:00" }]);
         const [sh, sm] = (s.shiftStart ?? "08:00").split(":").map(Number);
         const diff = h * 60 + m - (sh * 60 + sm);

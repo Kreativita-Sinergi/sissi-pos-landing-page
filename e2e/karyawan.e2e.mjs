@@ -187,6 +187,25 @@ test("telat dari shift → dialog dengan alasan (hitung karakter) → tercatat t
   await page.close();
 });
 
+test("hari libur dari pemilik → dialog 'jadwalmu libur' → tercatat di luar jadwal; berantai dengan di luar area", async () => {
+  const page = await fresh();
+  await page.setGeolocation(FAR);
+  await login(page, "libur@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Hari libur");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu di luar area outlet");
+  await clickButton(page, "Tetap absen masuk");
+  await waitText(page, "Tetap catat masuk kerja?");
+  assert((await text(page)).includes("Hari ini jadwalmu libur"), "dialog libur tidak tampil");
+  await shot(page, "absen-libur-konfirmasi-360");
+  await clickButton(page, "Tetap catat masuk");
+  await waitText(page, "Absen masuk tercatat");
+  const t = await text(page);
+  assert(t.includes("di luar area") && t.includes("Di luar jadwal"), "tanda di luar area / di luar jadwal hilang");
+  await page.close();
+});
+
 test("berantai: di luar area (Boleh) lalu tidak ada shift → kedua flag terkirim", async () => {
   const page = await fresh();
   await page.setGeolocation(FAR);

@@ -43,6 +43,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   bila tetap late). Papan "Kehadiran hari ini" & status web karyawan: lencana keadaan selalu tampil + lencana kuning
   "Telat …" di sampingnya. Durasi telat memakai satu fungsi `src/lib/duration.ts` (`25 mnt`, `13 j 4 mnt`, `2 j`) di
   dasbor (papan, catatan, dialog manual, slip) dan web karyawan (status, riwayat, ringkasan, dialog LATE_CONFIRM).
+  Lanjutan 4: web karyawan menangani 409 `OFF_DAY_CONFIRM` ("Hari ini jadwalmu libur. Tetap catat masuk kerja?" →
+  `confirm_off_day: true`, berantai dengan di luar area; mock skenario `libur`, e2e 14/14). Absen manual pemilik di
+  hari libur yang ditetapkan pemilik (`isOwnerOffDay`: jadwal `off`, libur shift tetap, `off_days` bila Jam kerja
+  tersimpan) + hadir → ontime + `unscheduled: true`; libur Minggu bawaan tanpa Jam kerja tanpa tanda.
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong

@@ -178,6 +178,8 @@ export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sen
     // Biasanya dijawab lewat dialog; pesan ini cadangan bila konfirmasi tidak bisa ditampilkan.
     case "UNSCHEDULED_CONFIRM":
       return { title: "Tidak ada shift hari ini", text: "Kamu tidak punya shift hari ini. Konfirmasi dulu untuk tetap mencatat masuk kerja.", tone: "warning" };
+    case "OFF_DAY_CONFIRM":
+      return { title: "Hari ini jadwalmu libur", text: "Konfirmasi dulu untuk tetap mencatat masuk kerja.", tone: "warning" };
     case "LATE_CONFIRM":
       return { title: "Kamu terlambat", text: `${lateAskText(lateAsk(e))} Konfirmasi dulu untuk mencatat absen masuk.`, tone: "warning" };
     case "PRO_REQUIRED":
