@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import { UserPlus } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, UserPlus } from "lucide-react";
 import { useQueryState } from "@/components/admin/filters";
 import { useToast } from "@/components/admin/toast";
-import { btn, ErrorBlock, LoadingBar, PageHeader, SkeletonList, Tabs, useLoad } from "@/components/admin/ui";
+import { btn, ErrorBlock, focusRing, LoadingBar, Notice, PageHeader, SkeletonList, Tabs, useLoad } from "@/components/admin/ui";
 import { hasFeature } from "@/lib/owner/records";
-import { loadTeam, mergeRecord, payrollRows, recentMonths, type TeamData, type TeamEntity, type TeamOutcome } from "@/lib/owner/team";
+import { loadTeam, mergeRecord, payrollRows, recentMonths, shiftsUnassigned, type TeamData, type TeamEntity, type TeamOutcome } from "@/lib/owner/team";
 import { zonedToday } from "@/lib/owner/tz";
 import type { SyncRecord } from "@/lib/owner/types";
 import { useOwner } from "./OwnerShell";
@@ -117,6 +118,18 @@ export function TeamView() {
       {ctx && (
         <>
           <LoadingBar active={state.status === "loading"} />
+          {staff && tab !== "jadwal" && shiftsUnassigned(ctx.data.shifts, zonedToday()) && (
+            <div className="mb-4">
+              <Notice tone="info" role="status" icon={<CalendarClock size={18} aria-hidden />}>
+                <p>
+                  Templat shift sudah dibuat, tetapi belum ditugaskan ke karyawan.{" "}
+                  <Link href="/dasbor/tim?tab=jadwal" className={`font-semibold underline underline-offset-2 ${focusRing}`}>
+                    Atur di Tim › Jadwal
+                  </Link>
+                </p>
+              </Notice>
+            </div>
+          )}
           {tab === "karyawan" && <EmployeesTab ctx={ctx} selfId={session.user.id} onOpen={(id) => setEmployee({ id, key: Date.now() })} />}
           {tab !== "karyawan" && !staff && (
             <LockedCard

@@ -413,13 +413,27 @@ export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftSched
   return { off: rules.off_days.includes(weekday), start, end: spanEnd(start, endMinute(rules)), source: "global" };
 }
 
+/**
+ * Pengingat pemilik: ada templat shift, tetapi belum ada shift tetap dan belum ada penugasan `shift` pada
+ * [today−7, today+14] → "Templat shift sudah dibuat, tetapi belum ditugaskan ke karyawan." (api.md).
+ */
+export function shiftsUnassigned(shifts: ShiftSchedule | null | undefined, today: string): boolean {
+  if (!shifts || shifts.templates.length === 0 || Object.keys(shifts.patterns).length > 0) return false;
+  const from = shiftDay(today, -7);
+  const to = shiftDay(today, 14);
+  for (const days of Object.values(shifts.assignments ?? {})) {
+    for (const [d, a] of Object.entries(days)) if (a.kind === "shift" && d >= from && d <= to) return false;
+  }
+  return true;
+}
+
 /** Rentang hari sebelum & sesudah tanggal yang menandai karyawan "memakai jadwal" (server `scheduleWindow`). */
 const SCHEDULE_WINDOW = 7;
 
 /**
  * Di luar jadwal (api.md "Absen di luar jadwal & konfirmasi telat"; cermin `unscheduled` di service
  * `internal/staffweb/rules.go`): karyawan memakai jadwal (punya shift tetap, atau jadwal `shift`/`off` dalam ±7 hari
- * selain `day`) tetapi `day` jatuh ke Jam kerja global — tanpa baris `shift`/`off`/`default` di `day` dan shift tetap
+ * selain `day`, atau bisnis punya ≥ 1 templat shift sah) tetapi `day` jatuh ke Jam kerja global — tanpa baris `shift`/`off`/`default` di `day` dan shift tetap
  * tidak berlaku (pola yang semua templat hari itu terhapus juga di luar jadwal). Hari tanpa shift di pola = libur,
  * bukan di luar jadwal. Jadwal ±7 hari di tepi periode ikut dibaca dari `shifts.assignments` (semua tanggal).
  */
@@ -434,6 +448,8 @@ export function isUnscheduled(day: string, shifts: ShiftSchedule | null | undefi
     const known = new Set(shifts!.templates.map((t) => t.id));
     return !ids.some((id) => known.has(id));
   }
+  // Bisnis yang sudah membuat templat shift (sah) dianggap memakai jadwal, walau belum ditugaskan (2026-11-11 lanjutan).
+  if ((shifts?.templates.length ?? 0) > 0) return true;
   if (!as) return false;
   for (let i = -SCHEDULE_WINDOW; i <= SCHEDULE_WINDOW; i++) {
     if (i === 0) continue;
@@ -496,7 +512,7 @@ export function todayHoursLabel(rules: AttendanceRules, day: string, shifts: Shi
 /**
  * Absen masuk pada menit lokal `minute` hari `day`: terlambat bila lewat jam mulai efektif + toleransi; menit telat
  * dihitung dari jam mulai. Hari libur tidak pernah terlambat; toleransi `null` = telat tidak dihitung. Cermin
- * `evaluateClockIn`. `plan` bawaan = Jam kerja global.
+ * `evaluateClockIn`. `plan` bawaan = Jam kerja global. `has_work_hours: false` + Jam kerja global = tidak telat.
  */
 export function evaluateClockIn(
   rules: AttendanceRules,
@@ -504,7 +520,9 @@ export function evaluateClockIn(
   minute: number,
   plan: DayPlan = dayPlan(rules, day)
 ): { status: "ontime" | "late"; late_minutes: number } {
-  if (plan.off || rules.late_tolerance_min === null) return { status: "ontime", late_minutes: 0 };
+  // Jam kerja belum pernah disimpan → hari ikut Jam kerja global tidak dihitung telat (shift tetap dihitung).
+  if (plan.off || rules.late_tolerance_min === null || (plan.source === "global" && rules.has_work_hours === false))
+    return { status: "ontime", late_minutes: 0 };
   const late = minute - plan.start;
   if (late > rules.late_tolerance_min) return { status: "late", late_minutes: Math.min(late, 1440) };
   return { status: "ontime", late_minutes: 0 };

@@ -33,6 +33,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   `internal/staffweb/rules.go`; jendela ±7 hari, `default`, shift tetap dengan templat hilang) → hari tanpa catatan
   yang di luar jadwal = libur, bukan alpa, dan tidak dipotong "alpa × hari". `ShiftSchedule.defaults` (baris
   `kind: "default"`) ditambahkan untuk itu.
+  Lanjutan 2: bisnis dengan ≥ 1 templat shift sah = memakai jadwal (`isUnscheduled`, urutan cermin server). Jam kerja
+  belum pernah disimpan (tanpa kunci `attendance`, `AttendanceRules.has_work_hours: false`) → hari Jam kerja global
+  tidak dihitung telat di `evaluateClockIn` (dialog absen manual); form tetap menampilkan bawaan, simpan selalu menulis
+  `attendance` dan tidak menulis `has_work_hours`. Papan hari ini: di luar jadwal tanpa absen = "Tanpa shift hari ini".
+  Pengingat `shiftsUnassigned` di Tim (semua tab kecuali Jadwal) dengan tautan ke Tim › Jadwal.
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong

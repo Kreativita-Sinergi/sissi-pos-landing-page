@@ -12,6 +12,7 @@ import {
   dayPlan,
   durationLabel,
   isoWeekday,
+  isUnscheduled,
   manualMinDay,
   monthOf,
   planLabel,
@@ -149,6 +150,7 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                       {[
                         ROLE_LABEL[e.role],
                         planLabel(dayPlan(rules, today, ctx.data.shifts, e.id)),
+                        !r && isUnscheduled(today, ctx.data.shifts, e.id) ? "Tanpa shift hari ini" : null,
                         r?.clock_in_at ? `Masuk ${clockLabel(r.clock_in_at)}` : null,
                         r?.clock_out_at ? `Pulang ${clockLabel(r.clock_out_at)}` : null,
                         r?.status === "late" ? `Telat ${r.late_minutes} mnt` : null,
@@ -160,7 +162,7 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                         .join(" · ")}
                     </p>
                   </div>
-                  <TodayBadge row={r} />
+                  <TodayBadge row={r} unscheduled={!r && isUnscheduled(today, ctx.data.shifts, e.id)} />
                   <button
                     type="button"
                     className={iconBtn}
@@ -180,8 +182,9 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
   );
 }
 
-function TodayBadge({ row }: { row: Attendance | undefined }) {
-  if (!row) return <Badge>Belum masuk</Badge>;
+function TodayBadge({ row, unscheduled = false }: { row: Attendance | undefined; unscheduled?: boolean }) {
+  // Di luar jadwal tanpa absen: bukan "Belum masuk" (tidak wajib masuk; bila masuk tercatat "Di luar jadwal").
+  if (!row) return <Badge>{unscheduled ? "Tanpa shift hari ini" : "Belum masuk"}</Badge>;
   if (row.status === "permit" || row.status === "sick" || row.status === "leave") return <Badge tone="brand">{STATUS_LABEL[row.status]}</Badge>;
   if (row.status === "absent") return <Badge tone="danger">Alpa</Badge>;
   if (row.clock_out_at) return <Badge>Selesai</Badge>;

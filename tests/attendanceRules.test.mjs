@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
-const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isUnscheduled, planLabel, recapFor, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
+const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isUnscheduled, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
 const BASE = { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_days: [7] };
@@ -173,7 +173,12 @@ const UNSCHED_ROWS = [
   // Tombstone tidak menandai "memakai jadwal".
   { id: "u4", employee_id: "e4", date: MON, kind: "shift", name: "Pagi", start: "08:00", end: "16:00", deleted_at: "2026-11-01T00:00:00Z" },
 ];
-const unschedShifts = () => ({ ...readShiftPatterns(SETTINGS), assignments: toAssignments(UNSCHED_ROWS), defaults: toDefaultDays(UNSCHED_ROWS) });
+// Tanpa templat (jendela ±7 hari yang menentukan); `withTemplates` = SETTINGS (templat + shift tetap e1).
+const unschedShifts = (withTemplates = false) => ({
+  ...(withTemplates ? readShiftPatterns(SETTINGS) : { templates: [], patterns: {} }),
+  assignments: toAssignments(UNSCHED_ROWS),
+  defaults: toDefaultDays(UNSCHED_ROWS),
+});
 
 test("isUnscheduled cermin server: jendela ±7 hari, default, shift tetap (id hilang), libur pola", () => {
   const sh = unschedShifts();
@@ -185,9 +190,10 @@ test("isUnscheduled cermin server: jendela ±7 hari, default, shift tetap (id hi
   assert.equal(isUnscheduled("2026-10-26", sh, "e3"), true); // tepi periode: jadwal 2/11 bulan berikutnya ikut dibaca
   assert.equal(isUnscheduled(TUE, sh, "e4"), false); // hanya tombstone
   assert.equal(isUnscheduled(TUE, sh, "e9"), false); // tanpa jadwal sama sekali
-  assert.equal(isUnscheduled("2026-11-04", sh, "e1"), true); // shift tetap Rabu: semua templat hilang
-  assert.equal(isUnscheduled("2026-11-05", sh, "e1"), false); // shift tetap Kamis kosong = libur, bukan di luar jadwal
-  assert.equal(isUnscheduled(MON, sh, "e1"), false); // shift tetap berlaku
+  const st = unschedShifts(true);
+  assert.equal(isUnscheduled("2026-11-04", st, "e1"), true); // shift tetap Rabu: semua templat hilang
+  assert.equal(isUnscheduled("2026-11-05", st, "e1"), false); // shift tetap Kamis kosong = libur, bukan di luar jadwal
+  assert.equal(isUnscheduled(MON, st, "e1"), false); // shift tetap berlaku
 });
 
 test("recap & gaji: di luar jadwal bukan alpa; ber-shift tanpa absen tetap alpa; tanpa jadwal tetap alpa", () => {
@@ -206,4 +212,48 @@ test("recap & gaji: di luar jadwal bukan alpa; ber-shift tanpa absen tetap alpa;
   const item = slip.items.find((i) => i.type === "absent");
   assert.equal(item?.quantity ?? 0, absent);
   assert.ok(!recap.days.some((d) => d.day === TUE && d.kind === "absent"));
+});
+
+test("isUnscheduled: bisnis dengan templat shift sah = memakai jadwal; urutan baris tanggal → pola → templat → ±7 hari", () => {
+  const st = unschedShifts(true);
+  assert.equal(isUnscheduled(TUE, st, "e9"), true); // tanpa pola & penugasan, tetapi templat ada
+  assert.equal(isUnscheduled("2026-11-21", st, "e3"), true); // di luar jendela ±7, tetap karena templat
+  assert.equal(isUnscheduled("2026-11-10", st, "e3"), false); // baris default menang
+  assert.equal(isUnscheduled(MON, st, "e3"), false); // baris shift menang
+  assert.equal(isUnscheduled("2026-11-05", st, "e1"), false); // pola libur menang atas templat
+  // Templat rusak (jam tidak sah) dibuang `readShiftPatterns` → tidak dihitung.
+  const broken = { ...readShiftPatterns({ shift_rules: { templates: [{ id: "x", name: "X", start: "25:00", end: "06:00" }] } }), assignments: {}, defaults: {} };
+  assert.equal(isUnscheduled(TUE, broken, "e9"), false);
+});
+
+test("Jam kerja belum pernah disimpan → hari Jam kerja global tidak telat; shift tetap telat; simpan menulis attendance", () => {
+  const unset = readAttendance({});
+  assert.equal(unset.has_work_hours, false);
+  assert.equal(unset.work_start, "08:00"); // nilai form tetap bawaan
+  assert.equal(unset.late_tolerance_min, 10);
+  assert.deepEqual(evaluateClockIn(unset, MON, 9 * 60), { status: "ontime", late_minutes: 0 });
+  const shift = dayPlan(unset, MON, readShiftPatterns(SETTINGS), "e1"); // shift tetap Pagi + Sore (07:00)
+  assert.equal(shift.source, "pattern");
+  assert.deepEqual(evaluateClockIn(unset, MON, 7 * 60 + 25, shift), { status: "late", late_minutes: 25 });
+  const set = readAttendance({ attendance: { work_start: "08:00" } });
+  assert.equal(set.has_work_hours, true);
+  assert.deepEqual(evaluateClockIn(set, MON, 9 * 60), { status: "late", late_minutes: 60 });
+  const saved = mergeAttendance({}, unset);
+  assert.ok(saved.attendance && typeof saved.attendance === "object");
+  assert.equal("has_work_hours" in saved.attendance, false);
+  assert.equal(readAttendance(saved).has_work_hours, true);
+});
+
+test("pengingat: templat ada, tanpa pola, tanpa penugasan shift di [hari ini−7, hari ini+14]", () => {
+  const today = "2026-11-11";
+  const tpl = readShiftPatterns({ shift_rules: { templates: [{ id: "p", name: "Pagi", start: "07:00", end: "15:00" }] } });
+  const withRow = (date, kind = "shift") => ({ ...tpl, assignments: { e1: { [date]: { kind, name: "", start: "07:00", end: "15:00" } } } });
+  assert.equal(shiftsUnassigned({ ...tpl, assignments: {} }, today), true);
+  assert.equal(shiftsUnassigned(withRow("2026-11-04"), today), false); // −7
+  assert.equal(shiftsUnassigned(withRow("2026-11-25"), today), false); // +14
+  assert.equal(shiftsUnassigned(withRow("2026-11-03"), today), true); // −8: di luar rentang
+  assert.equal(shiftsUnassigned(withRow("2026-11-26"), today), true); // +15
+  assert.equal(shiftsUnassigned(withRow("2026-11-12", "off"), today), true); // libur bukan penugasan shift
+  assert.equal(shiftsUnassigned({ ...tpl, patterns: { e1: { 1: ["p"] } }, assignments: {} }, today), false); // ada pola
+  assert.equal(shiftsUnassigned({ templates: [], patterns: {}, assignments: {} }, today), false); // tanpa templat
 });
