@@ -43,6 +43,10 @@ export type StaffAttendance = {
   clock_in_geo: StaffGeo | null;
   clock_out_geo: StaffGeo | null;
   note: string;
+  /** Absen masuk di luar jadwal (sejak 2026-11-11; server lama tidak mengirim). Tetap terhitung hadir tepat waktu. */
+  unscheduled?: boolean;
+  /** Alasan telat dari karyawan (≤ 200; sejak 2026-11-11). */
+  late_reason?: string;
 };
 
 export type StaffToday = {
@@ -60,6 +64,8 @@ export type StaffToday = {
     late_tolerance_min: number | null;
     off_day: boolean;
     shift?: { name: string; start: string; end: string } | null;
+    /** Hari ini di luar jadwal (sejak 2026-11-11): karyawan memakai jadwal tetapi tidak punya shift hari ini. */
+    unscheduled?: boolean;
   };
   geo: { enabled: boolean; radius_m: number; outside: "flag" | "reject"; has_location: boolean };
   attendance: StaffAttendance | null;
@@ -74,6 +80,11 @@ export type ClockInput = {
   geo: ClockGeoInput | null;
   /** Karyawan sudah menyetujui "di luar area, tetap absen?" (jawaban atas 409 OUTSIDE_AREA_CONFIRM). */
   confirm_outside?: boolean;
+  /** Jawaban atas 409 UNSCHEDULED_CONFIRM ("tidak punya shift hari ini, tetap catat?"). */
+  confirm_unscheduled?: boolean;
+  /** Jawaban atas 409 LATE_CONFIRM; `late_reason` opsional (≤ 200). */
+  confirm_late?: boolean;
+  late_reason?: string;
 };
 
 export type StaffHistorySummary = {
@@ -85,6 +96,8 @@ export type StaffHistorySummary = {
   sick: number;
   leave: number;
   absent: number;
+  /** Jumlah baris di luar jadwal (sudah termasuk di `ontime`; sejak 2026-11-11). */
+  unscheduled?: number;
 };
 
 export type StaffHistory = { month: string; items: StaffAttendance[]; summary: StaffHistorySummary };

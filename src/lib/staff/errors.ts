@@ -104,6 +104,40 @@ export function detailNumber(err: unknown, field: string): number | null {
   return raw !== undefined && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
 }
 
+/** Teks dari `details[{field,message}]` (mis. `shift_name`, `work_start`); `null` bila tidak ada/kosong. */
+export function detailText(err: unknown, field: string): string | null {
+  const raw = asErr(err)?.details?.find((x) => x.field === field)?.message;
+  return raw ? raw : null;
+}
+
+/** Batas alasan telat (kontrak: `late_reason` ≤ 200). */
+export const LATE_REASON_MAX = 200;
+
+export type LateAsk = { minutes: number | null; shiftName: string | null; shiftStart: string | null; tolerance: number | null };
+
+/** Isi dialog 409 LATE_CONFIRM dari `details`. */
+export function lateAsk(err: unknown): LateAsk {
+  return {
+    minutes: detailNumber(err, "late_minutes"),
+    shiftName: detailText(err, "shift_name"),
+    shiftStart: detailText(err, "shift_start"),
+    tolerance: detailNumber(err, "late_tolerance_min"),
+  };
+}
+
+/** "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 menit." — bagian yang tidak ada dilewati. */
+export function lateAskText(a: LateAsk): string {
+  const parts: string[] = [];
+  if (a.shiftName || a.shiftStart) {
+    let t = a.shiftName ? `Shift ${a.shiftName}` : "Shift";
+    if (a.shiftStart) t += ` mulai ${a.shiftStart}`;
+    if (a.tolerance !== null) t += ` (toleransi ${a.tolerance} menit)`;
+    parts.push(`${t}.`);
+  }
+  parts.push(a.minutes !== null ? `Kamu telat ${a.minutes} menit.` : "Kamu terlambat.");
+  return parts.join(" ");
+}
+
 /** Absen masuk/pulang. `sentGeo` = apakah lokasi ikut terkirim (membedakan pesan OUTSIDE_AREA). */
 export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sentGeo: boolean }): StaffMessage {
   const e = asErr(err);
@@ -139,12 +173,19 @@ export function clockErrorMessage(err: unknown, ctx: { action: "in" | "out"; sen
         tone: "danger",
       };
     }
+    // Biasanya dijawab lewat dialog; pesan ini cadangan bila konfirmasi tidak bisa ditampilkan.
+    case "UNSCHEDULED_CONFIRM":
+      return { title: "Tidak ada shift hari ini", text: "Kamu tidak punya shift hari ini. Konfirmasi dulu untuk tetap mencatat masuk kerja.", tone: "warning" };
+    case "LATE_CONFIRM":
+      return { title: "Kamu terlambat", text: `${lateAskText(lateAsk(e))} Konfirmasi dulu untuk mencatat absen masuk.`, tone: "warning" };
     case "PRO_REQUIRED":
       return { title: "Fitur ini butuh Sissi Pro", text: "Hubungi pemilik usaha untuk mengaktifkan Sissi Pro.", tone: "warning" };
     case "FORBIDDEN":
       return { text: "Kamu tidak terdaftar di outlet ini. Pilih outlet lain atau hubungi pemilik.", tone: "danger" };
     case "VALIDATION_ERROR": {
       const geo = e.details?.some((d) => d.field?.startsWith("geo"));
+      if (e.details?.some((d) => d.field === "late_reason"))
+        return { text: `Alasan telat maksimal ${LATE_REASON_MAX} karakter.`, tone: "danger" };
       return geo
         ? { text: "Data lokasi dari browser tidak valid. Coba lagi.", tone: "danger" }
         : { text: e.details?.[0]?.message || e.message || FALLBACK.text, tone: "danger" };

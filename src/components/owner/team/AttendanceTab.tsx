@@ -152,6 +152,8 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
                         r?.clock_in_at ? `Masuk ${clockLabel(r.clock_in_at)}` : null,
                         r?.clock_out_at ? `Pulang ${clockLabel(r.clock_out_at)}` : null,
                         r?.status === "late" ? `Telat ${r.late_minutes} mnt` : null,
+                        r?.unscheduled ? "Di luar jadwal" : null,
+                        r?.status === "late" && r.late_reason ? `Alasan: ${r.late_reason}` : null,
                         r ? (viaText(r) ?? (r.source === "manual" ? "Dicatat pemilik" : null)) : null,
                       ]
                         .filter(Boolean)
@@ -371,6 +373,11 @@ function DayList({
                   <td className={`${tdClass} border-b border-border-subtle`}>
                     <DayBadge kind={kind} />
                     {row?.status === "late" && <span className="ml-1.5 text-[12.5px] text-warning">{row.late_minutes} mnt</span>}
+                    {row?.unscheduled && (
+                      <span className="ml-1.5">
+                        <Badge>Di luar jadwal</Badge>
+                      </span>
+                    )}
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle tabular-nums`}>
                     {row?.clock_in_at ? `${clockLabel(row.clock_in_at)} – ${clockLabel(row.clock_out_at)}` : "—"}
@@ -379,6 +386,7 @@ function DayList({
                     <ViaCell row={row} />
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle text-[13px] text-text-body`}>
+                    {row?.status === "late" && row.late_reason && <span className="block">Alasan telat: {row.late_reason}</span>}
                     {row?.note && <span className="block">{row.note}</span>}
                     {row?.source === "manual" && (
                       <span className="block text-text-muted">
@@ -386,7 +394,7 @@ function DayList({
                         {row.edited_by ? ` (${names.get(row.edited_by) ?? "pemilik"})` : ""}
                       </span>
                     )}
-                    {!row?.note && row?.source !== "manual" && <span className="text-text-muted">—</span>}
+                    {!row?.note && row?.source !== "manual" && !(row?.status === "late" && row.late_reason) && <span className="text-text-muted">—</span>}
                   </td>
                   <td className={`${tdClass} border-b border-border-subtle text-right`}>
                     <button

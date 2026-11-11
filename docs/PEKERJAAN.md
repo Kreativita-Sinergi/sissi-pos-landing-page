@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-09** · oleh: Claude Opus 5.5 (#49 data perangkat & galat tertangani di admin)
+Terakhir diperbarui: **2026-11-11** · oleh: Claude Opus 5.5 (absen di luar jadwal & konfirmasi telat)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -19,6 +19,16 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 | _(kosong)_ | | | | |
 
 ## Sedang dikerjakan
+
+- **Absen di luar jadwal & konfirmasi telat (2026-11-11, `development`, belum rilis):** web karyawan menampilkan dialog
+  409 `UNSCHEDULED_CONFIRM` ("Kamu tidak punya shift hari ini. Tetap catat masuk kerja?") dan `LATE_CONFIRM` (nama shift,
+  jam mulai, toleransi, menit telat + alasan opsional ≤ 200 dengan hitung karakter); kirim ulang body yang sama + flag
+  (flag sebelumnya ikut, mis. `confirm_outside`) dengan Idempotency-Key baru, jadi bisa berantai lokasi → jadwal. Layar
+  hari ini: `rules.unscheduled` → "Tidak ada shift hari ini" (jam kerja global tidak ditampilkan sebagai shift). Riwayat:
+  tanda "Di luar jadwal" & "Alasan: …", ringkasan Hadir menyebut jumlah di luar jadwal bila > 0. Dasbor Tim › Absen:
+  tanda "Di luar jadwal" & alasan telat (hari ini & catatan per karyawan). Mock: skenario `luarjadwal`, `shift`;
+  e2e karyawan +3 tes (13/13). **Rilis menunggu service** dideploy (kontrak `../sissi-pos-service/docs/api.md`
+  "Absen di luar jadwal & konfirmasi telat"); web aman terhadap server lama (field opsional).
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong
