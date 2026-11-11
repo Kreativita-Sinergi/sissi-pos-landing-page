@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { missingLocation, viaLabel, viaSummary, viaText } = await import("../src/lib/attendanceVia.ts");
-const { acceptErrorMessage, clockErrorMessage, detailNumber, formatDistance, isNetworkError, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
+const { acceptErrorMessage, clockErrorMessage, detailNumber, detailText, formatDistance, isNetworkError, lateAsk, lateAskText, loginErrorMessage } = await import("../src/lib/staff/errors.ts");
 const { clockOffset, formatDateLong, formatTime, monthOptions, nextStep, safeStaffNext, zonedClock, zonedDate } = await import("../src/lib/staff/clock.ts");
 
 const IN = "2026-11-02T01:05:00Z";
@@ -131,4 +131,34 @@ test("next hanya di bawah /karyawan (cegah open redirect)", () => {
   assert.equal(safeStaffNext("/karyawan/masuk"), "/karyawan");
   assert.equal(safeStaffNext("/karyawanx"), "/karyawan");
   assert.equal(safeStaffNext(null), "/karyawan");
+});
+
+test("LATE_CONFIRM: isi dialog dari details (nama shift, jam mulai, toleransi, menit telat)", () => {
+  const err = {
+    code: "LATE_CONFIRM",
+    details: [
+      { field: "late_minutes", message: "25" },
+      { field: "shift_name", message: "Pagi" },
+      { field: "shift_start", message: "08:00" },
+      { field: "late_tolerance_min", message: "10" },
+    ],
+  };
+  const a = lateAsk(err);
+  assert.deepEqual(a, { minutes: 25, shiftName: "Pagi", shiftStart: "08:00", tolerance: 10 });
+  assert.equal(lateAskText(a), "Shift Pagi mulai 08:00 (toleransi 10 menit). Kamu telat 25 menit.");
+  // details kosong (server lama/rusak) → tetap kalimat yang masuk akal.
+  assert.equal(lateAskText(lateAsk({ code: "LATE_CONFIRM", details: [] })), "Kamu terlambat.");
+  assert.match(clockErrorMessage(err, { action: "in", sentGeo: true }).text, /telat 25 menit/);
+});
+
+test("UNSCHEDULED_CONFIRM: work_start dibaca sebagai teks; pesan cadangan menyebut tidak ada shift", () => {
+  const err = { code: "UNSCHEDULED_CONFIRM", details: [{ field: "work_start", message: "08:00" }] };
+  assert.equal(detailText(err, "work_start"), "08:00");
+  assert.equal(detailText(err, "shift_name"), null);
+  assert.match(clockErrorMessage(err, { action: "in", sentGeo: true }).title, /Tidak ada shift/);
+});
+
+test("VALIDATION_ERROR late_reason → pesan batas 200 karakter", () => {
+  const m = clockErrorMessage({ code: "VALIDATION_ERROR", details: [{ field: "late_reason", message: "x" }] }, { action: "in", sentGeo: true });
+  assert.match(m.text, /200 karakter/);
 });

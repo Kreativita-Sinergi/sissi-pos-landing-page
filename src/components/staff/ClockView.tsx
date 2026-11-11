@@ -9,7 +9,18 @@ import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { missingLocation, viaLabel } from "@/lib/attendanceVia";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
 import { clockOffset, formatDateLong, formatTime, nextStep, STATUS_LABEL, zonedClock, zonedDate } from "@/lib/staff/clock";
-import { clockErrorMessage, detailNumber, formatDistance, isNetworkError, type StaffMessage } from "@/lib/staff/errors";
+import {
+  clockErrorMessage,
+  detailNumber,
+  detailText,
+  formatDistance,
+  isNetworkError,
+  LATE_REASON_MAX,
+  lateAsk as readLateAsk,
+  lateAskText,
+  type LateAsk,
+  type StaffMessage,
+} from "@/lib/staff/errors";
 import { GEO_FAILURE_TEXT, locate, type GeoFailure } from "@/lib/staff/geo";
 import type { ClockInput, StaffAttendance, StaffGeo, StaffToday } from "@/lib/staff/types";
 import { useStaff } from "./StaffShell";
@@ -46,6 +57,10 @@ export function ClockView() {
   const pending = useRef<Pending | null>(null);
   /** 409 OUTSIDE_AREA_CONFIRM menunggu jawaban karyawan. */
   const [outsideAsk, setOutsideAsk] = useState<{ p: Pending; distance: number | null; radius: number | null } | null>(null);
+  /** 409 UNSCHEDULED_CONFIRM / LATE_CONFIRM menunggu jawaban (bisa menyusul OUTSIDE_AREA_CONFIRM: lokasi → jadwal). */
+  const [unschedAsk, setUnschedAsk] = useState<{ p: Pending; workStart: string | null } | null>(null);
+  const [lateAsk, setLateAsk] = useState<{ p: Pending; info: LateAsk } | null>(null);
+  const [lateReason, setLateReason] = useState("");
   const reqId = useRef(0);
   /** Outlet pilihan karyawan (undefined = bawaan server). */
   const outletRef = useRef<string | undefined>(undefined);
@@ -132,7 +147,12 @@ export function ClockView() {
       pending.current = null;
       setToday((t) => (t ? { ...t, attendance: row } : t));
       const at = formatTime(p.body.action === "in" ? row.clock_in_at : row.clock_out_at, tz);
-      const late = p.body.action === "in" && row.status === "late" ? ` · terlambat ${row.late_minutes} menit` : "";
+      const late =
+        p.body.action === "in" && row.status === "late"
+          ? ` · terlambat ${row.late_minutes} menit`
+          : p.body.action === "in" && row.unscheduled
+            ? " · di luar jadwal"
+            : "";
       setFeedback({
         tone: "success",
         title: p.body.action === "in" ? `Absen masuk tercatat ${at}` : `Absen pulang tercatat ${at}`,
@@ -160,6 +180,17 @@ export function ClockView() {
         setPhase("idle");
         return;
       }
+      if (err instanceof StaffApiError && err.code === "UNSCHEDULED_CONFIRM") {
+        setUnschedAsk({ p, workStart: detailText(err, "work_start") });
+        setPhase("idle");
+        return;
+      }
+      if (err instanceof StaffApiError && err.code === "LATE_CONFIRM") {
+        setLateReason("");
+        setLateAsk({ p, info: readLateAsk(err) });
+        setPhase("idle");
+        return;
+      }
       const m = clockErrorMessage(err, { action: p.body.action, sentGeo: !!p.body.geo });
       setFeedback(m);
       setPhase("idle");
@@ -182,6 +213,27 @@ export function ClockView() {
     const p: Pending = { key: newKey(), body: { ...ask.p.body, confirm_outside: true }, failure: ask.p.failure };
     pending.current = p;
     void send(p, true);
+  }
+
+  /** Kirim ulang body yang sama + flag konfirmasi (flag sebelumnya ikut) dengan Idempotency-Key baru (kontrak). */
+  function resend(prev: Pending, extra: Partial<ClockInput>) {
+    const p: Pending = { key: newKey(), body: { ...prev.body, ...extra }, failure: prev.failure };
+    pending.current = p;
+    void send(p, true);
+  }
+
+  function confirmUnscheduled() {
+    const ask = unschedAsk;
+    if (!ask) return;
+    setUnschedAsk(null);
+    resend(ask.p, { confirm_unscheduled: true });
+  }
+
+  function confirmLate() {
+    const ask = lateAsk;
+    if (!ask) return;
+    setLateAsk(null);
+    resend(ask.p, { confirm_late: true, late_reason: lateReason.trim().slice(0, LATE_REASON_MAX) });
   }
 
   async function clock(action: "in" | "out") {
@@ -278,6 +330,13 @@ export function ClockView() {
               <dt className="text-[12px] text-text-muted">Jadwal</dt>
               <dd className="text-[15px] font-semibold text-text-heading">Hari libur</dd>
             </div>
+          ) : today.rules.unscheduled ? (
+            // Di luar jadwal: jangan tampilkan Jam kerja global seolah-olah shift (kontrak 2026-11-11).
+            <div className="col-span-2 px-3 py-3">
+              <dt className="text-[12px] text-text-muted">Jadwal</dt>
+              <dd className="text-[15px] font-semibold text-text-heading">Tidak ada shift hari ini</dd>
+              <dd className="mt-0.5 text-[12.5px] text-text-muted">Bila tetap masuk, absen tercatat &ldquo;di luar jadwal&rdquo;.</dd>
+            </div>
           ) : (
             <>
               {today.rules.shift ? (
@@ -297,7 +356,7 @@ export function ClockView() {
             </>
           )}
         </dl>
-        {!today.rules.off_day && today.rules.late_tolerance_min !== 0 && (
+        {!today.rules.off_day && !today.rules.unscheduled && today.rules.late_tolerance_min !== 0 && (
           <p className="border-t border-border-subtle px-4 py-2 text-center text-[12.5px] text-text-muted">
             {today.rules.late_tolerance_min === null ? "Telat tidak dihitung" : `Toleransi terlambat ${today.rules.late_tolerance_min} menit`}
           </p>
@@ -313,11 +372,23 @@ export function ClockView() {
           <StatusBadge row={a} step={step.kind} />
         </div>
         <ul className="divide-y divide-border-subtle">
-          <ClockLine label="Masuk" at={a?.clock_in_at ?? null} tz={tz} source={a?.source} via={a?.clock_in_via ?? null} geo={a?.clock_in_geo ?? null} late={a?.status === "late" ? a.late_minutes : 0} />
+          <ClockLine
+            label="Masuk"
+            at={a?.clock_in_at ?? null}
+            tz={tz}
+            source={a?.source}
+            via={a?.clock_in_via ?? null}
+            geo={a?.clock_in_geo ?? null}
+            late={a?.status === "late" ? a.late_minutes : 0}
+            unscheduled={!!a?.unscheduled}
+          />
           <ClockLine label="Pulang" at={a?.clock_out_at ?? null} tz={tz} source={a?.source} via={a?.clock_out_via ?? null} geo={a?.clock_out_geo ?? null} late={0} />
         </ul>
         {a && a.outlet_id !== today.outlet_id && a.outlet_name && (
           <p className="border-t border-border-subtle px-5 py-2.5 text-[12.5px] text-text-muted">Tercatat di {a.outlet_name}.</p>
+        )}
+        {a?.status === "late" && a.late_reason && (
+          <p className="border-t border-border-subtle px-5 py-2.5 text-[13px] break-words text-text-body">Alasan telat: {a.late_reason}</p>
         )}
         {a?.note && <p className="border-t border-border-subtle px-5 py-2.5 text-[13px] text-text-body">Catatan: {a.note}</p>}
       </section>
@@ -426,6 +497,48 @@ export function ClockView() {
         </p>
         <p className="mt-2">Absen tercatat dengan tanda &ldquo;di luar area&rdquo; dan pemilik bisa melihatnya.</p>
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!unschedAsk}
+        title="Tidak ada shift hari ini"
+        confirmLabel="Tetap catat masuk"
+        onConfirm={confirmUnscheduled}
+        onClose={() => setUnschedAsk(null)}
+      >
+        <p>Kamu tidak punya shift hari ini. Tetap catat masuk kerja?</p>
+        <p className="mt-2">
+          Absen tercatat dengan tanda &ldquo;di luar jadwal&rdquo;
+          {unschedAsk?.workStart ? ` memakai jam kerja umum (mulai ${unschedAsk.workStart}), tidak dihitung telat` : ", tidak dihitung telat"}. Pemilik bisa
+          melihatnya.
+        </p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!lateAsk}
+        title="Kamu terlambat"
+        confirmLabel="Catat absen masuk"
+        onConfirm={confirmLate}
+        onClose={() => setLateAsk(null)}
+      >
+        <p>{lateAsk ? lateAskText(lateAsk.info) : ""}</p>
+        <label htmlFor="late-reason" className="mt-3 mb-1 block text-[13px] font-semibold text-text-heading">
+          Alasan telat <span className="font-normal text-text-muted">(opsional)</span>
+        </label>
+        <textarea
+          id="late-reason"
+          value={lateReason}
+          onChange={(e) => setLateReason(e.target.value.slice(0, LATE_REASON_MAX))}
+          maxLength={LATE_REASON_MAX}
+          rows={3}
+          aria-describedby="late-reason-count"
+          placeholder="Mis. ban bocor di jalan"
+          className={`w-full resize-none rounded-[10px] border border-border-subtle bg-white px-3 py-2 text-[14px] text-text-heading placeholder:text-text-muted hover:border-border-active ${focusRing}`}
+        />
+        <p id="late-reason-count" className="mt-1 text-right text-[12px] text-text-muted tabular-nums">
+          {lateReason.length}/{LATE_REASON_MAX}
+        </p>
+        <p className="mt-1">Pemilik melihat alasanmu bersama catatan telat.</p>
+      </ConfirmDialog>
     </div>
   );
 }
@@ -460,6 +573,7 @@ function ClockLine({
   via,
   geo,
   late,
+  unscheduled = false,
 }: {
   label: string;
   at: string | null;
@@ -468,6 +582,7 @@ function ClockLine({
   via: string | null;
   geo: StaffGeo | null;
   late: number;
+  unscheduled?: boolean;
 }) {
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3">
@@ -476,6 +591,7 @@ function ClockLine({
       {at && (
         <span className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5">
           {late > 0 && <Badge tone="warning">Telat {late} menit</Badge>}
+          {unscheduled && <Badge tone="neutral">Di luar jadwal</Badge>}
           {source && <Badge>{viaLabel(source, via)}</Badge>}
           {source && missingLocation(source, via, geo) && (
             <Badge tone="warning">

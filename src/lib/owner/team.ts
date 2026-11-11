@@ -93,6 +93,10 @@ export type Attendance = SyncRecord & {
   clock_out_geo?: AttendanceGeo | null;
   /** Pengajuan disetujui yang menghasilkan absen manual ini (null selainnya). */
   leave_request_id?: string | null;
+  /** Absen masuk di luar jadwal (sejak 2026-11-11, migrasi 00069; baris lama tidak punya). Tetap terhitung tepat waktu. */
+  unscheduled?: boolean;
+  /** Alasan telat dari karyawan (≤ 200; hanya bermakna bila `status` = late). */
+  late_reason?: string;
 };
 
 export type PayslipLine = { label: string; kind: "earning" | "deduction"; amount: number };

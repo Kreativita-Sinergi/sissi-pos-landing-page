@@ -1492,6 +1492,15 @@ function seedLeaves(put: (entity: string, rows: SyncRecord[]) => void) {
       outlet_id: OUTLETS[1].id, employee_id: sari, date: today, clock_in_at: at(0, 8), clock_out_at: null,
       status: "ontime", late_minutes: 0, note: "", source: "self", edited_by: null, edit_reason: "",
       clock_in_via: "web", clock_out_via: null, clock_in_geo: null, clock_out_geo: null,
+      // Di luar jadwal (2026-11-11): tidak punya shift hari ini, tetap mencatat masuk.
+      unscheduled: true, late_reason: "",
+    }),
+    // Telat dari shift dengan alasan dari karyawan (dialog LATE_CONFIRM web).
+    rec(uuid(`att:${yoga}:${addDays(today, -2)}`), {
+      outlet_id: OUTLETS[0].id, employee_id: yoga, date: addDays(today, -2), clock_in_at: at(2, 8.4), clock_out_at: at(2, 17),
+      status: "late", late_minutes: 24, note: "", source: "self", edited_by: null, edit_reason: "",
+      clock_in_via: "web", clock_out_via: "web", clock_in_geo: null, clock_out_geo: null,
+      unscheduled: false, late_reason: "Ban motor bocor di jalan",
     }),
     rec(uuid(`att:${yoga}:${yesterday}`), {
       outlet_id: OUTLETS[0].id, employee_id: yoga, date: yesterday, clock_in_at: at(1, 8), clock_out_at: at(1, 17),

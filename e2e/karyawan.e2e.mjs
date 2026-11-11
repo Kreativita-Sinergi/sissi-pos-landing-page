@@ -150,6 +150,59 @@ test("aturan Boleh + lokasi jauh → dialog 'tetap absen?' → tercatat di luar 
   await page.close();
 });
 
+test("tidak punya shift hari ini → info di layar, dialog konfirmasi → tercatat di luar jadwal", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "luarjadwal@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Tidak ada shift hari ini");
+  assert(!(await text(page)).includes("Jadwal masuk"), "jam kerja global tampil seolah-olah shift");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Tetap catat masuk kerja?");
+  await shot(page, "absen-luar-jadwal-konfirmasi-360");
+  await noOverflow(page, "dialog di luar jadwal 360");
+  await clickButton(page, "Tetap catat masuk");
+  await waitText(page, "Absen masuk tercatat");
+  await waitText(page, "Di luar jadwal");
+  await page.close();
+});
+
+test("telat dari shift → dialog dengan alasan (hitung karakter) → tercatat telat + alasan", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "shift@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Shift Pagi");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu terlambat");
+  const t = await text(page);
+  assert(/Shift Pagi mulai \d\d:\d\d \(toleransi 10 menit\)\. Kamu telat \d+ menit\./.test(t), "isi dialog telat tidak lengkap");
+  await page.type("#late-reason", "Ban bocor");
+  await waitText(page, "9/200");
+  await shot(page, "absen-telat-konfirmasi-360");
+  await noOverflow(page, "dialog telat 360");
+  await clickButton(page, "Catat absen masuk");
+  await waitText(page, "Absen masuk tercatat");
+  await waitText(page, "Alasan telat: Ban bocor");
+  await page.close();
+});
+
+test("berantai: di luar area (Boleh) lalu tidak ada shift → kedua flag terkirim", async () => {
+  const page = await fresh();
+  await page.setGeolocation(FAR);
+  await login(page, "luarjadwal-jauh@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await clickButton(page, "Absen Masuk");
+  await waitText(page, "Kamu di luar area outlet");
+  await clickButton(page, "Tetap absen masuk");
+  await waitText(page, "Tetap catat masuk kerja?");
+  await clickButton(page, "Tetap catat masuk");
+  await waitText(page, "Absen masuk tercatat");
+  const t = await text(page);
+  assert(t.includes("di luar area") && t.includes("Di luar jadwal"), "tanda di luar area / di luar jadwal hilang");
+  await page.close();
+});
+
 test("paket Gratis → terkunci, tombol mati", async () => {
   const page = await fresh();
   await login(page, "gratis@contoh.id");
