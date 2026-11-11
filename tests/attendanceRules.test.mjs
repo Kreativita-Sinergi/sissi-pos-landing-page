@@ -298,7 +298,7 @@ const at = (day, hm) => {
 };
 const row = (day, inHm, outHm) => ({ date: day, status: "ontime", late_minutes: 0, clock_in_at: at(day, inHm), clock_out_at: at(day, outHm) });
 
-test("tanpa Jam kerja: hari Jam kerja global tanpa catatan bukan alpa & lembur 0; hari ber-shift tetap alpa/lembur", () => {
+test("tanpa Jam kerja: hari Jam kerja global tanpa catatan bukan alpa; jam pulang tidak menghasilkan lembur (tahap 2)", () => {
   const unset = readAttendance({});
   const set = readAttendance({ attendance: { work_start: "08:00", work_end: "17:00", off_days: [7] } });
   const days = [MON, TUE, "2026-11-04"];
@@ -309,27 +309,39 @@ test("tanpa Jam kerja: hari Jam kerja global tanpa catatan bukan alpa & lembur 0
   const shifts = { templates: [], patterns: {}, assignments: { e1: { [MON]: { kind: "shift", name: "Pagi", start: "08:00", end: "16:00" } } } };
   const planOf = (d) => dayPlan(unset, d, shifts, "e1");
   assert.deepEqual(computeRecap([MON, TUE], [], unset, "2026-11-30", null, planOf).days.map((d) => d.kind), ["absent", "upcoming"]);
-  // Lembur: 08:00–19:00 = 660 menit; Jam kerja global (unset) → lembur 0; tersimpan → 120; shift 16:00 → 180.
+  // Tahap 2: pulang 19:00 tidak menghasilkan lembur di aturan mana pun.
   const work = [row(TUE, "08:00", "19:00")];
   assert.equal(computeRecap([TUE], work, unset, "2026-11-30", null).overtime_minutes, 0);
-  assert.equal(computeRecap([TUE], work, set, "2026-11-30", null).overtime_minutes, 120);
-  assert.equal(computeRecap([MON], [row(MON, "08:00", "19:00")], unset, "2026-11-30", null, planOf).overtime_minutes, 180);
+  assert.equal(computeRecap([TUE], work, set, "2026-11-30", null).overtime_minutes, 0);
+  assert.equal(computeRecap([MON], [row(MON, "08:00", "19:00")], unset, "2026-11-30", null, planOf).overtime_minutes, 0);
+  // Menit biasa: tanpa jam selesai (unset) = masuk … pulang (660); dengan jam selesai 17:00 = 540; shift 16:00 = 480.
+  assert.equal(computeRecap([TUE], work, unset, "2026-11-30", null).regular_minutes, 660);
+  assert.equal(computeRecap([TUE], work, set, "2026-11-30", null).regular_minutes, 540);
+  assert.equal(computeRecap([MON], [row(MON, "08:00", "19:00")], unset, "2026-11-30", null, planOf).regular_minutes, 480);
   // Potongan alpa slip ikut rekap.
   const pay = { type: "monthly", amount: 3_000_000, late_per_minute: 0, absent_per_day: 50_000, allowance_per_day: 0, overtime_per_hour: 0 };
   assert.equal(computePayslip(pay, computeRecap(days, [], unset, "2026-11-30", null)).items.some((i) => i.type === "absent"), false);
   assert.equal(computePayslip(pay, computeRecap(days, [], set, "2026-11-30", null)).items.find((i) => i.type === "absent").quantity, 3);
 });
 
-test("gaji per jam: tarif lembur 0 → menit lembur dibayar tarif biasa; tarif > 0 → dipisah", () => {
+test("gaji: lembur disetujui × tarif lembur; per jam tarif lembur 0 → tarif per jam; harian/bulanan tarif 0 → tidak dibayar", () => {
   const recap = { days: [], late_minutes: 0, worked_minutes: 600, regular_minutes: 480, overtime_minutes: 120, missed_clock_out: 0 };
   const hourly = { type: "hourly", amount: 20_000, late_per_minute: 0, absent_per_day: 0, allowance_per_day: 0 };
+  // regular 480 + lembur disetujui 120.
   const noOt = computePayslip({ ...hourly, overtime_per_hour: 0 }, recap);
-  assert.deepEqual(noOt.items, [{ type: "base", amount: 200_000, quantity: 600, rate: 20_000 }]);
+  assert.deepEqual(noOt.items, [
+    { type: "base", amount: 160_000, quantity: 480, rate: 20_000 },
+    { type: "overtime", amount: 40_000, quantity: 120, rate: 20_000 },
+  ]);
   const ot = computePayslip({ ...hourly, overtime_per_hour: 30_000 }, recap);
   assert.deepEqual(ot.items, [
     { type: "base", amount: 160_000, quantity: 480, rate: 20_000 },
     { type: "overtime", amount: 60_000, quantity: 120, rate: 30_000 },
   ]);
+  const monthly = { type: "monthly", amount: 3_000_000, late_per_minute: 0, absent_per_day: 0, allowance_per_day: 0 };
+  assert.deepEqual(computePayslip({ ...monthly, overtime_per_hour: 0 }, recap).items, [{ type: "base", amount: 3_000_000, quantity: 0, rate: 0 }]);
+  assert.equal(computePayslip({ ...monthly, overtime_per_hour: 25_000 }, recap).items.find((i) => i.type === "overtime").amount, 50_000);
+  assert.equal(payItemLabel({ type: "overtime", amount: 45_000, quantity: 90, rate: 30_000 }, "hourly"), "Lembur · 1 j 30 mnt × Rp 30.000/jam");
 });
 
 test("zona waktu kosong = belum dipilih; nilai balik loyalti efektif", () => {
@@ -379,16 +391,27 @@ test("rekap & gaji per jam: menit biasa dibatasi jam selesai; Tidak/Belum absen 
   const unset = readAttendance({});
   const hourly = { type: "hourly", amount: 20_000, late_per_minute: 0, absent_per_day: 0, allowance_per_day: 0 };
   const opts = { now: Date.parse(at("2026-11-05", "12:00")) };
-  // Pulang 19:00 (jam selesai 17:00): kerja 660, biasa 540, lembur 120.
+  // Pulang 19:00 (jam selesai 17:00): kerja 660, biasa 540; tanpa lembur disetujui = tanpa lembur.
   const late = computeRecap([TUE], [row(TUE, "08:00", "19:00")], set, "2026-11-30", null, undefined, undefined, opts);
   assert.equal(late.worked_minutes, 660);
   assert.equal(late.regular_minutes, 540);
-  assert.equal(late.overtime_minutes, 120);
-  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 30_000 }, late).items, [
+  assert.equal(late.overtime_minutes, 0);
+  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 30_000 }, late).items, [{ type: "base", amount: 180_000, quantity: 540, rate: 20_000 }]);
+  // Lembur disetujui 90 menit di tanggal itu (di luar periode tidak dihitung).
+  const withOt = computeRecap([TUE], [row(TUE, "08:00", "19:00")], set, "2026-11-30", null, undefined, undefined, {
+    ...opts,
+    overtimeByDay: new Map([[TUE, 90], ["2026-12-01", 60]]),
+  });
+  assert.equal(withOt.overtime_minutes, 90);
+  assert.equal(withOt.days[0].overtime, 90);
+  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 30_000 }, withOt).items, [
     { type: "base", amount: 180_000, quantity: 540, rate: 20_000 },
-    { type: "overtime", amount: 60_000, quantity: 120, rate: 30_000 },
+    { type: "overtime", amount: 45_000, quantity: 90, rate: 30_000 },
   ]);
-  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 0 }, late).items, [{ type: "base", amount: 220_000, quantity: 660, rate: 20_000 }]);
+  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 0 }, withOt).items, [
+    { type: "base", amount: 180_000, quantity: 540, rate: 20_000 },
+    { type: "overtime", amount: 30_000, quantity: 90, rate: 20_000 },
+  ]);
   // Tidak absen pulang (masuk lagi Rabu): sampai 17:00 = 540, tanpa lembur, terhitung di rekap.
   const missed = computeRecap([TUE, WED], [openRow(TUE, "08:00"), row(WED, "08:00", "17:00")], set, "2026-11-30", null, undefined, undefined, opts);
   assert.equal(missed.missed_clock_out, 1);

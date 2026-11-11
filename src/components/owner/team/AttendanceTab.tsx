@@ -372,10 +372,11 @@ function DayList({
 }: {
   ctx: TeamCtx;
   e: Employee;
-  days: { day: string; kind: DayKind; row: Attendance | null }[];
+  days: { day: string; kind: DayKind; row: Attendance | null; overtime?: number }[];
   onManual: (employeeId: string | null, date: string | null) => void;
 }) {
-  const rows = days.filter((d) => d.row).reverse();
+  // Tanggal dengan catatan absen atau lembur disetujui.
+  const rows = days.filter((d) => d.row || d.overtime).reverse();
   const latest = latestClockInDate(ctx.data.attendances, e.id);
   const names = new Map(ctx.data.employees.map((x) => [x.id, x.name]));
   return (
@@ -408,7 +409,7 @@ function DayList({
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ day, kind, row }) => (
+              {rows.map(({ day, kind, row, overtime }) => (
                 <tr key={day}>
                   <td className={`${tdClass} border-b border-border-subtle whitespace-nowrap`}>{formatDayLong(day)}</td>
                   <td className={`${tdClass} border-b border-border-subtle`}>
@@ -417,6 +418,11 @@ function DayList({
                     {row?.unscheduled && (
                       <span className="ml-1.5">
                         <Badge>Di luar jadwal</Badge>
+                      </span>
+                    )}
+                    {!!overtime && (
+                      <span className="ml-1.5">
+                        <Badge tone="brand">Lembur {durationLabel(overtime)}</Badge>
                       </span>
                     )}
                     {row && <ClockOutBadge state={clockOutState(row, dueOutAt(row, dayPlan(ctx.data.rules, row.date, ctx.data.shifts, e.id), ctx.data.rules), latest)} />}

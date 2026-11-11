@@ -16,6 +16,7 @@
 import { durationLabel } from "../duration";
 import { pullAll, pushChanges } from "./api";
 import { toLeave, type LeaveRequest } from "./leavePlan";
+import { approvedOvertimeByDay, toOvertime, type OvertimeRequest } from "./overtimePlan";
 import { readAttendance, readShiftPatterns, type AttendanceRules, type ShiftPatterns } from "./settings";
 import type { AttendanceVia } from "../attendanceVia";
 import type { ChangeResult, SyncRecord, WritableEntity } from "./types";
@@ -125,6 +126,8 @@ export type TeamData = {
   payslips: Payslip[];
   /** Pengajuan izin/sakit/cuti (kunci Pro `staff`; kosong bila Gratis). */
   leaves: LeaveRequest[];
+  /** Pengajuan/catatan lembur (tahap 2; kunci Pro `staff`). */
+  overtime: OvertimeRequest[];
   rules: AttendanceRules;
   /** Shift tetap mingguan (`shift_patterns`) + jadwal per tanggal (`shift_assignments`). */
   shifts: ShiftSchedule;
@@ -135,7 +138,14 @@ export type TeamData = {
   assignmentRecords: SyncRecord[];
 };
 
-export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_requests" | "shift_assignments" | "business_settings";
+export type TeamEntity =
+  | "employees"
+  | "attendances"
+  | "payslips"
+  | "leave_requests"
+  | "shift_assignments"
+  | "business_settings"
+  | "overtime_requests";
 
 /**
  * Pengecualian jadwal satu karyawan pada satu tanggal (`shift_assignments`, api.md "Jadwal shift per karyawan").
@@ -246,7 +256,7 @@ function toOutlet(r: SyncRecord): OutletLite {
 
 /** Tarik semua data tim. `staff=false` (paket Gratis) → kehadiran & slip tidak ditarik. */
 export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<TeamData> {
-  const [emp, att, slips, leaves, settings, outlets, assigns] = await Promise.all([
+  const [emp, att, slips, leaves, settings, outlets, assigns, overtime] = await Promise.all([
     pullAll("employees", signal),
     staff ? pullAll("attendances", signal) : Promise.resolve([]),
     staff ? pullAll("payslips", signal) : Promise.resolve([]),
@@ -254,12 +264,14 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     pullAll("business_settings", signal),
     pullAll("outlets", signal),
     staff ? pullAll("shift_assignments", signal) : Promise.resolve([]),
+    staff ? pullAll("overtime_requests", signal) : Promise.resolve([]),
   ]);
   return {
     employees: emp.map(toEmployee),
     attendances: att.map(toAttendance),
     payslips: slips.map(toPayslip),
     leaves: leaves.map(toLeave),
+    overtime: overtime.filter((r) => !r.deleted_at).map(toOvertime),
     rules: readAttendance(settings[0]?.settings),
     shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns), defaults: toDefaultDays(assigns) },
     outlets: outlets.map(toOutlet),
@@ -280,6 +292,7 @@ export function mergeRecord(data: TeamData, entity: TeamEntity, rec: SyncRecord)
   if (entity === "employees") return { ...data, employees: upsert(data.employees, toEmployee(rec)) };
   if (entity === "attendances") return { ...data, attendances: upsert(data.attendances, toAttendance(rec)) };
   if (entity === "leave_requests") return { ...data, leaves: upsert(data.leaves, toLeave(rec)) };
+  if (entity === "overtime_requests") return { ...data, overtime: upsert(data.overtime, toOvertime(rec)) };
   if (entity === "shift_assignments") {
     const assignmentRecords = upsert(data.assignmentRecords, rec);
     return { ...data, assignmentRecords, shifts: { ...data.shifts, assignments: toAssignments(assignmentRecords), defaults: toDefaultDays(assignmentRecords) } };
@@ -544,7 +557,8 @@ export function evaluateClockIn(
 export type DayKind = AttendanceStatus | "off" | "upcoming";
 
 export type Recap = {
-  days: { day: string; kind: DayKind; row: Attendance | null }[];
+  /** `overtime` = menit lembur disetujui bertanggal itu (tahap 2). */
+  days: { day: string; kind: DayKind; row: Attendance | null; overtime?: number }[];
   late_minutes: number;
   /** Menit kerja nyata (masuk → pulang). */
   worked_minutes: number;
@@ -553,6 +567,7 @@ export type Recap = {
    * Tidak/Belum absen pulang = sampai jam selesai bila ada jadwal/Jam kerja, 0 bila tanpa.
    */
   regular_minutes: number;
+  /** Lembur disetujui (Σ `minutes` `overtime_requests` approved di periode) — bukan dari jam pulang (tahap 2). */
   overtime_minutes: number;
   /** Jumlah baris Tidak absen pulang (ada absen masuk di tanggal sesudahnya). */
   missed_clock_out: number;
@@ -634,7 +649,7 @@ export function computeRecap(
   since: string | null,
   planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day),
   unscheduledOf: (day: string) => boolean = () => false,
-  opts: { now?: number; latestClockIn?: string | null } = {}
+  opts: { now?: number; latestClockIn?: string | null; overtimeByDay?: Map<string, number> } = {}
 ): Recap {
   const byDate = new Map(rows.map((r) => [r.date, r]));
   const now = opts.now ?? Date.now();
@@ -674,16 +689,18 @@ export function computeRecap(
     if (outAt < inAt) continue;
     const worked = Math.floor((outAt - inAt) / 60_000);
     out.worked_minutes += worked;
-    let overtime = 0;
-    if (!unsetGlobal(day)) {
-      // Lembur dari jam pulang (tahap 1 tidak diubah); Jam kerja belum disimpan → 0, semua menit dibayar biasa.
-      const end = zonedAt(day, planOf(day).end);
-      if (outAt > end) overtime = Math.floor((outAt - (inAt > end ? inAt : end)) / 60_000);
+    // Menit biasa: sampai jam selesai baris (pulang lebih lambat tidak menambah upah biasa); tanpa jam selesai = masuk …
+    // pulang. Lembur tidak lagi dihitung dari jam pulang (tahap 2: lembur = pengajuan disetujui).
+    out.regular_minutes += due !== null ? Math.max(0, Math.floor(((outAt > due ? due : outAt) - inAt) / 60_000)) : worked;
+  }
+  // Lembur disetujui bertanggal di periode.
+  if (opts.overtimeByDay) {
+    const inPeriod = new Set(days);
+    for (const [d, m] of opts.overtimeByDay) if (inPeriod.has(d)) out.overtime_minutes += m;
+    for (const d of out.days) {
+      const m = opts.overtimeByDay.get(d.day);
+      if (m) d.overtime = m;
     }
-    out.overtime_minutes += overtime;
-    // Menit biasa: sampai jam selesai baris (pulang lebih lambat tidak menambah upah biasa); tanpa jam selesai
-    // (mis. libur yang tetap masuk) = menit kerja dikurangi lembur seperti sebelumnya.
-    out.regular_minutes += due !== null ? Math.max(0, Math.floor(((outAt > due ? due : outAt) - inAt) / 60_000)) : Math.max(0, worked - overtime);
   }
   return out;
 }
@@ -703,17 +720,18 @@ export const perMinute = (minutes: number, ratePerHour: number) => Math.floor((m
 
 /**
  * Slip dari pengaturan gaji & rekap (fungsi murni; cermin `computePayslip`):
- * - bulanan: gaji pokok tetap; harian: upah × hari hadir; per jam: upah × jam kerja reguler (tanpa lembur). Tarif
- *   lembur 0 → menit lembur tetap dibayar tarif biasa (semua menit kerja; tidak hilang dari slip).
- * - tunjangan hadir × hari hadir; lembur = menit setelah jam selesai × tarif.
+ * - bulanan: gaji pokok tetap; harian: upah × hari hadir; per jam: upah × menit biasa (`regular_minutes`: masuk …
+ *   min(pulang, jam selesai); tanpa jam selesai = masuk … pulang).
+ * - tunjangan hadir × hari hadir.
+ * - lembur (tahap 2) = Σ lembur disetujui di periode × tarif lembur / 60. Per jam: tarif lembur 0 → dibayar tarif per
+ *   jam biasa; harian/bulanan: tarif lembur 0 → tidak dibayar (tetap tercatat di rekap).
  * - potongan: telat × menit, alpa × hari (izin/sakit/cuti tidak dipotong).
  * - total potongan dibatasi pendapatan (gaji bersih tidak pernah negatif).
  */
 export function computePayslip(c: PayrollConfig, recap: Recap): PayslipDraft {
   if (c.type === "none") return EMPTY_DRAFT;
   const present = recapPresent(recap);
-  // Menit biasa dibatasi jam selesai baris (`regular_minutes`); tarif lembur 0 → menit lembur ikut dibayar tarif biasa.
-  const regular = c.overtime_per_hour > 0 ? recap.regular_minutes : recap.regular_minutes + recap.overtime_minutes;
+  const regular = recap.regular_minutes;
   const items: PayItem[] = [
     c.type === "monthly"
       ? { type: "base", amount: c.amount, quantity: 0, rate: 0 }
@@ -724,8 +742,9 @@ export function computePayslip(c: PayrollConfig, recap: Recap): PayslipDraft {
   if (c.allowance_per_day > 0 && present > 0) {
     items.push({ type: "allowance", amount: present * c.allowance_per_day, quantity: present, rate: c.allowance_per_day });
   }
-  if (c.overtime_per_hour > 0 && recap.overtime_minutes > 0) {
-    items.push({ type: "overtime", amount: perMinute(recap.overtime_minutes, c.overtime_per_hour), quantity: recap.overtime_minutes, rate: c.overtime_per_hour });
+  const otRate = c.overtime_per_hour > 0 ? c.overtime_per_hour : c.type === "hourly" ? c.amount : 0;
+  if (otRate > 0 && recap.overtime_minutes > 0) {
+    items.push({ type: "overtime", amount: perMinute(recap.overtime_minutes, otRate), quantity: recap.overtime_minutes, rate: otRate });
   }
   const gross = items.reduce((a, i) => a + i.amount, 0);
   let room = gross;
@@ -859,7 +878,7 @@ export function payItemLabel(item: PayItem, type: PayType): string {
     case "allowance":
       return `Tunjangan hadir · ${item.quantity} hari`;
     case "overtime":
-      return `Lembur · ${durationLabel(item.quantity)}`;
+      return `Lembur · ${durationLabel(item.quantity)} × ${appRupiah(item.rate)}/jam`;
     case "late":
       return `Terlambat · ${durationLabel(item.quantity)}`;
     case "absent":
@@ -1133,7 +1152,7 @@ export type PayrollRow = {
 export function recapFor(
   e: Employee,
   month: string,
-  data: Pick<TeamData, "attendances" | "rules" | "shifts">,
+  data: Pick<TeamData, "attendances" | "rules" | "shifts"> & { overtime?: OvertimeRequest[] },
   today = zonedToday()
 ): Recap {
   const m = monthOf(month);
@@ -1145,7 +1164,7 @@ export function recapFor(
     zonedDay(e.created_at) || null,
     (day) => dayPlan(data.rules, day, data.shifts, e.id),
     (day) => isUnscheduled(day, data.shifts, e.id),
-    { latestClockIn: latestClockInDate(data.attendances, e.id) }
+    { latestClockIn: latestClockInDate(data.attendances, e.id), overtimeByDay: approvedOvertimeByDay(data.overtime ?? [], e.id) }
   );
 }
 
