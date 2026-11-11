@@ -415,6 +415,15 @@ export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftSched
 }
 
 /**
+ * Hari libur yang ditetapkan pemilik (api.md "Absen di luar jadwal" butir 3): jadwal `off`, libur di shift tetap, atau
+ * `off_days` Jam kerja yang pernah disimpan. Libur Minggu bawaan (Jam kerja belum disimpan) → `false`. Hadir di hari
+ * ini → ontime + `unscheduled: true` (tanda "Di luar jadwal").
+ */
+export function isOwnerOffDay(plan: DayPlan, rules: AttendanceRules): boolean {
+  return plan.off && (plan.source !== "global" || rules.has_work_hours !== false);
+}
+
+/**
  * Pengingat pemilik: ada templat shift, tetapi belum ada shift tetap dan belum ada penugasan `shift` pada
  * [today−7, today+14] → "Templat shift sudah dibuat, tetapi belum ditugaskan ke karyawan." (api.md).
  */

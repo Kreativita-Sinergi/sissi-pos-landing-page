@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
-const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isUnscheduled, manualFlags, payItemLabel, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
+const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isOwnerOffDay, isUnscheduled, manualFlags, payItemLabel, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
 const BASE = { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_days: [7] };
@@ -274,4 +274,17 @@ test("absen manual: di luar jadwal → ontime + unscheduled; status lain false; 
   assert.equal(manualFlags("ontime", false, lateRow).unscheduled, false);
   // Format durasi bersama di slip.
   assert.equal(payItemLabel({ type: "late", amount: 0, quantity: 784, rate: 0 }, "monthly"), "Terlambat · 13 j 4 mnt");
+});
+
+test("absen manual di hari libur pemilik → bertanda di luar jadwal; libur Minggu bawaan tanpa Jam kerja → tanpa tanda", () => {
+  const shifts = { ...readShiftPatterns(SETTINGS), assignments: toAssignments(ASSIGN_ROWS) };
+  const unset = readAttendance({});
+  const set = readAttendance({ attendance: { work_start: "08:00", off_days: [7] } });
+  assert.equal(isOwnerOffDay(dayPlan(unset, MON, shifts, "e1"), unset), true); // jadwal off
+  assert.equal(isOwnerOffDay(dayPlan(unset, "2026-11-05", readShiftPatterns(SETTINGS), "e1"), unset), true); // libur di shift tetap
+  assert.equal(isOwnerOffDay(dayPlan(set, SUN, null, "e9"), set), true); // off_days Jam kerja tersimpan
+  assert.equal(isOwnerOffDay(dayPlan(unset, SUN, null, "e9"), unset), false); // Minggu bawaan
+  assert.equal(isOwnerOffDay(dayPlan(set, TUE, null, "e9"), set), false); // hari kerja
+  // Hasil simpan: ontime + unscheduled.
+  assert.deepEqual(manualFlags("ontime", true, null), { unscheduled: true, late_reason: "" });
 });

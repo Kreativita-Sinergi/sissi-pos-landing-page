@@ -174,3 +174,8 @@ test("durationLabel bersama: < 60 → mnt; ≥ 60 → j + mnt; menit 0 → j saj
   assert.equal(durationLabel(-5), "0 mnt");
   assert.equal(lateAskText({ minutes: 784, shiftName: "Pagi", shiftStart: "07:00", tolerance: 10 }), "Shift Pagi mulai 07:00 (toleransi 10 menit). Kamu telat 13 j 4 mnt.");
 });
+
+test("OFF_DAY_CONFIRM: pesan cadangan hari libur", () => {
+  const m = clockErrorMessage({ code: "OFF_DAY_CONFIRM" }, { action: "in", sentGeo: true });
+  assert.equal(m.title, "Hari ini jadwalmu libur");
+});

@@ -12,6 +12,7 @@ import {
   dayPlan,
   durationLabel,
   evaluateClockIn,
+  isOwnerOffDay,
   isUnscheduled,
   manualClockMinutes,
   manualMinDay,
@@ -148,7 +149,9 @@ function ManualForm({
   // Menit relatif tengah malam `date` (≥ 1440 = esok hari): shift malam masuk 00:30 → D+1, pulang relatif jam masuk.
   const at = present && inMin !== null ? manualClockMinutes(plan, inMin, outMin) : null;
   // Tanggal di luar jadwal + hadir → otomatis tepat waktu & bertanda "di luar jadwal" (tanpa dialog).
-  const dayUnscheduled = !!employeeId && isUnscheduled(date, ctx.data.shifts, employeeId);
+  // Hari libur yang ditetapkan pemilik juga ditandai "Di luar jadwal" (libur Minggu bawaan tanpa Jam kerja tidak).
+  const offDay = isOwnerOffDay(plan, ctx.data.rules);
+  const dayUnscheduled = !!employeeId && (offDay || isUnscheduled(date, ctx.data.shifts, employeeId));
   const verdict = at ? evaluateClockIn(ctx.data.rules, date, at.inAt, plan, dayUnscheduled) : null;
   const inNextDay = !!at && at.inAt >= 1440;
   const outNextDay = !!at && at.outAt !== null && at.outAt >= 1440;
@@ -285,8 +288,10 @@ function ManualForm({
             <p className={`mt-1.5 text-[13px] ${verdict.status === "late" ? "text-warning" : "text-text-muted"}`}>
               {verdict.status === "late"
                 ? `Tercatat terlambat ${durationLabel(verdict.late_minutes)} menurut jam kerja.`
-                : dayUnscheduled
-                  ? "Tidak ada shift di tanggal ini: tercatat tepat waktu dengan tanda “Di luar jadwal”."
+                : dayUnscheduled && offDay
+                  ? "Tanggal ini jadwalnya libur: tercatat tepat waktu dengan tanda “Di luar jadwal”."
+                  : dayUnscheduled
+                    ? "Tidak ada shift di tanggal ini: tercatat tepat waktu dengan tanda “Di luar jadwal”."
                   : "Tercatat tepat waktu menurut jam kerja."}
             </p>
           )}

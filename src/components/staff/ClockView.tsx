@@ -60,6 +60,8 @@ export function ClockView() {
   const [outsideAsk, setOutsideAsk] = useState<{ p: Pending; distance: number | null; radius: number | null } | null>(null);
   /** 409 UNSCHEDULED_CONFIRM / LATE_CONFIRM menunggu jawaban (bisa menyusul OUTSIDE_AREA_CONFIRM: lokasi → jadwal). */
   const [unschedAsk, setUnschedAsk] = useState<{ p: Pending; workStart: string | null } | null>(null);
+  /** 409 OFF_DAY_CONFIRM: hari libur yang ditetapkan pemilik. */
+  const [offDayAsk, setOffDayAsk] = useState<Pending | null>(null);
   const [lateAsk, setLateAsk] = useState<{ p: Pending; info: LateAsk } | null>(null);
   const [lateReason, setLateReason] = useState("");
   const reqId = useRef(0);
@@ -186,6 +188,11 @@ export function ClockView() {
         setPhase("idle");
         return;
       }
+      if (err instanceof StaffApiError && err.code === "OFF_DAY_CONFIRM") {
+        setOffDayAsk(p);
+        setPhase("idle");
+        return;
+      }
       if (err instanceof StaffApiError && err.code === "LATE_CONFIRM") {
         setLateReason("");
         setLateAsk({ p, info: readLateAsk(err) });
@@ -228,6 +235,13 @@ export function ClockView() {
     if (!ask) return;
     setUnschedAsk(null);
     resend(ask.p, { confirm_unscheduled: true });
+  }
+
+  function confirmOffDay() {
+    const p = offDayAsk;
+    if (!p) return;
+    setOffDayAsk(null);
+    resend(p, { confirm_off_day: true });
   }
 
   function confirmLate() {
@@ -515,6 +529,17 @@ export function ClockView() {
           {unschedAsk?.workStart ? ` memakai jam kerja umum (mulai ${unschedAsk.workStart}), tidak dihitung telat` : ", tidak dihitung telat"}. Pemilik bisa
           melihatnya.
         </p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!offDayAsk}
+        title="Hari ini jadwalmu libur"
+        confirmLabel="Tetap catat masuk"
+        onConfirm={confirmOffDay}
+        onClose={() => setOffDayAsk(null)}
+      >
+        <p>Hari ini jadwalmu libur. Tetap catat masuk kerja?</p>
+        <p className="mt-2">Absen tercatat dengan tanda &ldquo;di luar jadwal&rdquo;, tidak dihitung telat. Pemilik bisa melihatnya.</p>
       </ConfirmDialog>
 
       <ConfirmDialog

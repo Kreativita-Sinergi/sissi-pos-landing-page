@@ -84,6 +84,8 @@ export type ClockInput = {
   confirm_unscheduled?: boolean;
   /** Jawaban atas 409 LATE_CONFIRM; `late_reason` opsional (≤ 200). */
   confirm_late?: boolean;
+  /** Jawaban atas 409 OFF_DAY_CONFIRM ("hari ini jadwalmu libur, tetap catat?"). */
+  confirm_off_day?: boolean;
   late_reason?: string;
 };
 
