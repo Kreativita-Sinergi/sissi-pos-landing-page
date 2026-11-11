@@ -65,6 +65,16 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   jam pulang tidak berubah. Angka uji: 08:00–19:00 (selesai 17:00) → 540 biasa + 120 lembur = Rp 180.000 + 60.000
   (tarif 20.000/30.000), tarif lembur 0 → 660 = Rp 220.000. **Belum disamakan dengan `payroll_calc.dart` app**
   (belum di-commit agent app saat ini). Tahap 1 sebaiknya dirilis bersama tahap 2 (pengajuan lembur).
+- **Lembur tahap 2 (2026-11-11, `development`, belum rilis; kontrak api.md "Lembur (tahap 2, entitas sync
+  `overtime_requests`)"):** Tim › Pengajuan punya bagian Lembur (menunggu dulu; durasi `durationLabel`) → Setujui/Tolak
+  (+ catatan), "Batalkan lembur" untuk yang disetujui (alasan wajib); "Catat lembur" pemilik (karyawan aktif, hari ini …
+  −62, 1–1440 mnt, alasan opsional → `source: owner`, `approved`). Lencana Pengajuan menghitung lembur menunggu. Gaji:
+  lembur = Σ lembur disetujui di periode (tidak lagi dari jam pulang); per jam: menit biasa sampai jam selesai (tanpa
+  jam selesai = masuk…pulang), lembur dibayar tarif lembur atau tarif per jam bila 0; harian/bulanan tarif 0 → tidak
+  dibayar. Slip "Lembur · 1 j 30 mnt × Rp 30.000/jam". Catatan per karyawan menampilkan lembur per tanggal. Berkas:
+  `src/lib/owner/overtimePlan.ts` (murni), `overtime.ts` (kiriman), `components/owner/team/OvertimeTab.tsx`; mock pemilik
+  berisi 3 contoh. Web karyawan tidak punya pengajuan izin → tidak ada pengajuan lembur di web. Teks lama "menit setelah
+  jam pulang = lembur" di Pengaturan/Tim/panduan diganti.
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong

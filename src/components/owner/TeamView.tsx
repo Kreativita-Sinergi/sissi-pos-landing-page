@@ -16,6 +16,7 @@ import { EmployeeSheet, type EmployeeTarget } from "./team/EmployeeSheet";
 import { EmployeesTab } from "./team/EmployeesTab";
 import { LeaveDialog, type LeaveTarget } from "./team/LeaveDialog";
 import { LeaveTab } from "./team/LeaveTab";
+import { OvertimeDialog, OvertimeSection, RecordOvertimeDialog, type OvertimeTarget } from "./team/OvertimeTab";
 import { ManualAttendanceDialog, type ManualTarget } from "./team/ManualAttendanceDialog";
 import { PayrollDialog } from "./team/PayrollDialog";
 import { PayrollTab } from "./team/PayrollTab";
@@ -70,7 +71,10 @@ export function TeamView() {
   const [slipFor, setSlipFor] = useState<string | null>(null);
   const [payrollFor, setPayrollFor] = useState<string | null>(null);
   const [leaveOpen, setLeaveOpen] = useState<LeaveTarget>(null);
-  const pendingLeaves = data?.leaves.filter((r) => r.status === "pending").length ?? 0;
+  const [overtimeOpen, setOvertimeOpen] = useState<OvertimeTarget>(null);
+  const [recordOvertime, setRecordOvertime] = useState(false);
+  // Lencana Pengajuan = izin + lembur yang menunggu.
+  const pendingLeaves = (data?.leaves.filter((r) => r.status === "pending").length ?? 0) + (data?.overtime.filter((r) => r.status === "pending").length ?? 0);
 
   const ctx: TeamCtx | null = data ? { data, merge, reload, staff } : null;
   const rows = useMemo(() => (data && staff ? payrollRows(data, month) : []), [data, staff, month]);
@@ -140,7 +144,7 @@ export function TeamView() {
               {tab === "pengajuan"
                 ? "Karyawan mengajukan izin, sakit, atau cuti dari HP-nya; kamu setujui atau tolak di sini dan tanggalnya tercatat di Kehadiran. Termasuk paket Pro."
                 : tab === "jadwal"
-                  ? "Atur shift tetap tiap karyawan dan ubah tanggal tertentu (libur, tukar shift); telat dan lembur dihitung dari jadwalnya. Termasuk paket Pro."
+                  ? "Atur shift tetap tiap karyawan dan ubah tanggal tertentu (libur, tukar shift); telat dan jam pulang dihitung dari jadwalnya. Termasuk paket Pro."
                   : "Catat absen masuk/pulang dengan PIN, pantau keterlambatan dan lembur, lalu hitung dan terbitkan slip gaji dengan paket Pro."}
             </LockedCard>
           )}
@@ -163,6 +167,14 @@ export function TeamView() {
               filter={qs.get("saring") === "semua" ? "all" : "pending"}
               onFilter={(f) => qs.update({ saring: f === "all" ? "semua" : null }, "replace")}
               onOpen={(id) => setLeaveOpen({ id, key: Date.now() })}
+            />
+          )}
+          {tab === "pengajuan" && staff && (
+            <OvertimeSection
+              ctx={ctx}
+              filter={qs.get("saring") === "semua" ? "all" : "pending"}
+              onOpen={(id) => setOvertimeOpen({ id, key: Date.now() })}
+              onRecord={() => setRecordOvertime(true)}
             />
           )}
           {tab === "gaji" && staff && (
@@ -199,6 +211,14 @@ export function TeamView() {
                 businessId={session.business.id}
                 fallbackOutlet={defaultOutlet}
                 onClose={() => setLeaveOpen(null)}
+              />
+              <OvertimeDialog target={overtimeOpen} ctx={ctx} owner={{ id: session.user.id }} onClose={() => setOvertimeOpen(null)} />
+              <RecordOvertimeDialog
+                open={recordOvertime}
+                ctx={ctx}
+                owner={{ id: session.user.id, name: session.user.name }}
+                outletId={defaultOutlet || null}
+                onClose={() => setRecordOvertime(false)}
               />
               <PayslipSheet
                 row={slipRow}

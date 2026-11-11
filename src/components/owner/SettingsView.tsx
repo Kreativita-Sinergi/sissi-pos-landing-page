@@ -1112,7 +1112,7 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
     <EditSection
       id="absensi"
       title="Aturan absensi"
-      description="Dipakai untuk menandai terlambat & menghitung lembur saat karyawan absen — dengan PIN, dari aplikasi HP, atau lewat website."
+      description="Dipakai untuk menandai terlambat dan belum absen pulang saat karyawan absen — dengan PIN, dari aplikasi HP, atau lewat website. Lembur dihitung dari pengajuan yang disetujui."
       dirty={dirty}
       saving={saver.saving}
       canSave={!startErr && !endErr && !tolErr}
@@ -1139,7 +1139,7 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
         <Field id={`${uid}-start`} label="Jam masuk" error={startErr}>
           <input id={`${uid}-start`} type="time" className={`${inputClass} tabular-nums`} value={draft.work_start} aria-invalid={!!startErr || undefined} onChange={(e) => set("work_start", e.target.value)} />
         </Field>
-        <Field id={`${uid}-end`} label="Jam pulang" error={endErr} hint="Menit setelah jam ini = lembur.">
+        <Field id={`${uid}-end`} label="Jam pulang" error={endErr} hint="Lewat jam ini tanpa absen pulang = Belum absen pulang.">
           <input id={`${uid}-end`} type="time" className={`${inputClass} tabular-nums`} value={draft.work_end} aria-invalid={!!endErr || undefined} onChange={(e) => set("work_end", e.target.value)} />
         </Field>
         <Field id={`${uid}-tol`} label="Toleransi terlambat" error={tolErr} hint={tol === null ? "Kosong = telat tidak dihitung (absen masuk selalu tepat waktu)." : "Kosongkan bila telat tidak dihitung."}>

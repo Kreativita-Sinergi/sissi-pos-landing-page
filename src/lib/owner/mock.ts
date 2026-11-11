@@ -1137,6 +1137,18 @@ export function createMockApi(onUnauthorized: () => void): OwnerApi {
               return { entity: c.entity, id, status: "conflict" as const, code: "CONFLICT", record: cur };
             }
           }
+          // Lembur (api.md "Lembur"): final (ditolak/dibatalkan) beku → conflict; tidak dapat dihapus.
+          if (c.entity === "overtime_requests") {
+            const cur = store("overtime_requests").get(id);
+            if (c.op === "delete") return { entity: c.entity, id, status: "rejected" as const, code: "FORBIDDEN", message: "Lembur tidak dapat dihapus", details: [] };
+            if (cur && (cur.status === "rejected" || cur.status === "cancelled" || (c.base_updated_at && cur.updated_at !== c.base_updated_at))) {
+              return { entity: c.entity, id, status: "conflict" as const, code: "CONFLICT", record: cur };
+            }
+            const d = (c.data ?? {}) as Record<string, unknown>;
+            if (d.status === "cancelled" && !String(d.decision_note ?? "").trim()) {
+              return { entity: c.entity, id, status: "rejected" as const, code: "VALIDATION_ERROR", message: "Input tidak valid", details: [{ field: "decision_note", message: "Wajib diisi" }] };
+            }
+          }
           if (c.entity === "attendances" && leaveFailed) {
             return { entity: c.entity, id, status: "rejected" as const, code: "CONFLICT", message: "Pengajuan tidak diterapkan; absen tidak ditulis", details: [] };
           }
@@ -1509,6 +1521,17 @@ function seedLeaves(put: (entity: string, rows: SyncRecord[]) => void) {
       clock_in_geo: null,
       clock_out_geo: { lat: -6.2, lng: 106.8, accuracy_m: 40, distance_m: 35, outside_area: false, mocked: false },
     }),
+  ]);
+  // Lembur (tahap 2): satu menunggu (Dewi), satu disetujui (Yoga, gaji), satu dicatat pemilik (Sari).
+  const ot = (seed: string, d: Record<string, unknown>, createdDaysAgo: number) => ({
+    ...rec(uuid(`overtime:${seed}`), { outlet_id: OUTLETS[0].id, reason: "", source: "employee", status: "pending", decided_by: null, decided_at: null, decision_note: "", ...d }),
+    created_at: at(createdDaysAgo, 20),
+    updated_at: at(createdDaysAgo, 20),
+  });
+  put("overtime_requests", [
+    ot("dewi-pending", { employee_id: dewi, date: addDays(today, -1), minutes: 90, reason: "Menutup kasir dan hitung stok sampai jam 23.30." }, 1),
+    ot("yoga-ok", { employee_id: yoga, date: addDays(today, -2), minutes: 120, reason: "Ramai pesanan katering.", status: "approved", decided_by: USER.id, decided_at: at(1, 9) }, 2),
+    ot("sari-owner", { employee_id: sari, date: addDays(today, -3), minutes: 45, source: "owner", status: "approved", decided_by: USER.id, decided_at: at(3, 21) }, 3),
   ]);
 }
 

@@ -423,7 +423,8 @@ export type DataEntity =
   | "stock_transfers"
   | "payslips"
   | "leave_requests"
-  | "shift_assignments";
+  | "shift_assignments"
+  | "overtime_requests";
 
 /**
  * Entitas yang bisa diubah web (`POST /owner/changes`). `outlets`: tambah (dalam kuota), ubah, hapus; metode bayar
@@ -458,7 +459,9 @@ export type WritableEntity =
   // Pengajuan izin/sakit/cuti: setujui/tolak (setujui = satu kiriman bersama absen manual per tanggal).
   | "leave_requests"
   // Jadwal shift per tanggal (2026-11-03): pemilik menyusun dari Tim › Jadwal.
-  | "shift_assignments";
+  | "shift_assignments"
+  // Lembur (tahap 2, 2026-11-11): setujui/tolak/batalkan pengajuan karyawan, catat langsung pemilik.
+  | "overtime_requests";
 
 /** Record sync mentah: bentuk per entitas ada di api.md "Sync v1". */
 export type SyncRecord = { id: string; updated_at: string; deleted_at: string | null; [key: string]: unknown };
