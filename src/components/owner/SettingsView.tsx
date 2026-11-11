@@ -12,6 +12,7 @@ import {
   errorMessage,
   Field,
   focusRing,
+  Notice,
   formatRupiah,
   iconBtn,
   inputClass,
@@ -35,6 +36,8 @@ import {
   paperLabel,
   mergeTaxes,
   mergeTiers,
+  hasTimezone,
+  loyaltyReturnText,
   type Obj,
   ORDER_TYPE_VALUES,
   type OrderType,
@@ -373,6 +376,9 @@ function ServiceFeeSection({ rec, onRecord }: OutletProps) {
   const settings = settingsOf(rec);
   const base = readServiceFee(settings);
   const { draft, setDraft, dirty, reset } = useDraft<ServiceFee>(base);
+  // Data: `order_types` kosong = semua jenis pesanan. UI: pilihan eksplisit; dimatikan → wajib pilih ≥ 1.
+  const all = useDraft<boolean>(base.order_types.length === 0);
+  const typesErr = draft.enabled && !all.draft && draft.order_types.length === 0 ? "Pilih minimal satu jenis pesanan." : undefined;
   const saver = useSaver(onRecord);
   const rateErr = draft.type === "percent" && (!Number.isFinite(draft.rate_bp) || draft.rate_bp > 10000) ? "Tarif 0–100%." : undefined;
   const amountErr = draft.type === "fixed" && (!Number.isFinite(draft.amount) || draft.amount > 1_000_000_000) ? "Nominal tidak sah." : undefined;
@@ -381,17 +387,21 @@ function ServiceFeeSection({ rec, onRecord }: OutletProps) {
       id="biaya-layanan"
       title="Biaya layanan"
       description="Ditambahkan ke tagihan setelah diskon, sebelum pajak."
-      dirty={dirty}
+      dirty={dirty || all.dirty}
       saving={saver.saving}
-      canSave={!rateErr && !amountErr}
+      canSave={!rateErr && !amountErr && !typesErr}
       error={saver.error}
       onReset={() => {
         reset();
+        all.reset();
         saver.clearError();
       }}
       onSave={() =>
         saver.run(
-          () => saveRecord("outlets", rec.id, rec, { settings: mergeSection(settings, "service_fee", draft) }),
+          () =>
+            saveRecord("outlets", rec.id, rec, {
+              settings: mergeSection(settings, "service_fee", { ...draft, order_types: all.draft ? [] : draft.order_types }),
+            }),
           "Biaya layanan disimpan.",
           (r) => setDraft(readServiceFee(settingsOf(r as Rec)))
         )
@@ -425,8 +435,27 @@ function ServiceFeeSection({ rec, onRecord }: OutletProps) {
           </div>
           <div>
             <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Berlaku untuk jenis pesanan</p>
-            <ChipGroup label="Jenis pesanan biaya layanan" options={ORDER_TYPE_OPTIONS} selected={draft.order_types} onChange={(v) => setDraft({ ...draft, order_types: sortTypes(v) })} />
-            <p className="mt-1.5 text-[12.5px] text-text-muted">{draft.order_types.length === 0 ? "Tidak ada yang dipilih = semua jenis pesanan." : "Hanya jenis yang dipilih."}</p>
+            <Switch
+              id={`${uid}-all-types`}
+              label="Semua jenis pesanan"
+              checked={all.draft}
+              onChange={(v) => {
+                all.setDraft(v);
+                if (v) setDraft({ ...draft, order_types: [] });
+              }}
+            />
+            {!all.draft && (
+              <div className="mt-2">
+                <ChipGroup label="Jenis pesanan biaya layanan" options={ORDER_TYPE_OPTIONS} selected={draft.order_types} onChange={(v) => setDraft({ ...draft, order_types: sortTypes(v) })} />
+                {typesErr ? (
+                  <p role="alert" className="mt-1.5 text-[12.5px] font-semibold text-danger">
+                    {typesErr}
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-[12.5px] text-text-muted">Hanya jenis yang dipilih.</p>
+                )}
+              </div>
+            )}
           </div>
           <Switch
             id={`${uid}-taxable`}
@@ -936,7 +965,10 @@ function LoyaltySection({ rec, businessId, onRecord }: BizProps) {
           {Number.isFinite(draft.points_per_thousand) && Number.isFinite(draft.point_value) && (
             <p className="text-[12.5px] text-text-muted">
               Contoh: belanja {formatRupiah(50_000)} → {(50 * draft.points_per_thousand).toLocaleString("id-ID")} poin (senilai{" "}
-              {formatRupiah(50 * draft.points_per_thousand * draft.point_value)}).
+              {formatRupiah(50 * draft.points_per_thousand * draft.point_value)}).{" "}
+              {loyaltyReturnText(draft.points_per_thousand, draft.point_value) && (
+                <span className="font-semibold text-text-heading">{loyaltyReturnText(draft.points_per_thousand, draft.point_value)}.</span>
+              )}
             </p>
           )}
 
@@ -1010,7 +1042,8 @@ function TimezoneSection({ rec, businessId, onRecord }: BizProps) {
   const { refreshSession } = useOwner();
   const toast = useToast();
   const settings = settingsOf(rec);
-  const { draft, setDraft, dirty, reset } = useDraft<TimezoneChoice>(readTimezone(settings));
+  // Kosong = belum dipilih (server & dasbor memakai WIB) — jangan tampil seolah WIB sudah dipilih.
+  const { draft, setDraft, dirty, reset } = useDraft<TimezoneChoice | "">(hasTimezone(settings) ? readTimezone(settings) : "");
   const saver = useSaver(onRecord);
   return (
     <EditSection
@@ -1019,12 +1052,14 @@ function TimezoneSection({ rec, businessId, onRecord }: BizProps) {
       description="Menentukan batas hari & jam pada laporan, ringkasan hari ini, dan periode di dasbor ini."
       dirty={dirty}
       saving={saver.saving}
+      canSave={draft !== ""}
       error={saver.error}
       onReset={() => {
         reset();
         saver.clearError();
       }}
       onSave={async () => {
+        if (draft === "") return;
         let applied = false;
         await saver.run(
           async () => {
@@ -1044,7 +1079,14 @@ function TimezoneSection({ rec, businessId, onRecord }: BizProps) {
       }}
     >
       <Field id={`${uid}-tz`} label="Zona waktu usaha" hint={`Sekarang: ${zoneLabel()}. Aplikasi kasir tetap memakai jam perangkat — pastikan jam HP/tablet kasir di zona yang sama.`}>
-        <Select id={`${uid}-tz`} className="max-w-[420px]" value={draft} onChange={setDraft} options={TIMEZONE_OPTIONS} />
+        <Select
+          id={`${uid}-tz`}
+          className="max-w-[420px]"
+          value={draft}
+          onChange={setDraft}
+          placeholder="Belum dipilih (memakai WIB)"
+          options={TIMEZONE_OPTIONS}
+        />
       </Field>
     </EditSection>
   );
@@ -1058,6 +1100,8 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
   const uid = useId();
   const settings = settingsOf(rec);
   const { draft, setDraft, dirty, reset } = useDraft<AttendanceRules>(readAttendance(settings));
+  // Jam kerja belum pernah disimpan (tanpa kunci `attendance`): form menampilkan bawaan, Simpan tetap aktif.
+  const unset = readAttendance(settings).has_work_hours === false;
   const saver = useSaver(onRecord);
   const set = <K extends keyof AttendanceRules>(k: K, v: AttendanceRules[K]) => setDraft({ ...draft, [k]: v });
   const startErr = !isHHMM(draft.work_start) ? "Jam tidak sah." : undefined;
@@ -1072,6 +1116,7 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
       dirty={dirty}
       saving={saver.saving}
       canSave={!startErr && !endErr && !tolErr}
+      unsaved={unset}
       error={saver.error}
       onReset={() => {
         reset();
@@ -1085,6 +1130,11 @@ function AttendanceSection({ rec, businessId, onRecord }: BizProps) {
         )
       }
     >
+      {unset && (
+        <Notice tone="warning" role="status" icon={<Info size={18} aria-hidden />}>
+          <p>Belum diatur — telat, alpa, dan lembur dari Jam kerja belum dihitung. Simpan untuk mulai memakai.</p>
+        </Notice>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <Field id={`${uid}-start`} label="Jam masuk" error={startErr}>
           <input id={`${uid}-start`} type="time" className={`${inputClass} tabular-nums`} value={draft.work_start} aria-invalid={!!startErr || undefined} onChange={(e) => set("work_start", e.target.value)} />

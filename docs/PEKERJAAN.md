@@ -47,6 +47,14 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   `confirm_off_day: true`, berantai dengan di luar area; mock skenario `libur`, e2e 14/14). Absen manual pemilik di
   hari libur yang ditetapkan pemilik (`isOwnerOffDay`: jadwal `off`, libur shift tetap, `off_days` bila Jam kerja
   tersimpan) + hadir → ontime + `unscheduled: true`; libur Minggu bawaan tanpa Jam kerja tanpa tanda.
+  Lanjutan 5 (audit): tanpa Jam kerja tersimpan, hari Jam kerja global tanpa catatan = "belum ada catatan" (bukan
+  alpa, tidak dipotong) dan lembur 0; gaji per jam dengan tarif lembur 0 membayar semua menit kerja dengan tarif biasa
+  (tes angka: 600 mnt × Rp 20.000/jam = Rp 200.000; tarif lembur 30.000 → 160.000 + 60.000; samakan dengan
+  `payroll_calc.dart` app setelah agent app commit). Form Jam kerja belum diatur: Notice + Simpan aktif (`EditSection
+  unsaved`). Zona waktu kosong: "Belum dipilih (memakai WIB)". Biaya layanan: sakelar "Semua jenis pesanan", dimatikan
+  wajib ≥ 1. Loyalti: "≈ N% belanja kembali ke pelanggan". Papan hari ini: kartu Hadir/Terlambat/Izin/Alpa/Belum absen.
+  Web karyawan: `rules.work_hours_set: false` tanpa shift → "Jam kerja belum diatur pemilik" (mock `belumatur`).
+  Belum dicek visual: pengaturan & papan Tim dasbor (mock pemilik butuh masuk).
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong

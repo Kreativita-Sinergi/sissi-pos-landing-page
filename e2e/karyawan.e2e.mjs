@@ -222,6 +222,17 @@ test("berantai: di luar area (Boleh) lalu tidak ada shift → kedua flag terkiri
   await page.close();
 });
 
+test("Jam kerja belum diatur pemilik → tidak tampil jam masuk 08:00", async () => {
+  const page = await fresh();
+  await page.setGeolocation(NEAR);
+  await login(page, "belumatur@contoh.id");
+  await page.waitForFunction(() => location.pathname === "/karyawan");
+  await waitText(page, "Jam kerja belum diatur pemilik");
+  const t = await text(page);
+  assert(!t.includes("Jadwal masuk") && !t.includes("Toleransi terlambat"), "jam kerja bawaan tampil seolah-olah diatur");
+  await page.close();
+});
+
 test("paket Gratis → terkunci, tombol mati", async () => {
   const page = await fresh();
   await login(page, "gratis@contoh.id");

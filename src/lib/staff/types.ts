@@ -66,6 +66,8 @@ export type StaffToday = {
     shift?: { name: string; start: string; end: string } | null;
     /** Hari ini di luar jadwal (sejak 2026-11-11): karyawan memakai jadwal tetapi tidak punya shift hari ini. */
     unscheduled?: boolean;
+    /** `false` = pemilik belum pernah menyimpan Jam kerja (sejak 2026-11-11; tidak dikirim server lama → anggap true). */
+    work_hours_set?: boolean;
   };
   geo: { enabled: boolean; radius_m: number; outside: "flag" | "reject"; has_location: boolean };
   attendance: StaffAttendance | null;

@@ -120,14 +120,19 @@ function TodayBoard({ ctx, onManual }: { ctx: TeamCtx; onManual: (employeeId: st
   const rows = list.map((e) => byEmp.get(e.id));
   const present = rows.filter((r) => r && (r.status === "ontime" || r.status === "late")).length;
   const late = rows.filter((r) => r?.status === "late").length;
-  const away = rows.filter((r) => r && r.status !== "ontime" && r.status !== "late").length;
+  const permit = rows.filter((r) => r && (r.status === "permit" || r.status === "sick" || r.status === "leave")).length;
+  const absent = rows.filter((r) => r?.status === "absent").length;
+  // Belum absen = tanpa catatan dan hari ini diharapkan masuk (bukan libur, bukan di luar jadwal).
+  const notYet = list.filter((e, i) => !rows[i] && !dayPlan(rules, today, ctx.data.shifts, e.id).off && !isUnscheduled(today, ctx.data.shifts, e.id)).length;
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Hadir" value={present} hint={`dari ${list.length} karyawan aktif`} />
         <StatCard label="Terlambat" value={late} tone={late ? "warning" : "neutral"} />
-        <StatCard label="Izin / alpa" value={away} />
+        <StatCard label="Izin" value={permit} hint="izin, sakit, cuti" />
+        <StatCard label="Alpa" value={absent} tone={absent ? "danger" : "neutral"} />
+        <StatCard label="Belum absen" value={notYet} />
       </div>
       <Section
         className="mt-4"

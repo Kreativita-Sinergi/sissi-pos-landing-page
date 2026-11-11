@@ -7,7 +7,7 @@ import "./support/tsResolve.mjs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-const { mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
+const { hasTimezone, loyaltyReturnText, mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
 const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isOwnerOffDay, isUnscheduled, manualFlags, payItemLabel, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
@@ -287,4 +287,57 @@ test("absen manual di hari libur pemilik → bertanda di luar jadwal; libur Ming
   assert.equal(isOwnerOffDay(dayPlan(set, TUE, null, "e9"), set), false); // hari kerja
   // Hasil simpan: ontime + unscheduled.
   assert.deepEqual(manualFlags("ontime", true, null), { unscheduled: true, late_reason: "" });
+});
+
+// ——— Jam kerja belum disimpan: alpa & lembur (koreksi audit 2026-11-11) ———
+
+const at = (day, hm) => {
+  const [y, m, d] = day.split("-").map(Number);
+  const [h, mi] = hm.split(":").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, h - 7, mi)).toISOString(); // WIB
+};
+const row = (day, inHm, outHm) => ({ date: day, status: "ontime", late_minutes: 0, clock_in_at: at(day, inHm), clock_out_at: at(day, outHm) });
+
+test("tanpa Jam kerja: hari Jam kerja global tanpa catatan bukan alpa & lembur 0; hari ber-shift tetap alpa/lembur", () => {
+  const unset = readAttendance({});
+  const set = readAttendance({ attendance: { work_start: "08:00", work_end: "17:00", off_days: [7] } });
+  const days = [MON, TUE, "2026-11-04"];
+  // Tanpa catatan.
+  assert.deepEqual(computeRecap(days, [], unset, "2026-11-30", null).days.map((d) => d.kind), ["upcoming", "upcoming", "upcoming"]);
+  assert.deepEqual(computeRecap(days, [], set, "2026-11-30", null).days.map((d) => d.kind), ["absent", "absent", "absent"]);
+  // Hari ber-shift (jadwal per tanggal) tetap alpa walau Jam kerja belum disimpan.
+  const shifts = { templates: [], patterns: {}, assignments: { e1: { [MON]: { kind: "shift", name: "Pagi", start: "08:00", end: "16:00" } } } };
+  const planOf = (d) => dayPlan(unset, d, shifts, "e1");
+  assert.deepEqual(computeRecap([MON, TUE], [], unset, "2026-11-30", null, planOf).days.map((d) => d.kind), ["absent", "upcoming"]);
+  // Lembur: 08:00–19:00 = 660 menit; Jam kerja global (unset) → lembur 0; tersimpan → 120; shift 16:00 → 180.
+  const work = [row(TUE, "08:00", "19:00")];
+  assert.equal(computeRecap([TUE], work, unset, "2026-11-30", null).overtime_minutes, 0);
+  assert.equal(computeRecap([TUE], work, set, "2026-11-30", null).overtime_minutes, 120);
+  assert.equal(computeRecap([MON], [row(MON, "08:00", "19:00")], unset, "2026-11-30", null, planOf).overtime_minutes, 180);
+  // Potongan alpa slip ikut rekap.
+  const pay = { type: "monthly", amount: 3_000_000, late_per_minute: 0, absent_per_day: 50_000, allowance_per_day: 0, overtime_per_hour: 0 };
+  assert.equal(computePayslip(pay, computeRecap(days, [], unset, "2026-11-30", null)).items.some((i) => i.type === "absent"), false);
+  assert.equal(computePayslip(pay, computeRecap(days, [], set, "2026-11-30", null)).items.find((i) => i.type === "absent").quantity, 3);
+});
+
+test("gaji per jam: tarif lembur 0 → menit lembur dibayar tarif biasa; tarif > 0 → dipisah", () => {
+  const recap = { days: [], late_minutes: 0, worked_minutes: 600, overtime_minutes: 120 };
+  const hourly = { type: "hourly", amount: 20_000, late_per_minute: 0, absent_per_day: 0, allowance_per_day: 0 };
+  const noOt = computePayslip({ ...hourly, overtime_per_hour: 0 }, recap);
+  assert.deepEqual(noOt.items, [{ type: "base", amount: 200_000, quantity: 600, rate: 20_000 }]);
+  const ot = computePayslip({ ...hourly, overtime_per_hour: 30_000 }, recap);
+  assert.deepEqual(ot.items, [
+    { type: "base", amount: 160_000, quantity: 480, rate: 20_000 },
+    { type: "overtime", amount: 60_000, quantity: 120, rate: 30_000 },
+  ]);
+});
+
+test("zona waktu kosong = belum dipilih; nilai balik loyalti efektif", () => {
+  assert.equal(hasTimezone({}), false);
+  assert.equal(hasTimezone({ timezone: "" }), false);
+  assert.equal(hasTimezone({ timezone: "Asia/Makassar" }), true);
+  assert.equal(loyaltyReturnText(1, 100), "≈ 10% belanja kembali ke pelanggan");
+  assert.equal(loyaltyReturnText(1, 15), "≈ 1,5% belanja kembali ke pelanggan");
+  assert.equal(loyaltyReturnText(2, 1), "≈ 0,2% belanja kembali ke pelanggan");
+  assert.equal(loyaltyReturnText(Number.NaN, 100), null);
 });

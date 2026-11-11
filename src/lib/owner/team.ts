@@ -570,6 +570,9 @@ export function computeRecap(
 ): Recap {
   const byDate = new Map(rows.map((r) => [r.date, r]));
   const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, overtime_minutes: 0 };
+  // Jam kerja belum pernah disimpan: hari ikut Jam kerja global tidak dihitung alpa & lembur (api.md "Jam kerja belum
+  // pernah disimpan"); hari ber-shift tetap seperti biasa.
+  const unsetGlobal = (day: string) => rules.has_work_hours === false && planOf(day).source === "global";
   for (const day of days) {
     const row = byDate.get(day) ?? null;
     if (!row) {
@@ -577,6 +580,8 @@ export function computeRecap(
       if (day > today || (since !== null && day < since)) kind = "upcoming";
       else if (planOf(day).off || unscheduledOf(day)) kind = "off";
       else if (day === today) kind = "upcoming";
+      // Tanpa catatan & tanpa aturan dari pemilik → "belum ada catatan" (bukan alpa, tidak dipotong).
+      else if (unsetGlobal(day)) kind = "upcoming";
       else kind = "absent";
       out.days.push({ day, kind, row: null });
       continue;
@@ -589,6 +594,7 @@ export function computeRecap(
     const outAt = row.clock_out_at ? Date.parse(row.clock_out_at) : NaN;
     if (Number.isNaN(inAt) || Number.isNaN(outAt) || outAt < inAt) continue;
     out.worked_minutes += Math.floor((outAt - inAt) / 60_000);
+    if (unsetGlobal(day)) continue; // lembur 0: semua menit dibayar biasa
     const end = zonedAt(day, planOf(day).end);
     if (outAt > end) {
       const from = inAt > end ? inAt : end;
@@ -613,7 +619,8 @@ export const perMinute = (minutes: number, ratePerHour: number) => Math.floor((m
 
 /**
  * Slip dari pengaturan gaji & rekap (fungsi murni; cermin `computePayslip`):
- * - bulanan: gaji pokok tetap; harian: upah × hari hadir; per jam: upah × jam kerja reguler (tanpa lembur).
+ * - bulanan: gaji pokok tetap; harian: upah × hari hadir; per jam: upah × jam kerja reguler (tanpa lembur). Tarif
+ *   lembur 0 → menit lembur tetap dibayar tarif biasa (semua menit kerja; tidak hilang dari slip).
  * - tunjangan hadir × hari hadir; lembur = menit setelah jam selesai × tarif.
  * - potongan: telat × menit, alpa × hari (izin/sakit/cuti tidak dipotong).
  * - total potongan dibatasi pendapatan (gaji bersih tidak pernah negatif).
@@ -621,7 +628,7 @@ export const perMinute = (minutes: number, ratePerHour: number) => Math.floor((m
 export function computePayslip(c: PayrollConfig, recap: Recap): PayslipDraft {
   if (c.type === "none") return EMPTY_DRAFT;
   const present = recapPresent(recap);
-  const regular = Math.max(0, recap.worked_minutes - recap.overtime_minutes);
+  const regular = c.overtime_per_hour > 0 ? Math.max(0, recap.worked_minutes - recap.overtime_minutes) : recap.worked_minutes;
   const items: PayItem[] = [
     c.type === "monthly"
       ? { type: "base", amount: c.amount, quantity: 0, rate: 0 }
