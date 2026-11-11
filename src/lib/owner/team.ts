@@ -546,8 +546,75 @@ export type DayKind = AttendanceStatus | "off" | "upcoming";
 export type Recap = {
   days: { day: string; kind: DayKind; row: Attendance | null }[];
   late_minutes: number;
+  /** Menit kerja nyata (masuk → pulang). */
   worked_minutes: number;
+  /**
+   * Menit kerja biasa untuk gaji per jam (api.md "Absen pulang terlupa"): dibatasi sampai jam selesai baris; baris
+   * Tidak/Belum absen pulang = sampai jam selesai bila ada jadwal/Jam kerja, 0 bila tanpa.
+   */
+  regular_minutes: number;
   overtime_minutes: number;
+  /** Jumlah baris Tidak absen pulang (ada absen masuk di tanggal sesudahnya). */
+  missed_clock_out: number;
+};
+
+export type ClockOutState = "working" | "due" | "missed" | "done";
+
+const EXCUSED = new Set(["permit", "sick", "leave", "absent"]);
+
+/**
+ * Jam selesai baris absen (ms) = jam selesai aturan efektif tanggal baris (shift lewat tengah malam → esok hari);
+ * `null` bila hari libur atau Jam kerja belum disimpan tanpa shift. Cermin `annotate` service (`due_out_at`).
+ */
+export function dueOutAt(row: Pick<Attendance, "date">, plan: DayPlan, rules: AttendanceRules): number | null {
+  if (plan.off || (plan.source === "global" && rules.has_work_hours === false)) return null;
+  return zonedAt(row.date, plan.end);
+}
+
+/** Tanggal absen masuk terakhir karyawan (`null` bila belum pernah). */
+export function latestClockInDate(rows: Attendance[], employeeId: string): string | null {
+  let out: string | null = null;
+  for (const r of rows) if (r.employee_id === employeeId && r.clock_in_at && (out === null || r.date > out)) out = r.date;
+  return out;
+}
+
+/**
+ * Keadaan absen pulang (api.md "Absen pulang terlupa"): Selesai = sudah pulang; Tidak absen pulang = belum pulang dan
+ * ada absen masuk di tanggal sesudahnya; Belum absen pulang = belum pulang dan lewat jam selesai; selainnya Bekerja.
+ * `null` = tanpa jam masuk atau izin/sakit/cuti/alpa.
+ */
+export function clockOutState(
+  row: Pick<Attendance, "date" | "status" | "clock_in_at" | "clock_out_at">,
+  due: number | null,
+  latestIn: string | null,
+  now = Date.now()
+): ClockOutState | null {
+  if (!row.clock_in_at || EXCUSED.has(row.status)) return null;
+  if (row.clock_out_at) return "done";
+  if (latestIn !== null && latestIn > row.date) return "missed";
+  if (due !== null && now >= due) return "due";
+  return "working";
+}
+
+/**
+ * Absen terbuka sebelum `today` yang belum ditutup dan belum ada absen masuk sesudahnya (≤ 31 hari) — cermin
+ * `current` service. Untuk papan hari ini: "Belum absen pulang (kemarin)".
+ */
+export function openPreviousAttendance(rows: Attendance[], employeeId: string, today: string): Attendance | null {
+  const min = shiftDayBack(today, 31);
+  let last: Attendance | null = null;
+  for (const r of rows) {
+    if (r.employee_id !== employeeId || !r.clock_in_at || r.date >= today || r.date < min) continue;
+    if (!last || r.date > last.date) last = r;
+  }
+  if (!last || last.clock_out_at || EXCUSED.has(last.status)) return null;
+  const latest = latestClockInDate(rows, employeeId);
+  return latest !== null && latest > last.date ? null : last;
+}
+
+const shiftDayBack = (day: string, n: number) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - n)).toISOString().slice(0, 10);
 };
 
 export const recapCount = (r: Recap, kind: DayKind) => r.days.filter((d) => d.kind === kind).length;
@@ -566,10 +633,13 @@ export function computeRecap(
   today: string,
   since: string | null,
   planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day),
-  unscheduledOf: (day: string) => boolean = () => false
+  unscheduledOf: (day: string) => boolean = () => false,
+  opts: { now?: number; latestClockIn?: string | null } = {}
 ): Recap {
   const byDate = new Map(rows.map((r) => [r.date, r]));
-  const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, overtime_minutes: 0 };
+  const now = opts.now ?? Date.now();
+  const latestIn = opts.latestClockIn !== undefined ? opts.latestClockIn : rows.reduce<string | null>((a, r) => (r.clock_in_at && (a === null || r.date > a) ? r.date : a), null);
+  const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, regular_minutes: 0, overtime_minutes: 0, missed_clock_out: 0 };
   // Jam kerja belum pernah disimpan: hari ikut Jam kerja global tidak dihitung alpa & lembur (api.md "Jam kerja belum
   // pernah disimpan"); hari ber-shift tetap seperti biasa.
   const unsetGlobal = (day: string) => rules.has_work_hours === false && planOf(day).source === "global";
@@ -592,14 +662,28 @@ export function computeRecap(
     if (status === "late") out.late_minutes += row.late_minutes;
     const inAt = row.clock_in_at ? Date.parse(row.clock_in_at) : NaN;
     const outAt = row.clock_out_at ? Date.parse(row.clock_out_at) : NaN;
-    if (Number.isNaN(inAt) || Number.isNaN(outAt) || outAt < inAt) continue;
-    out.worked_minutes += Math.floor((outAt - inAt) / 60_000);
-    if (unsetGlobal(day)) continue; // lembur 0: semua menit dibayar biasa
-    const end = zonedAt(day, planOf(day).end);
-    if (outAt > end) {
-      const from = inAt > end ? inAt : end;
-      out.overtime_minutes += Math.floor((outAt - from) / 60_000);
+    const due = dueOutAt(row, planOf(day), rules);
+    const state = clockOutState(row, due, latestIn, now);
+    if (state === "missed") out.missed_clock_out++;
+    if (Number.isNaN(inAt)) continue;
+    if (Number.isNaN(outAt)) {
+      // Tidak/Belum absen pulang: dibayar sampai jam selesai bila ada; tanpa jam selesai = 0; tanpa lembur.
+      if ((state === "missed" || state === "due") && due !== null && due > inAt) out.regular_minutes += Math.floor((due - inAt) / 60_000);
+      continue;
     }
+    if (outAt < inAt) continue;
+    const worked = Math.floor((outAt - inAt) / 60_000);
+    out.worked_minutes += worked;
+    let overtime = 0;
+    if (!unsetGlobal(day)) {
+      // Lembur dari jam pulang (tahap 1 tidak diubah); Jam kerja belum disimpan → 0, semua menit dibayar biasa.
+      const end = zonedAt(day, planOf(day).end);
+      if (outAt > end) overtime = Math.floor((outAt - (inAt > end ? inAt : end)) / 60_000);
+    }
+    out.overtime_minutes += overtime;
+    // Menit biasa: sampai jam selesai baris (pulang lebih lambat tidak menambah upah biasa); tanpa jam selesai
+    // (mis. libur yang tetap masuk) = menit kerja dikurangi lembur seperti sebelumnya.
+    out.regular_minutes += due !== null ? Math.max(0, Math.floor(((outAt > due ? due : outAt) - inAt) / 60_000)) : Math.max(0, worked - overtime);
   }
   return out;
 }
@@ -628,7 +712,8 @@ export const perMinute = (minutes: number, ratePerHour: number) => Math.floor((m
 export function computePayslip(c: PayrollConfig, recap: Recap): PayslipDraft {
   if (c.type === "none") return EMPTY_DRAFT;
   const present = recapPresent(recap);
-  const regular = c.overtime_per_hour > 0 ? Math.max(0, recap.worked_minutes - recap.overtime_minutes) : recap.worked_minutes;
+  // Menit biasa dibatasi jam selesai baris (`regular_minutes`); tarif lembur 0 → menit lembur ikut dibayar tarif biasa.
+  const regular = c.overtime_per_hour > 0 ? recap.regular_minutes : recap.regular_minutes + recap.overtime_minutes;
   const items: PayItem[] = [
     c.type === "monthly"
       ? { type: "base", amount: c.amount, quantity: 0, rate: 0 }
@@ -795,6 +880,7 @@ export function recapFacts(r: Recap): [string, string][] {
     ["Sakit", `${recapCount(r, "sick")}`],
     ["Cuti", `${recapCount(r, "leave")}`],
     ["Alpa", `${recapCount(r, "absent")}`],
+    ["Tidak absen pulang", `${r.missed_clock_out}`],
     ["Libur", `${recapCount(r, "off")}`],
   ];
   return all.filter((f, i) => i === 0 || !f[1].startsWith("0"));
@@ -1058,7 +1144,8 @@ export function recapFor(
     today,
     zonedDay(e.created_at) || null,
     (day) => dayPlan(data.rules, day, data.shifts, e.id),
-    (day) => isUnscheduled(day, data.shifts, e.id)
+    (day) => isUnscheduled(day, data.shifts, e.id),
+    { latestClockIn: latestClockInDate(data.attendances, e.id) }
   );
 }
 

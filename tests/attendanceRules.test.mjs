@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { hasTimezone, loyaltyReturnText, mergeAttendance, readAttendance, readShiftPatterns } = await import("../src/lib/owner/settings.ts");
-const { computeRecap, computePayslip, dayPlan, evaluateClockIn, isOwnerOffDay, isUnscheduled, manualFlags, payItemLabel, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
+const { clockOutState, dueOutAt, latestClockInDate, openPreviousAttendance, computeRecap, computePayslip, dayPlan, evaluateClockIn, isOwnerOffDay, isUnscheduled, manualFlags, payItemLabel, planLabel, recapFor, shiftsUnassigned, toAssignments, toDefaultDays } = await import("../src/lib/owner/team.ts");
 const { planFor } = await import("../src/lib/owner/leavePlan.ts");
 
 const BASE = { work_start: "08:00", work_end: "17:00", late_tolerance_min: 10, off_days: [7] };
@@ -321,7 +321,7 @@ test("tanpa Jam kerja: hari Jam kerja global tanpa catatan bukan alpa & lembur 0
 });
 
 test("gaji per jam: tarif lembur 0 → menit lembur dibayar tarif biasa; tarif > 0 → dipisah", () => {
-  const recap = { days: [], late_minutes: 0, worked_minutes: 600, overtime_minutes: 120 };
+  const recap = { days: [], late_minutes: 0, worked_minutes: 600, regular_minutes: 480, overtime_minutes: 120, missed_clock_out: 0 };
   const hourly = { type: "hourly", amount: 20_000, late_per_minute: 0, absent_per_day: 0, allowance_per_day: 0 };
   const noOt = computePayslip({ ...hourly, overtime_per_hour: 0 }, recap);
   assert.deepEqual(noOt.items, [{ type: "base", amount: 200_000, quantity: 600, rate: 20_000 }]);
@@ -340,4 +340,68 @@ test("zona waktu kosong = belum dipilih; nilai balik loyalti efektif", () => {
   assert.equal(loyaltyReturnText(1, 15), "≈ 1,5% belanja kembali ke pelanggan");
   assert.equal(loyaltyReturnText(2, 1), "≈ 0,2% belanja kembali ke pelanggan");
   assert.equal(loyaltyReturnText(Number.NaN, 100), null);
+});
+
+// ——— Absen pulang terlupa (tahap 1) ———
+
+const WED = "2026-11-04";
+const openRow = (day, inHm, extra = {}) => ({ employee_id: "e1", date: day, status: "ontime", late_minutes: 0, clock_in_at: at(day, inHm), clock_out_at: null, ...extra });
+
+test("dueOutAt & clockOutState: jam selesai aturan efektif; Bekerja / Belum / Tidak absen pulang / Selesai", () => {
+  const set = readAttendance({ attendance: { work_start: "08:00", work_end: "17:00", off_days: [7] } });
+  const unset = readAttendance({});
+  assert.equal(dueOutAt({ date: TUE }, dayPlan(set, TUE), set), Date.parse(at(TUE, "17:00")));
+  assert.equal(dueOutAt({ date: TUE }, dayPlan(unset, TUE), unset), null); // Jam kerja belum disimpan
+  assert.equal(dueOutAt({ date: SUN }, dayPlan(set, SUN), set), null); // libur
+  const night = { templates: [], patterns: {}, assignments: { e1: { [MON]: { kind: "shift", name: "Malam", start: "22:00", end: "06:00" } } } };
+  assert.equal(dueOutAt({ date: MON }, dayPlan(unset, MON, night, "e1"), unset), Date.parse(at(TUE, "06:00"))); // esok hari
+  const due = Date.parse(at(TUE, "17:00"));
+  const r = openRow(TUE, "08:00");
+  assert.equal(clockOutState(r, due, TUE, Date.parse(at(TUE, "16:59"))), "working");
+  assert.equal(clockOutState(r, due, TUE, Date.parse(at(TUE, "17:00"))), "due");
+  assert.equal(clockOutState(r, null, TUE, Date.parse(at(WED, "12:00"))), "working"); // tanpa jam selesai
+  assert.equal(clockOutState(r, due, WED, Date.parse(at(WED, "09:00"))), "missed");
+  assert.equal(clockOutState({ ...r, clock_out_at: at(TUE, "17:05") }, due, WED), "done");
+  assert.equal(clockOutState({ ...r, status: "sick", clock_in_at: null }, due, WED), null);
+});
+
+test("openPreviousAttendance: absen terbuka sebelumnya tanpa absen masuk sesudahnya (≤ 31 hari)", () => {
+  const today = WED;
+  assert.equal(openPreviousAttendance([openRow(MON, "08:00")], "e1", today)?.date, MON);
+  assert.equal(openPreviousAttendance([openRow(MON, "08:00"), openRow(TUE, "08:00", { clock_out_at: at(TUE, "17:00") })], "e1", today), null);
+  assert.equal(openPreviousAttendance([openRow("2026-10-01", "08:00")], "e1", today), null); // > 31 hari
+  assert.equal(openPreviousAttendance([openRow(MON, "08:00")], "e2", today), null);
+  assert.equal(latestClockInDate([openRow(MON, "08:00"), openRow(TUE, "08:00")], "e1"), TUE);
+});
+
+test("rekap & gaji per jam: menit biasa dibatasi jam selesai; Tidak/Belum absen pulang sampai jam selesai, 0 tanpa", () => {
+  const set = readAttendance({ attendance: { work_start: "08:00", work_end: "17:00", off_days: [7] } });
+  const unset = readAttendance({});
+  const hourly = { type: "hourly", amount: 20_000, late_per_minute: 0, absent_per_day: 0, allowance_per_day: 0 };
+  const opts = { now: Date.parse(at("2026-11-05", "12:00")) };
+  // Pulang 19:00 (jam selesai 17:00): kerja 660, biasa 540, lembur 120.
+  const late = computeRecap([TUE], [row(TUE, "08:00", "19:00")], set, "2026-11-30", null, undefined, undefined, opts);
+  assert.equal(late.worked_minutes, 660);
+  assert.equal(late.regular_minutes, 540);
+  assert.equal(late.overtime_minutes, 120);
+  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 30_000 }, late).items, [
+    { type: "base", amount: 180_000, quantity: 540, rate: 20_000 },
+    { type: "overtime", amount: 60_000, quantity: 120, rate: 30_000 },
+  ]);
+  assert.deepEqual(computePayslip({ ...hourly, overtime_per_hour: 0 }, late).items, [{ type: "base", amount: 220_000, quantity: 660, rate: 20_000 }]);
+  // Tidak absen pulang (masuk lagi Rabu): sampai 17:00 = 540, tanpa lembur, terhitung di rekap.
+  const missed = computeRecap([TUE, WED], [openRow(TUE, "08:00"), row(WED, "08:00", "17:00")], set, "2026-11-30", null, undefined, undefined, opts);
+  assert.equal(missed.missed_clock_out, 1);
+  assert.equal(missed.regular_minutes, 540 + 540);
+  assert.equal(missed.overtime_minutes, 0);
+  // Belum absen pulang (lewat jam selesai, belum masuk lagi): 540; masih bekerja (sebelum jam selesai): 0.
+  const due = computeRecap([TUE], [openRow(TUE, "08:00")], set, "2026-11-30", null, undefined, undefined, opts);
+  assert.equal(due.regular_minutes, 540);
+  assert.equal(due.missed_clock_out, 0);
+  const working = computeRecap([TUE], [openRow(TUE, "08:00")], set, "2026-11-30", null, undefined, undefined, { now: Date.parse(at(TUE, "12:00")) });
+  assert.equal(working.regular_minutes, 0);
+  // Tanpa jam selesai (Jam kerja belum disimpan, tanpa shift): Tidak absen pulang → 0.
+  const none = computeRecap([TUE, WED], [openRow(TUE, "08:00"), row(WED, "08:00", "17:00")], unset, "2026-11-30", null, undefined, undefined, opts);
+  assert.equal(none.missed_clock_out, 1);
+  assert.equal(none.regular_minutes, 540); // hanya Rabu
 });

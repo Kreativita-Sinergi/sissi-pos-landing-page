@@ -55,6 +55,16 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   wajib ≥ 1. Loyalti: "≈ N% belanja kembali ke pelanggan". Papan hari ini: kartu Hadir/Terlambat/Izin/Alpa/Belum absen.
   Web karyawan: `rules.work_hours_set: false` tanpa shift → "Jam kerja belum diatur pemilik" (mock `belumatur`).
   Belum dicek visual: pengaturan & papan Tim dasbor (mock pemilik butuh masuk).
+- **Absen pulang terlupa tahap 1 (2026-11-11, `development`, belum rilis; kontrak api.md "Absen pulang terlupa", service
+  `4c09d4c`):** web karyawan: absen terbuka tanggal sebelumnya → "Absen pulang (shift 9 Nov)" + "Absen masuk sekarang"
+  (konfirmasi "Absen <tanggal> akan tercatat tidak absen pulang."); lencana Sedang bekerja / Belum absen pulang
+  (`due_out_at`) / Tidak absen pulang (`missed_clock_out`) / Selesai; riwayat lencana + ringkasan; mock `lupa`, e2e 17/17.
+  Dasbor: `dueOutAt`/`clockOutState`/`openPreviousAttendance` (cermin `annotate`/`current` service) → papan hari ini
+  "Belum absen pulang" / "Belum absen pulang (kemarin)", tabel catatan lencana, rekap "Tidak absen pulang". Gaji per
+  jam: `Recap.regular_minutes` dibatasi jam selesai; Tidak/Belum absen pulang = sampai jam selesai, 0 tanpa; lembur dari
+  jam pulang tidak berubah. Angka uji: 08:00–19:00 (selesai 17:00) → 540 biasa + 120 lembur = Rp 180.000 + 60.000
+  (tarif 20.000/30.000), tarif lembur 0 → 660 = Rp 220.000. **Belum disamakan dengan `payroll_calc.dart` app**
+  (belum di-commit agent app saat ini). Tahap 1 sebaiknya dirilis bersama tahap 2 (pengajuan lembur).
 
 - **Admin · data perangkat & galat tertangani (#49, 2026-11-09, `development`, belum rilis):** detail bisnis menampilkan
   baris perangkat (merek model · OS · layar, mis. "Xiaomi Redmi Pad SE · Android 14 (SDK 34) · 800×1280 @1.5"; kosong
