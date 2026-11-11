@@ -143,7 +143,23 @@ export type TeamEntity = "employees" | "attendances" | "payslips" | "leave_reque
 export type ShiftAssignmentLite = { kind: "shift" | "off"; name: string; start: string; end: string };
 
 /** Shift tetap + jadwal per tanggal: `assignments[employee_id]["YYYY-MM-DD"]`. */
-export type ShiftSchedule = ShiftPatterns & { assignments?: Record<string, Record<string, ShiftAssignmentLite>> };
+export type ShiftSchedule = ShiftPatterns & {
+  assignments?: Record<string, Record<string, ShiftAssignmentLite>>;
+  /** Tanggal ber-baris `kind: "default"` ("Ikut jam kerja", sengaja) per karyawan — hanya untuk `isUnscheduled`. */
+  defaults?: Record<string, Record<string, true>>;
+};
+
+/** Record `shift_assignments` → tanggal ber-`kind: "default"` per karyawan (tombstone dibuang). */
+export function toDefaultDays(rows: SyncRecord[]): Record<string, Record<string, true>> {
+  const out: Record<string, Record<string, true>> = {};
+  for (const r of rows) {
+    if (r.deleted_at || r.kind !== "default") continue;
+    const emp = typeof r.employee_id === "string" ? r.employee_id : "";
+    const date = typeof r.date === "string" ? r.date.slice(0, 10) : "";
+    if (emp && /^\d{4}-\d{2}-\d{2}$/.test(date)) (out[emp] ??= {})[date] = true;
+  }
+  return out;
+}
 
 /** Record `shift_assignments` → peta per karyawan per tanggal; tombstone & `default` dibuang. */
 export function toAssignments(rows: SyncRecord[]): Record<string, Record<string, ShiftAssignmentLite>> {
@@ -244,7 +260,7 @@ export async function loadTeam(staff: boolean, signal?: AbortSignal): Promise<Te
     payslips: slips.map(toPayslip),
     leaves: leaves.map(toLeave),
     rules: readAttendance(settings[0]?.settings),
-    shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns) },
+    shifts: { ...readShiftPatterns(settings[0]?.settings), assignments: toAssignments(assigns), defaults: toDefaultDays(assigns) },
     outlets: outlets.map(toOutlet),
     settingsRecord: settings[0] ?? null,
     assignmentRecords: assigns,
@@ -265,14 +281,14 @@ export function mergeRecord(data: TeamData, entity: TeamEntity, rec: SyncRecord)
   if (entity === "leave_requests") return { ...data, leaves: upsert(data.leaves, toLeave(rec)) };
   if (entity === "shift_assignments") {
     const assignmentRecords = upsert(data.assignmentRecords, rec);
-    return { ...data, assignmentRecords, shifts: { ...data.shifts, assignments: toAssignments(assignmentRecords) } };
+    return { ...data, assignmentRecords, shifts: { ...data.shifts, assignments: toAssignments(assignmentRecords), defaults: toDefaultDays(assignmentRecords) } };
   }
   if (entity === "business_settings") {
     return {
       ...data,
       settingsRecord: rec,
       rules: readAttendance(rec.settings),
-      shifts: { ...readShiftPatterns(rec.settings), assignments: data.shifts.assignments },
+      shifts: { ...readShiftPatterns(rec.settings), assignments: data.shifts.assignments, defaults: data.shifts.defaults },
     };
   }
   return { ...data, payslips: upsert(data.payslips, toPayslip(rec)) };
@@ -397,6 +413,41 @@ export function dayPlan(rules: AttendanceRules, day: string, shifts?: ShiftSched
   return { off: rules.off_days.includes(weekday), start, end: spanEnd(start, endMinute(rules)), source: "global" };
 }
 
+/** Rentang hari sebelum & sesudah tanggal yang menandai karyawan "memakai jadwal" (server `scheduleWindow`). */
+const SCHEDULE_WINDOW = 7;
+
+/**
+ * Di luar jadwal (api.md "Absen di luar jadwal & konfirmasi telat"; cermin `unscheduled` di service
+ * `internal/staffweb/rules.go`): karyawan memakai jadwal (punya shift tetap, atau jadwal `shift`/`off` dalam ±7 hari
+ * selain `day`) tetapi `day` jatuh ke Jam kerja global — tanpa baris `shift`/`off`/`default` di `day` dan shift tetap
+ * tidak berlaku (pola yang semua templat hari itu terhapus juga di luar jadwal). Hari tanpa shift di pola = libur,
+ * bukan di luar jadwal. Jadwal ±7 hari di tepi periode ikut dibaca dari `shifts.assignments` (semua tanggal).
+ */
+export function isUnscheduled(day: string, shifts: ShiftSchedule | null | undefined, employeeId: string): boolean {
+  const as = shifts?.assignments?.[employeeId];
+  const a = as?.[day];
+  if (a?.kind === "shift" || a?.kind === "off" || shifts?.defaults?.[employeeId]?.[day]) return false;
+  const p = shifts?.patterns[employeeId];
+  if (p) {
+    const ids = p[String(isoWeekday(day))] ?? [];
+    if (ids.length === 0) return false;
+    const known = new Set(shifts!.templates.map((t) => t.id));
+    return !ids.some((id) => known.has(id));
+  }
+  if (!as) return false;
+  for (let i = -SCHEDULE_WINDOW; i <= SCHEDULE_WINDOW; i++) {
+    if (i === 0) continue;
+    const k = as[shiftDay(day, i)]?.kind;
+    if (k === "shift" || k === "off") return true;
+  }
+  return false;
+}
+
+const shiftDay = (day: string, n: number) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+
 const hhmm = (min: number) => {
   const m = ((min % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -474,7 +525,8 @@ export const recapPresent = (r: Recap) => recapCount(r, "ontime") + recapCount(r
 /**
  * Rekap satu karyawan untuk tiap hari di `days`. Hari tanpa catatan: libur bila hari libur mingguan, "belum tiba" bila
  * setelah hari ini / sebelum karyawan ada (`since`), hari ini belum berakhir = belum tiba, selain itu alpa. Hari libur
- * yang tetap masuk dihitung hadir. Cermin `AttendanceRecap.compute`.
+ * yang tetap masuk dihitung hadir. Hari di luar jadwal (`unscheduledOf`, lihat `isUnscheduled`) tanpa catatan = libur,
+ * bukan alpa (keputusan pemilik 2026-11-11; juga tidak dipotong "alpa × hari"). Cermin `AttendanceRecap.compute`.
  */
 export function computeRecap(
   days: string[],
@@ -482,7 +534,8 @@ export function computeRecap(
   rules: AttendanceRules,
   today: string,
   since: string | null,
-  planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day)
+  planOf: (day: string) => DayPlan = (day) => dayPlan(rules, day),
+  unscheduledOf: (day: string) => boolean = () => false
 ): Recap {
   const byDate = new Map(rows.map((r) => [r.date, r]));
   const out: Recap = { days: [], late_minutes: 0, worked_minutes: 0, overtime_minutes: 0 };
@@ -491,7 +544,7 @@ export function computeRecap(
     if (!row) {
       let kind: DayKind;
       if (day > today || (since !== null && day < since)) kind = "upcoming";
-      else if (planOf(day).off) kind = "off";
+      else if (planOf(day).off || unscheduledOf(day)) kind = "off";
       else if (day === today) kind = "upcoming";
       else kind = "absent";
       out.days.push({ day, kind, row: null });
@@ -953,7 +1006,8 @@ export function recapFor(
     data.rules,
     today,
     zonedDay(e.created_at) || null,
-    (day) => dayPlan(data.rules, day, data.shifts, e.id)
+    (day) => dayPlan(data.rules, day, data.shifts, e.id),
+    (day) => isUnscheduled(day, data.shifts, e.id)
   );
 }
 
