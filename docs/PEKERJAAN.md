@@ -173,6 +173,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · RILIS web `b86042c` (tanpa Duitku).** Cherry-pick `3a1f3c3`, `479e32a`, `63362a6`, `951a845` ke `main`
+  (Pelayan web, undangan iPhone/PC, kolom Mulai). Vercel menayangkan; `/karyawan/meja` 200 di produksi.
 - **2026-11-13 · Pelayan web: pesanan tanpa meja + pilih pelanggan (Claude Opus 5.5; service `a08a607`).** Tab Meja punya
   bagian "Tanpa meja" (kartu nama tamu) + tombol "+ Pesanan tanpa meja" (`/karyawan/meja/tanpa-meja/tambah`); rincian
   `/karyawan/meja/pesanan/[id]`. Keranjang pesanan baru: pilih Meja (atau Tanpa meja) dan Pelanggan (`OrderFor`: cari
