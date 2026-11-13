@@ -12,11 +12,15 @@ import type { WaiterOrder, WaiterTable } from "@/lib/staff/types";
 import { pickOutlet, useRefresh, waiterEnabled, waiterErrorText } from "./shared";
 
 // Rincian meja pelayan (/karyawan/meja/[id]): pesanan berjalan di meja itu, per ronde seperti rincian open bill di
-// aplikasi, dengan tombol Tambah pesanan (atau Mulai pesanan bila kosong) dan Minta tagihan.
+// aplikasi, dengan tombol Tambah pesanan (atau Mulai pesanan bila kosong) dan Minta tagihan. Pesanan tanpa meja
+// (/karyawan/meja/pesanan/[id]) memakai tampilan yang sama dengan judul nama tamu.
+
+/** Segmen rute untuk pesanan tanpa meja (statis, menang atas [id] meja). */
+export const NO_TABLE = "tanpa-meja";
 
 const time = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" });
 
-export function TableView({ tableId }: { tableId: string }) {
+export function TableView({ tableId, saleId }: { tableId?: string; saleId?: string }) {
   const { session } = useStaff();
   const params = useSearchParams();
   const [outlet] = useState<string | null>(() => pickOutlet(session, params.get("o")));
@@ -34,6 +38,14 @@ export function TableView({ tableId }: { tableId: string }) {
       if (!outlet) return;
       try {
         const api = await staffApi();
+        if (saleId) {
+          // Tanpa meja: satu pesanan, "meja" semu bernama tamu agar tampilan sama.
+          const o = await api.waiterOrder(saleId);
+          setOrder(o);
+          setTable({ id: NO_TABLE, name: o.customer_name || "Tanpa meja", area_id: null, orders: [] });
+          setError(null);
+          return;
+        }
         const floor = await api.waiterFloor(outlet);
         const t = floor.tables.find((x) => x.id === tableId) ?? null;
         setTable(t);
@@ -46,7 +58,7 @@ export function TableView({ tableId }: { tableId: string }) {
         setLoaded(true);
       }
     },
-    [outlet, tableId, selected]
+    [outlet, tableId, saleId, selected]
   );
 
   // Muat di luar badan efek (aturan react-hooks/set-state-in-effect); dibatalkan bila efek dibersihkan.
@@ -114,7 +126,7 @@ export function TableView({ tableId }: { tableId: string }) {
     );
   }
 
-  const addHref = `/karyawan/meja/${table.id}/tambah?o=${outlet}${order ? `&s=${order.id}` : ""}`;
+  const addHref = `/karyawan/meja/${saleId ? NO_TABLE : table.id}/tambah?o=${outlet}${order ? `&s=${order.id}` : ""}`;
   const open = order?.status === "open";
 
   return (
@@ -122,7 +134,12 @@ export function TableView({ tableId }: { tableId: string }) {
       {back}
       <div>
         <h1 className="text-[24px] font-bold tracking-tight break-words text-text-heading">{table.name}</h1>
-        {order && <p className="text-[14px] text-text-muted tabular-nums">{order.receipt_no}</p>}
+        {order && (
+          <p className="text-[14px] text-text-muted tabular-nums">
+            {saleId ? "Tanpa meja · " : order.customer_name ? `${order.customer_name} · ` : ""}
+            {order.receipt_no}
+          </p>
+        )}
       </div>
 
       {table.orders.length > 1 && (

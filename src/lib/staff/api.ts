@@ -14,6 +14,7 @@ import type {
   StaffSession,
   StaffToday,
   WaiterCreateInput,
+  WaiterCustomer,
   WaiterFloor,
   WaiterItemInput,
   WaiterOrder,
@@ -36,6 +37,8 @@ export interface StaffApi {
   waiterMenu(outletId: string, signal?: AbortSignal): Promise<Menu>;
   waiterFloor(outletId: string, signal?: AbortSignal): Promise<WaiterFloor>;
   waiterOrder(saleId: string, signal?: AbortSignal): Promise<WaiterOrder>;
+  /** Cari pelanggan (≥ 2 karakter; ≤ 20 hasil, no. HP tersamar). */
+  waiterCustomers(q: string, signal?: AbortSignal): Promise<WaiterCustomer[]>;
   waiterCreate(body: WaiterCreateInput, idempotencyKey: string): Promise<WaiterOrder>;
   waiterAddItems(saleId: string, items: WaiterItemInput[], idempotencyKey: string): Promise<WaiterOrder>;
   waiterBillRequest(saleId: string, idempotencyKey: string): Promise<WaiterOrder>;
@@ -168,6 +171,8 @@ const httpApi: StaffApi = {
   waiterFloor: (outletId, signal) => call<WaiterFloor>("GET", `/waiter/floor${qs({ outlet_id: outletId })}`, { signal }),
   waiterOrder: async (saleId, signal) =>
     (await call<{ order: WaiterOrder }>("GET", `/waiter/orders/${enc(saleId)}`, { signal })).order,
+  waiterCustomers: async (q, signal) =>
+    (await call<{ items: WaiterCustomer[] }>("GET", `/waiter/customers${qs({ q })}`, { signal })).items,
   waiterCreate: async (body, idempotencyKey) =>
     (await call<{ order: WaiterOrder }>("POST", "/waiter/orders", { body, idempotencyKey })).order,
   waiterAddItems: async (saleId, items, idempotencyKey) =>

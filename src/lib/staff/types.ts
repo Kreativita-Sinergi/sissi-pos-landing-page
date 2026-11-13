@@ -146,7 +146,11 @@ export type WaiterFloor = {
   kitchen: boolean;
   areas: { id: string; name: string }[];
   tables: WaiterTable[];
+  /** Open bill tanpa meja (Makan di tempat tanpa meja). Server lama tidak mengirim. */
+  untabled?: WaiterOrderBrief[];
 };
+
+export type WaiterCustomer = { id: string; name: string; phone_masked: string | null };
 
 export type WaiterOrderItem = {
   line_id: string;
@@ -184,6 +188,7 @@ export type WaiterOrder = {
   table_name: string | null;
   receipt_no: string;
   status: "open" | "unpaid" | "partial" | "paid" | "void" | "refunded" | string;
+  customer_id?: string | null;
   customer_name: string;
   notes: string;
   items: WaiterOrderItem[];
@@ -209,4 +214,11 @@ export type WaiterItemInput = {
   modifiers: { group_id: string; option_id: string }[];
 };
 
-export type WaiterCreateInput = { outlet_id: string; table_id: string; items: WaiterItemInput[] };
+/** `table_id: null` = tanpa meja → wajib `customer_id` atau `customer_name`. */
+export type WaiterCreateInput = {
+  outlet_id: string;
+  table_id: string | null;
+  customer_id?: string | null;
+  customer_name?: string;
+  items: WaiterItemInput[];
+};

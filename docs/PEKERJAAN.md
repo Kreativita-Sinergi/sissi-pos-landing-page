@@ -173,6 +173,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Pelayan web: pesanan tanpa meja + pilih pelanggan (Claude Opus 5.5; service `a08a607`).** Tab Meja punya
+  bagian "Tanpa meja" (kartu nama tamu) + tombol "+ Pesanan tanpa meja" (`/karyawan/meja/tanpa-meja/tambah`); rincian
+  `/karyawan/meja/pesanan/[id]`. Keranjang pesanan baru: pilih Meja (atau Tanpa meja) dan Pelanggan (`OrderFor`: cari
+  ≥ 2 huruf lewat `/staff/waiter/customers`, atau ketik nama tamu; tanpa meja wajib nama). Uji: tsc + eslint bersih;
+  pesanan web (meja & tanpa meja) terlihat masuk di tab Pesanan tablet kasir (emulator, API lokal).
 - **2026-11-13 · Halaman undangan di laptop/PC: aktivasi web jadi utama (Claude Opus 5.5).** Selain Android: tombol
   "Unduh aplikasi" diganti info "Pakai HP Android? Buka tautan ini di HP-mu…", "Aktifkan lewat website" oranye; kartu
   langkah app tetap. iPhone: teks "Aplikasi Sissi baru tersedia untuk HP Android…". Android tidak berubah. Uji: tsc +

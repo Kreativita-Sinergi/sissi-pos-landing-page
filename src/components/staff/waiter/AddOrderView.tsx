@@ -15,7 +15,10 @@ import { addLine, countItems, MAX_QTY, resolveLine, setQuantity, toOrderItems, t
 import { computeBreakdown, formatRupiah } from "@/lib/selfOrder/pricing";
 import type { Menu, MenuProduct } from "@/lib/selfOrder/types";
 import { newKey, staffApi, StaffApiError } from "@/lib/staff/api";
+import type { WaiterCustomer } from "@/lib/staff/types";
+import { OrderFor } from "./OrderFor";
 import { pickOutlet, waiterEnabled, waiterErrorText } from "./shared";
+import { NO_TABLE } from "./TableView";
 
 // Tambah pesanan pelayan (/karyawan/meja/[id]/tambah): menu & lembar item sama dengan halaman pesan QR, keranjang
 // disimpan per meja (localStorage) agar tidak hilang saat koneksi putus. Kirim → POST /staff/waiter/orders (meja
@@ -43,17 +46,25 @@ function saveCart(table: string, lines: CartLine[]) {
   }
 }
 
-export function AddOrderView({ tableId }: { tableId: string }) {
+export function AddOrderView({ tableId }: { tableId: string | null }) {
   const { session } = useStaff();
   const params = useSearchParams();
   const router = useRouter();
   const [outlet] = useState<string | null>(() => pickOutlet(session, params.get("o")));
   const [saleId, setSaleId] = useState<string | null>(params.get("s"));
   const [tableName, setTableName] = useState<string>("");
+  // Pesanan baru: meja (bisa diganti atau Tanpa meja) + pelanggan/nama tamu, seperti keranjang app.
+  const [pickTable, setPickTable] = useState<string | null>(tableId);
+  const [tables, setTables] = useState<{ id: string; name: string; busy: boolean }[]>([]);
+  const [customer, setCustomer] = useState<WaiterCustomer | null>(null);
+  const [guestName, setGuestName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  // Kunci keranjang tetap sejak layar dibuka (meja, pesanan tanpa meja, atau keranjang tanpa meja baru).
+  const [cartId] = useState(() => tableId ?? (params.get("s") ? `s:${params.get("s")}` : NO_TABLE));
   const [menu, setMenu] = useState<Menu | null>(null);
   const [error, setError] = useState<unknown>(null);
   // Keranjang per meja dari localStorage (shell merender anak hanya di browser setelah sesi diperiksa).
-  const [lines, setLines] = useState<CartLine[]>(() => loadCart(tableId));
+  const [lines, setLines] = useState<CartLine[]>(() => loadCart(cartId));
   const [product, setProduct] = useState<MenuProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [sending, setSending] = useState(false);
@@ -61,7 +72,7 @@ export function AddOrderView({ tableId }: { tableId: string }) {
   // Kunci idempotensi per isi keranjang: kirim ulang setelah galat jaringan memakai kunci yang sama.
   const keyRef = useRef<{ sig: string; key: string } | null>(null);
 
-  useEffect(() => saveCart(tableId, lines), [tableId, lines]);
+  useEffect(() => saveCart(cartId, lines), [cartId, lines]);
 
   const load = useCallback(async () => {
     if (!outlet) return;
@@ -72,6 +83,7 @@ export function AddOrderView({ tableId }: { tableId: string }) {
       setMenu(m);
       const t = floor.tables.find((x) => x.id === tableId);
       setTableName(t?.name ?? "");
+      setTables(floor.tables.map((x) => ({ id: x.id, name: x.name, busy: x.orders.length > 0 })));
       // Meja yang ternyata sudah terisi (perangkat lain baru membuka pesanan) → tambahkan ke pesanan itu.
       if (!params.get("s") && t?.orders[0]) setSaleId(t.orders[0].id);
     } catch (err) {
@@ -102,24 +114,41 @@ export function AddOrderView({ tableId }: { tableId: string }) {
   }, [lines]);
   const count = countItems(lines);
   const blocked = resolved.some((l) => l.issue);
-  const backHref = `/karyawan/meja/${tableId}?o=${outlet ?? ""}`;
+  const back = (id: string | null, sale: string | null) =>
+    id ? `/karyawan/meja/${id}?o=${outlet ?? ""}` : sale ? `/karyawan/meja/pesanan/${sale}?o=${outlet ?? ""}` : "/karyawan/meja";
+  const backHref = back(tableId, params.get("s"));
 
   async function send() {
     if (!outlet || lines.length === 0 || blocked) return;
+    const name = guestName.trim();
+    if (!saleId && !pickTable && !customer && !name) {
+      setNameError("Isi nama tamu untuk pesanan tanpa meja");
+      return;
+    }
     setSending(true);
     setSendError(null);
+    setNameError(null);
     const items = toOrderItems(lines);
-    const sig = JSON.stringify([saleId, items]);
+    const sig = JSON.stringify([saleId, pickTable, customer?.id, name, items]);
     if (keyRef.current?.sig !== sig) keyRef.current = { sig, key: newKey() };
     const key = keyRef.current.key;
     try {
       const api = await staffApi();
-      if (saleId) await api.waiterAddItems(saleId, items, key);
-      else await api.waiterCreate({ outlet_id: outlet, table_id: tableId, items }, key);
+      let dest: string;
+      if (saleId) {
+        await api.waiterAddItems(saleId, items, key);
+        dest = backHref;
+      } else {
+        const o = await api.waiterCreate(
+          { outlet_id: outlet, table_id: pickTable, customer_id: customer?.id ?? null, customer_name: name, items },
+          key
+        );
+        dest = back(pickTable, o.id);
+      }
       setLines([]);
-      saveCart(tableId, []);
+      saveCart(cartId, []);
       keyRef.current = null;
-      router.replace(backHref);
+      router.replace(dest);
     } catch (err) {
       if (err instanceof StaffApiError && err.code === "TABLE_OCCUPIED" && err.details[0]?.message) {
         // Meja baru saja dibuka perangkat lain: keranjang tetap, kirim berikutnya menambah ke pesanan itu.
@@ -130,6 +159,8 @@ export function AddOrderView({ tableId }: { tableId: string }) {
         keyRef.current = null;
         setSendError("Ada item yang habis atau tidak lagi tersedia. Periksa keranjang lalu coba lagi.");
         void load();
+      } else if (err instanceof StaffApiError && err.details.some((d) => d.field === "customer_name")) {
+        setNameError(err.details.find((d) => d.field === "customer_name")?.message ?? "Isi nama tamu");
       } else {
         setSendError(waiterErrorText(err));
       }
@@ -151,7 +182,7 @@ export function AddOrderView({ tableId }: { tableId: string }) {
       <h1 className="mt-1 text-[22px] font-extrabold leading-tight tracking-tight text-text-heading">
         {saleId ? "Tambah pesanan" : "Catat pesanan"}
       </h1>
-      <p className="text-[15px] text-text-body">{tableName || "Meja"}</p>
+      <p className="text-[15px] text-text-body">{tableId ? tableName || "Meja" : "Tanpa meja"}</p>
     </header>
   );
 
@@ -201,7 +232,7 @@ export function AddOrderView({ tableId }: { tableId: string }) {
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         title={saleId ? "Tambahan" : "Pesanan"}
-        subtitle={tableName || undefined}
+        subtitle={saleId ? (tableId ? tableName : "Tanpa meja") || undefined : undefined}
         footer={
           <div className="flex flex-col gap-2">
             {sendError && (
@@ -215,6 +246,24 @@ export function AddOrderView({ tableId }: { tableId: string }) {
           </div>
         }
       >
+        {!saleId && (
+          <OrderFor
+            tables={tables}
+            table={pickTable}
+            onTable={(id) => {
+              setPickTable(id);
+              setNameError(null);
+            }}
+            customer={customer}
+            onCustomer={setCustomer}
+            guestName={guestName}
+            onGuestName={(v) => {
+              setGuestName(v);
+              setNameError(null);
+            }}
+            nameError={nameError}
+          />
+        )}
         {resolved.length === 0 ? (
           <p className="py-6 text-center text-[15px] text-text-body">Belum ada item.</p>
         ) : (
