@@ -173,6 +173,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Absen web: panduan saat izin lokasi diblokir (Claude Opus 5.5).** `geo.ts`: `geoPermission`/
+  `watchGeoPermission` (Permissions API) + `geoPlatform`; `LocationHelp` (langkah iPhone Safari / Android Chrome /
+  komputer + "Coba lagi") tampil di Absen bila outlet memakai lokasi dan izin `denied` (saat halaman dibuka atau setelah
+  absen ditolak lokasi), hilang sendiri saat izin diberikan. Uji: tsc + eslint; puppeteer (izin ditolak → panel; diizinkan
+  → hilang) ke API lokal dengan karyawan & aturan lokasi sementara (dikembalikan). Belum dirilis.
 - **2026-11-13 · RILIS web `b86042c` (tanpa Duitku).** Cherry-pick `3a1f3c3`, `479e32a`, `63362a6`, `951a845` ke `main`
   (Pelayan web, undangan iPhone/PC, kolom Mulai). Vercel menayangkan; `/karyawan/meja` 200 di produksi.
 - **2026-11-13 · Pelayan web: pesanan tanpa meja + pilih pelanggan (Claude Opus 5.5; service `a08a607`).** Tab Meja punya
