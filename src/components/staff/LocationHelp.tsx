@@ -13,8 +13,8 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
     title: "Di iPhone (Safari)",
     steps: [
       <>
-        Ketuk ikon menu halaman di bilah alamat: <b>aA</b>, atau ikon <b>tiga garis</b> (<MenuGlyph />) di iPhone versi
-        terbaru.
+        Ketuk ikon menu halaman di bilah alamat: <Key>aA</Key>, atau ikon <b>tiga garis</b> <Key><MenuGlyph /></Key> di
+        iPhone versi terbaru.
       </>,
       <>
         Pilih <b>Pengaturan Situs Web</b> (atau <b>Pengaturan Situs</b>) › <b>Lokasi</b> › <b>Izinkan</b>.
@@ -47,10 +47,15 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
   },
 };
 
+/** Ikon yang harus diketuk, ditulis langsung di kalimat (tebal, tanpa bingkai). */
+function Key({ children }: { children: React.ReactNode }) {
+  return <b className="inline-flex items-center align-middle text-text-heading">{children}</b>;
+}
+
 /** Ikon menu halaman Safari iPhone terbaru: tiga garis, yang bawah lebih pendek. */
 function MenuGlyph() {
   return (
-    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden className="inline-block align-[-1px]">
+    <svg width="16" height="13" viewBox="0 0 14 12" role="img" aria-label="ikon tiga garis">
       <rect x="0" y="0" width="14" height="2" rx="1" fill="currentColor" />
       <rect x="0" y="5" width="14" height="2" rx="1" fill="currentColor" />
       <rect x="0" y="10" width="8" height="2" rx="1" fill="currentColor" />
