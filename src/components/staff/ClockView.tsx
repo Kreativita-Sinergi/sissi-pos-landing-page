@@ -32,7 +32,7 @@ import {
   type LateAsk,
   type StaffMessage,
 } from "@/lib/staff/errors";
-import { GEO_FAILURE_TEXT, geoPermission, locate, watchGeoPermission, type GeoFailure } from "@/lib/staff/geo";
+import { GEO_FAILURE_TEXT, geoPermission, locate, type GeoFailure } from "@/lib/staff/geo";
 import type { ClockInput, StaffAttendance, StaffGeo, StaffToday } from "@/lib/staff/types";
 import { LocationHelp } from "./LocationHelp";
 import { useStaff } from "./StaffShell";
@@ -75,10 +75,9 @@ export function ClockView() {
     void geoPermission().then((p) => {
       if (live) setGeoBlocked(p === "denied");
     });
-    const stop = watchGeoPermission((p) => setGeoBlocked(p === "denied"));
+    // Tidak memantau perubahan izin: status bisa "granted" sementara halaman ini masih ditolak sampai dimuat ulang.
     return () => {
       live = false;
-      stop();
     };
   }, []);
   // Lokasi tidak terbaca di outlet beraturan "Boleh" → tanya dulu sebelum tercatat tanpa lokasi (2026-11-13).
@@ -506,7 +505,7 @@ export function ClockView() {
         <div>
           {geoBlocked && today.geo.enabled && (
             <div className="mb-3">
-              <LocationHelp required={today.geo.outside === "reject"} onGranted={() => setGeoBlocked(false)} />
+              <LocationHelp required={today.geo.outside === "reject"} />
             </div>
           )}
           <button

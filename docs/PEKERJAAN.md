@@ -173,6 +173,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Panduan izin lokasi: muat ulang halaman (usul pemilik).** "Coba lagi" tetap gagal di iPhone (izin baru
+  hanya terbaca setelah muat ulang). Langkah terakhir kini "ketuk Muat ulang halaman", satu tombol `reload()`, panel tidak
+  lagi hilang sendiri (`watchGeoPermission` dihapus). Uji puppeteer: panel tetap sampai dimuat ulang → hilang → absen
+  masuk tercatat. Data uji dikembalikan.
 - **2026-11-13 · Bug: izin lokasi sudah diizinkan tetapi absen tetap ditolak sampai halaman dimuat ulang (temuan pemilik,
   iPhone).** Safari membaca izin baru hanya setelah muat ulang, padahal status izin sudah "granted" sehingga panel
   hilang. "Coba lagi" kini benar-benar mengambil lokasi; masih ditolak tapi status izin bukan `denied` → muat ulang
