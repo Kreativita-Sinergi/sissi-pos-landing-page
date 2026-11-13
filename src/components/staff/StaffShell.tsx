@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Clock3, LogOut } from "lucide-react";
+import { Armchair, CalendarDays, Clock3, LogOut } from "lucide-react";
 import { ErrorBlock, focusRing, Spinner } from "@/components/admin/ui";
 import { setStaffUnauthorizedHandler, STAFF_MOCK, staffApi } from "@/lib/staff/api";
 import { ROLE_LABEL } from "@/lib/staff/clock";
@@ -12,7 +12,7 @@ import type { StaffSession } from "@/lib/staff/types";
 import { ApiError } from "@/lib/sissiApi";
 
 // Kerangka web karyawan (/karyawan): memeriksa sesi karyawan (GET /staff/auth/me) sebelum menampilkan halaman,
-// mengarahkan ke /karyawan/masuk saat 401. Sama untuk semua peran (kasir, dapur, staff): hanya Absen & Riwayat.
+// mengarahkan ke /karyawan/masuk saat 401. Semua peran: Absen & Riwayat; Pelayan juga Meja (api.md "Pelayan lewat web").
 // Sesi pemilik (/dasbor) tidak disentuh — cookie, header, dan penangan 401 terpisah.
 
 type StaffContext = { session: StaffSession };
@@ -41,6 +41,10 @@ const NAV = [
   { href: "/karyawan", label: "Absen", icon: Clock3 },
   { href: "/karyawan/riwayat", label: "Riwayat", icon: CalendarDays },
 ];
+const WAITER_NAV = [{ href: "/karyawan/meja", label: "Meja", icon: Armchair }, ...NAV];
+
+/** Layar catat pesanan memakai bingkai penuh halaman pesan (tanpa kepala & menu karyawan). */
+const BARE = /^\/karyawan\/meja\/[^/]+\/tambah\/?$/;
 
 export function StaffShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -112,6 +116,15 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   }
 
   const role = ROLE_LABEL[session.user.role] ?? "Karyawan";
+  const nav = session.user.role === "waiter" ? WAITER_NAV : NAV;
+  if (BARE.test(pathname)) {
+    return (
+      <Ctx.Provider value={{ session }}>
+        <StaffMockBanner />
+        {children}
+      </Ctx.Provider>
+    );
+  }
   return (
     <Ctx.Provider value={{ session }}>
       <div className="flex min-h-dvh flex-col bg-bg-muted">
@@ -139,7 +152,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <nav aria-label="Menu karyawan" className="mx-auto flex max-w-[640px] gap-1 px-2">
-            {NAV.map(({ href, label, icon: Icon }) => {
+            {nav.map(({ href, label, icon: Icon }) => {
               const active = href === "/karyawan" ? pathname === "/karyawan" : pathname.startsWith(href);
               return (
                 <Link

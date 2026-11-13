@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Globe } from "lucide-react";
 import { Notice, Spinner } from "@/components/admin/ui";
 import { staffApi, staffDeviceId } from "@/lib/staff/api";
+import { staffHome } from "@/lib/staff/clock";
 import { acceptErrorMessage, type StaffMessage } from "@/lib/staff/errors";
 
 // "Aktifkan lewat website": buat kata sandi dari tautan undangan/reset lalu langsung masuk /karyawan
@@ -13,7 +14,7 @@ import { acceptErrorMessage, type StaffMessage } from "@/lib/staff/errors";
 const inputCls =
   "min-h-12 w-full rounded-xl border border-[#e4e9e7] bg-white px-3.5 text-base text-[#292e31] placeholder:text-[#7d8986] focus:border-[#f1702c] focus:ring-2 focus:ring-[#f1702c]/30 focus:outline-none aria-[invalid=true]:border-[#b42318]";
 
-export function ActivateOnWeb({ code, reset }: { code: string; reset: boolean }) {
+export function ActivateOnWeb({ code, reset, primary = false }: { code: string; reset: boolean; primary?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
@@ -35,8 +36,8 @@ export function ActivateOnWeb({ code, reset }: { code: string; reset: boolean })
     if (f.password || f.confirm) return;
     setBusy(true);
     try {
-      await (await staffApi()).accept(code, { password, remember_me: remember, device_id: staffDeviceId() });
-      router.replace("/karyawan");
+      const s = await (await staffApi()).accept(code, { password, remember_me: remember, device_id: staffDeviceId() });
+      router.replace(staffHome(s.user.role));
     } catch (err) {
       setBusy(false);
       const m = acceptErrorMessage(err);
@@ -51,7 +52,11 @@ export function ActivateOnWeb({ code, reset }: { code: string; reset: boolean })
         type="button"
         onClick={() => setOpen(true)}
         aria-expanded={false}
-        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#e4e9e7] bg-white px-5 text-base font-semibold text-[#292e31] transition-colors hover:bg-[#f3f6f5] focus:ring-2 focus:ring-[#f1702c] focus:ring-offset-2 focus:outline-none"
+        className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold transition-colors focus:ring-2 focus:ring-[#f1702c] focus:ring-offset-2 focus:outline-none ${
+          primary
+            ? "bg-[#f1702c] text-white shadow-sm hover:bg-[#ff7a45]"
+            : "border border-[#e4e9e7] bg-white text-[#292e31] hover:bg-[#f3f6f5]"
+        }`}
       >
         <Globe size={18} aria-hidden /> Aktifkan lewat website
       </button>

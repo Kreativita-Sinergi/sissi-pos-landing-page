@@ -35,12 +35,15 @@ export function MenuView({
   onOpen,
   banner,
   cartBar,
+  header,
 }: {
   menu: Menu;
   quantities: Record<string, number>;
   onOpen: (product: MenuProduct) => void;
   banner?: React.ReactNode;
   cartBar?: React.ReactNode;
+  /** Pengganti kepala outlet (web pelayan: nama meja + tombol kembali). */
+  header?: React.ReactNode;
 }) {
   const sections = useMemo(() => sectionsOf(menu), [menu]);
   const [active, setActive] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export function MenuView({
 
   return (
     <Frame className="pb-36">
-      <MenuHeader menu={menu} />
+      {header ?? <MenuHeader menu={menu} />}
 
       {banner && <div className="px-4 pt-4">{banner}</div>}
 

@@ -169,3 +169,8 @@ export function safeStaffNext(next: string | null | undefined): string {
   if (!/^\/karyawan(?:[/?#]|$)/.test(next) || /^\/karyawan\/masuk/.test(next)) return "/karyawan";
   return next;
 }
+
+/** Halaman awal setelah masuk: pelayan langsung ke Meja (seperti aplikasi), selain itu `next`. */
+export function staffHome(role: string, next = "/karyawan"): string {
+  return next === "/karyawan" && role === "waiter" ? "/karyawan/meja" : next;
+}

@@ -124,6 +124,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
+- [ ] **P2 · Audit UX 2026-11-11 — sisa web:** laporan > 92 hari & periode URL tak sah diam-diam 7 hari
+  (`lib/owner/period.ts:63`, `isDefault` tak dipakai); `min_stock` kosong tampil/tersimpan 0 → peringatan stok tak
+  pernah terkirim (`ProductEditor.tsx:170`); toleransi telat maks 240 di web vs 1440 server (`SettingsView.tsx:1065`);
+  pembulatan hanya 100/500/1000 (`SettingsView.tsx:481`). S–M
+
 - **P1 · Duitku langganan, sebelum rilis:** jalankan E2E aplikasi di sandbox, termasuk QRIS `SP` dengan pindai
   sungguhan memakai APK staging Shopee; ulangi E2E dan bukti `amount` callback dengan kredensial produksi.
 - **P2 · Duitku, kepastian di luar kode:** konfirmasi ke Duitku atau konsultan bahwa membebankan biaya layanan ke
@@ -167,6 +172,35 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 - **Urutan kategori** dari web = `reorderCategories` aplikasi (indeks → `sort_order`, hanya baris berubah).
 
 ## Selesai
+
+- **2026-11-13 · Pelayan web: pesanan tanpa meja + pilih pelanggan (Claude Opus 5.5; service `a08a607`).** Tab Meja punya
+  bagian "Tanpa meja" (kartu nama tamu) + tombol "+ Pesanan tanpa meja" (`/karyawan/meja/tanpa-meja/tambah`); rincian
+  `/karyawan/meja/pesanan/[id]`. Keranjang pesanan baru: pilih Meja (atau Tanpa meja) dan Pelanggan (`OrderFor`: cari
+  ≥ 2 huruf lewat `/staff/waiter/customers`, atau ketik nama tamu; tanpa meja wajib nama). Uji: tsc + eslint bersih;
+  pesanan web (meja & tanpa meja) terlihat masuk di tab Pesanan tablet kasir (emulator, API lokal).
+- **2026-11-13 · Halaman undangan di laptop/PC: aktivasi web jadi utama (Claude Opus 5.5).** Selain Android: tombol
+  "Unduh aplikasi" diganti info "Pakai HP Android? Buka tautan ini di HP-mu…", "Aktifkan lewat website" oranye; kartu
+  langkah app tetap. iPhone: teks "Aplikasi Sissi baru tersedia untuk HP Android…". Android tidak berubah. Uji: tsc +
+  eslint bersih; tangkapan layar iPhone/Android/laptop dengan undangan pelayan sementara di API lokal.
+- **2026-11-13 · Pelayan lewat web — menu Meja di `/karyawan` (Claude Opus 5.5; kontrak `api.md` "Pelayan lewat web").**
+  Pelayan (`role: waiter`, akses penuh) mendapat tab **Meja** (+ Absen/Riwayat) dan langsung ke Meja setelah masuk.
+  `/karyawan/meja` denah (Semua/Kosong/Terisi, area, muat ulang 10 dtk); `/karyawan/meja/[id]` rincian per ronde + total,
+  Minta tagihan, Tambah/Mulai pesanan; `/karyawan/meja/[id]/tambah` pakai ulang `MenuView` (prop `header` baru) +
+  `ItemSheet` + keranjang per meja di localStorage, "Kirim pesanan"/"Kirim tambahan (n item)". Klien `staffApi().waiter*`,
+  mode tiruan `waiterMock.ts` (masuk dengan "pelayan"). Undangan: teks web menyebut pesanan meja untuk pelayan.
+  Uji: tsc + eslint bersih, `npm test` 103/103, alur tiruan (iPhone 390 & 360 px) dan alur nyata ke API lokal
+  (buka meja → kirim → minta tagihan; baris `sales`/`kitchen_tickets` benar). Belum di-push.
+- **2026-11-13 · Halaman undangan di iPhone & kolom "Mulai" catat pembayaran (Claude Opus 5.5).** `/undangan/[kode]`:
+  UA `iphone|ipad|ipod` (bukan Android) → tombol "Unduh aplikasi" & kartu "Belum terbuka di aplikasi?" disembunyikan,
+  "Aktifkan lewat website" jadi tombol utama oranye (`ActivateOnWeb` prop `primary`) + catatan "belum tersedia untuk
+  iPhone"; `InvalidInvite` tanpa tombol unduh di iPhone. Android & komputer tetap. Admin `SubscriptionTab`: dua kolom
+  hanya bila Periode = Khusus. Uji: eslint + tsc lolos; tangkapan layar mode tiruan (iPhone/Android/komputer, kode
+  sah & tidak sah) sesuai.
+- **2026-11-11 · Rilis web absen & lembur (Claude Opus 5.5, atas perintah pemilik)** — `main` `606597d` = 12 commit
+  dipilih (absen di luar jadwal/libur/telat, Jam kerja belum diatur, absen pulang terlupa, lembur tahap 2, tim, admin
+  data perangkat, ikon stok) **tanpa Duitku** (dialog bayar, Pro 6 bulan, halaman Langganan baru tetap di
+  `development` sampai pemilik mengabari). Diuji di cabang rilis: tsc, eslint, 103/103, build. Server `84673b6`
+  dideploy dulu.
 
 - 2026-11-08 · Admin → Bisnis → Performa: pilihan periode **Hari ini** (`periode=1`); teks pembanding "vs kemarin" /
   "Dibanding kemarin di jam yang sama". tsc + lint bersih; belum dicek visual.
