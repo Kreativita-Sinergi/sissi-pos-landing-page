@@ -173,6 +173,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Absen web: konfirmasi absen tanpa lokasi (Claude Opus 5.5; keputusan pemilik: konfirmasi, bukan tolak).**
+  Outlet beraturan Boleh (`geo.enabled` + titik lokasi + `outside: flag`) dan lokasi tidak terbaca → dialog "Lokasi tidak
+  terbaca … Tetap absen?" ([Tetap absen masuk/pulang] / [Izinkan lokasi dulu] bila izin ditolak → panel panduan, selain
+  itu [Coba lagi nanti]). Langkah iPhone menyebut ikon **aA** atau ikon tiga garis (iPhone terbaru, dari tangkapan pemilik). Server tidak berubah. Uji:
+  tsc + eslint; puppeteer ke API lokal (dialog → Izinkan lokasi dulu → panel). Data uji dikembalikan. Belum dirilis.
 - **2026-11-13 · Absen web: panduan saat izin lokasi diblokir (Claude Opus 5.5).** `geo.ts`: `geoPermission`/
   `watchGeoPermission` (Permissions API) + `geoPlatform`; `LocationHelp` (langkah iPhone Safari / Android Chrome /
   komputer + "Coba lagi") tampil di Absen bila outlet memakai lokasi dan izin `denied` (saat halaman dibuka atau setelah

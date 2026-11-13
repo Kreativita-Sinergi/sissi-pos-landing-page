@@ -12,8 +12,13 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
   ios: {
     title: "Di iPhone (Safari)",
     steps: [
-      <>Ketuk <b>aA</b> di bilah alamat.</>,
-      <>Pilih <b>Pengaturan Situs Web</b> › <b>Lokasi</b> › <b>Izinkan</b>.</>,
+      <>
+        Ketuk ikon menu halaman di bilah alamat: <b>aA</b>, atau ikon <b>tiga garis</b> (<MenuGlyph />) di iPhone versi
+        terbaru.
+      </>,
+      <>
+        Pilih <b>Pengaturan Situs Web</b> (atau <b>Pengaturan Situs</b>) › <b>Lokasi</b> › <b>Izinkan</b>.
+      </>,
       <>Kembali ke sini lalu ketuk <b>Coba lagi</b>.</>,
     ],
     extra: (
@@ -41,6 +46,17 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
     ],
   },
 };
+
+/** Ikon menu halaman Safari iPhone terbaru: tiga garis, yang bawah lebih pendek. */
+function MenuGlyph() {
+  return (
+    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden className="inline-block align-[-1px]">
+      <rect x="0" y="0" width="14" height="2" rx="1" fill="currentColor" />
+      <rect x="0" y="5" width="14" height="2" rx="1" fill="currentColor" />
+      <rect x="0" y="10" width="8" height="2" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
 
 export function LocationHelp({ required, onGranted }: { required: boolean; onGranted: () => void }) {
   const [platform] = useState<GeoPlatform>(() => geoPlatform());
