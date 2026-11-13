@@ -17,6 +17,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
   "crash.status": "Ubah status crash",
   "subscription.payment": "Catat pembayaran",
   "subscription.payment_void": "Batalkan pembayaran",
+  "subscription.invoice_send": "Kirim invoice ke email",
   "subscription.extend": "Tambah hari langganan",
   "subscription.override": "Ubah batas khusus",
   "subscription.launch_trial": "Peluncuran uji coba",
@@ -41,6 +42,7 @@ export const AUDIT_ACTION_GROUPS: { id: string; label: string; actions: string[]
     actions: [
       "subscription.payment",
       "subscription.payment_void",
+      "subscription.invoice_send",
       "subscription.extend",
       "subscription.override",
       "subscription.launch_trial",
