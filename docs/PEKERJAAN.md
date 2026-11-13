@@ -173,6 +173,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · RILIS web: panduan izin lokasi (`ef008e3`) + konfirmasi absen tanpa lokasi (cherry-pick `40389a4`).** Tanpa
+  Duitku; Vercel menayangkan dari `main`.
 - **2026-11-13 · Absen web: konfirmasi absen tanpa lokasi (Claude Opus 5.5; keputusan pemilik: konfirmasi, bukan tolak).**
   Outlet beraturan Boleh (`geo.enabled` + titik lokasi + `outside: flag`) dan lokasi tidak terbaca → dialog "Lokasi tidak
   terbaca … Tetap absen?" ([Tetap absen masuk/pulang] / [Izinkan lokasi dulu] bila izin ditolak → panel panduan, selain
