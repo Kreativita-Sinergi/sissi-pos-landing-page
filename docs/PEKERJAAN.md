@@ -20,7 +20,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
-- **Invoice pembayaran langganan di admin (2026-11-13, `development`, belum rilis):** Langganan › Riwayat pembayaran
+- **Invoice pembayaran langganan di admin (2026-11-13) — DIRILIS ke `main` `8f2fa17` (cherry-pick, tanpa Duitku):** Langganan › Riwayat pembayaran
   menampilkan nomor invoice + tombol **Unduh invoice** (PDF dari server, `adminApi().invoicePdf` → `fetchPdf`) dan
   **Kirim ke email** (`sendInvoice`, toast "dikirim ke b•••@…"; nonaktif bila pemilik tanpa email; tidak tampil untuk
   pembayaran dibatalkan). Toast catat pembayaran menyebut invoice dikirim ke email pemilik. Label audit
