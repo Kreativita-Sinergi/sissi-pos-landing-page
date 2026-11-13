@@ -124,8 +124,6 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
-- **P2 · Pelayan lewat web `kasir.sissi.id` (disetujui pemilik 2026-11-13, belum dikerjakan)** — pesanan langsung ke
-  meja seperti Pelayan di app, alur semirip mungkin dengan app. Rincian: `sissi-pos-app/docs/PEKERJAAN.md` › Backlog P2.
 - [ ] **P2 · Audit UX 2026-11-11 — sisa web:** laporan > 92 hari & periode URL tak sah diam-diam 7 hari
   (`lib/owner/period.ts:63`, `isDefault` tak dipakai); `min_stock` kosong tampil/tersimpan 0 → peringatan stok tak
   pernah terkirim (`ProductEditor.tsx:170`); toleransi telat maks 240 di web vs 1440 server (`SettingsView.tsx:1065`);
@@ -175,6 +173,14 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Pelayan lewat web — menu Meja di `/karyawan` (Claude Opus 5.5; kontrak `api.md` "Pelayan lewat web").**
+  Pelayan (`role: waiter`, akses penuh) mendapat tab **Meja** (+ Absen/Riwayat) dan langsung ke Meja setelah masuk.
+  `/karyawan/meja` denah (Semua/Kosong/Terisi, area, muat ulang 10 dtk); `/karyawan/meja/[id]` rincian per ronde + total,
+  Minta tagihan, Tambah/Mulai pesanan; `/karyawan/meja/[id]/tambah` pakai ulang `MenuView` (prop `header` baru) +
+  `ItemSheet` + keranjang per meja di localStorage, "Kirim pesanan"/"Kirim tambahan (n item)". Klien `staffApi().waiter*`,
+  mode tiruan `waiterMock.ts` (masuk dengan "pelayan"). Undangan: teks web menyebut pesanan meja untuk pelayan.
+  Uji: tsc + eslint bersih, `npm test` 103/103, alur tiruan (iPhone 390 & 360 px) dan alur nyata ke API lokal
+  (buka meja → kirim → minta tagihan; baris `sales`/`kitchen_tickets` benar). Belum di-push.
 - **2026-11-13 · Halaman undangan di iPhone & kolom "Mulai" catat pembayaran (Claude Opus 5.5).** `/undangan/[kode]`:
   UA `iphone|ipad|ipod` (bukan Android) → tombol "Unduh aplikasi" & kartu "Belum terbuka di aplikasi?" disembunyikan,
   "Aktifkan lewat website" jadi tombol utama oranye (`ActivateOnWeb` prop `primary`) + catatan "belum tersedia untuk

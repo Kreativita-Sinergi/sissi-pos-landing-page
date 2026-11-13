@@ -17,6 +17,7 @@
 //             (gabung "luarjadwal"/"shift" dengan jarak jauh di DevTools untuk uji berantai OUTSIDE_AREA_CONFIRM → jadwal)
 //   pemilik   → STAFF_ONLY · nonaktif → EMPLOYEE_LOGIN_DISABLED · batas → RATE_LIMITED
 // Kata sandi "salah" → INVALID_CREDENTIALS. Undangan: kode berawalan 0000 → INVITE_INVALID.
+import { waiterMockApi } from "./waiterMock";
 import { staffError, type StaffApi } from "./api";
 import { zonedClock, zonedDate } from "./clock";
 import type { ClockInput, StaffAttendance, StaffHistory, StaffOutlet, StaffSession, StaffToday } from "./types";
@@ -159,7 +160,13 @@ function session(s: MockState): StaffSession {
   const now = Date.now();
   const life = s.remember ? 30 * 864e5 : 12 * 36e5;
   return {
-    user: { id: "u-staff-1", name: s.name, role: s.scenario.includes("dapur") ? "kitchen" : "cashier", job_title: s.scenario.includes("dapur") ? "Barista" : null },
+    user: {
+      id: "u-staff-1",
+      name: s.name,
+      role: s.scenario.includes("pelayan") ? "waiter" : s.scenario.includes("dapur") ? "kitchen" : "cashier",
+      job_title: s.scenario.includes("dapur") ? "Barista" : null,
+      personal_access: s.scenario.includes("absensaja") ? "staff_space" : "full",
+    },
     business: { id: "b-1", name: "Kopi Senja", timezone: TZ },
     outlets: s.outlets.map(({ id, name }) => ({ id, name })),
     locked: s.scenario.includes("gratis"),
@@ -206,6 +213,7 @@ export function createStaffMockApi(onUnauthorized: () => void): StaffApi {
   }
 
   return {
+    ...waiterMockApi(() => state?.name ?? "Pelayan"),
     async login(body) {
       await latency();
       const id = body.identifier.toLowerCase();

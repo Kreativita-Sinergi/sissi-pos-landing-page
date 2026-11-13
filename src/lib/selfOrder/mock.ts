@@ -557,3 +557,9 @@ export const mockApi: SelfOrderApi = {
     return { order: next.order };
   },
 };
+
+/** Menu contoh untuk mode tiruan web pelayan (`src/lib/staff/waiterMock.ts`): isi sama, tanpa meja. */
+export function sampleWaiterMenu(): Menu {
+  const m = buildMenu("pilih", { ...load(), bumped: [], soldOut: [] });
+  return { ...m, table: null, tables: [] };
+}
