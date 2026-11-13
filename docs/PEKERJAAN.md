@@ -25,7 +25,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   **Kirim ke email** (`sendInvoice`, toast "dikirim ke b•••@…"; nonaktif bila pemilik tanpa email; tidak tampil untuk
   pembayaran dibatalkan). Toast catat pembayaran menyebut invoice dikirim ke email pemilik. Label audit
   `subscription.invoice_send`. Tipe `AdminPayment.invoice_no?`/`service_fee?` opsional (toleran server lama). Mode
-  tiruan: PDF teks sederhana. Cek: `tsc`, `eslint`, `npm test` (103 lulus), tangkapan layar mode tiruan. **Rilis setelah
+  tiruan: PDF teks sederhana. Nama berkas unduhan dibentuk di web (`invoiceFileName`: `Invoice INV-… - <usaha> -
+  <tanggal bayar WIB>.pdf`) karena `Content-Disposition` lintas origin tidak terbaca JS (2026-11-13). Cek: `tsc`, `eslint`, `npm test` (103 lulus), tangkapan layar mode tiruan. **Rilis setelah
   service dideploy** (kontrak: `../sissi-pos-service/docs/api.md` "Invoice pembayaran langganan").
 
 - **Absen di luar jadwal & konfirmasi telat (2026-11-11, `development`, belum rilis):** web karyawan menampilkan dialog

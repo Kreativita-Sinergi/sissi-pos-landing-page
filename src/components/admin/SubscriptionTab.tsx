@@ -141,6 +141,7 @@ export function SubscriptionTab({ businessId, businessName }: { businessId: stri
 
       <PaymentsSection
         businessId={businessId}
+        businessName={businessName}
         ownerEmail={s.business.owner?.email || null}
         payments={detail.payments}
         latestId={latestRecorded?.id ?? null}
@@ -336,6 +337,7 @@ function StatusCard({
 
 function PaymentsSection({
   businessId,
+  businessName,
   ownerEmail,
   payments,
   latestId,
@@ -343,6 +345,7 @@ function PaymentsSection({
   onVoid,
 }: {
   businessId: string;
+  businessName: string;
   ownerEmail: string | null;
   payments: AdminPayment[];
   latestId: string | null;
@@ -394,7 +397,7 @@ function PaymentsSection({
                       {p.voided_at ? `, ${formatDateTime(p.voided_at)}` : ""}: {p.void_reason || "—"}
                     </p>
                   )}
-                  <InvoiceActions businessId={businessId} payment={p} ownerEmail={ownerEmail} />
+                  <InvoiceActions businessId={businessId} businessName={businessName} payment={p} ownerEmail={ownerEmail} />
                 </div>
                 <div className="hidden sm:block">{isVoid ? <Badge tone="danger">Dibatalkan</Badge> : <Badge tone="success">Sah</Badge>}</div>
                 <div className="col-start-2 row-start-1 flex justify-end sm:col-start-4">
@@ -426,8 +429,34 @@ function PaymentsSection({
   );
 }
 
+// Nama berkas unduhan: nomor invoice + nama usaha + tanggal bayar, mis.
+// `Invoice INV-2026-11-00012 - Kopi Senja - 2026-11-13.pdf`. Dibentuk di sini karena Content-Disposition lintas
+// origin tidak terbaca oleh JS (tanpa Access-Control-Expose-Headers).
+function invoiceFileName(p: Pick<AdminPayment, "invoice_no" | "paid_at">, businessName: string): string | null {
+  if (!p.invoice_no) return null;
+  const safe = (v: string) =>
+    v
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60);
+  const name = safe(businessName);
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date(p.paid_at));
+  return `Invoice ${safe(p.invoice_no.replaceAll("/", "-"))}${name ? ` - ${name}` : ""} - ${day}.pdf`;
+}
+
 // Unduh invoice PDF + kirim (ulang) ke email pemilik. Invoice otomatis terkirim saat pembayaran dicatat.
-function InvoiceActions({ businessId, payment, ownerEmail }: { businessId: string; payment: AdminPayment; ownerEmail: string | null }) {
+function InvoiceActions({
+  businessId,
+  businessName,
+  payment,
+  ownerEmail,
+}: {
+  businessId: string;
+  businessName: string;
+  payment: AdminPayment;
+  ownerEmail: string | null;
+}) {
   const toast = useToast();
   const [busy, setBusy] = useState<null | "pdf" | "send">(null);
   const isVoid = payment.status === "void";
@@ -440,7 +469,7 @@ function InvoiceActions({ businessId, payment, ownerEmail }: { businessId: strin
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = fileName;
+      a.download = invoiceFileName(payment, businessName) ?? fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
