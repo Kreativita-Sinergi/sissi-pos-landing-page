@@ -51,3 +51,50 @@ export const GEO_FAILURE_TEXT: Record<GeoFailure, string> = {
   timeout: "Lokasi tidak ditemukan tepat waktu",
   unsupported: "Browser tidak mendukung lokasi",
 };
+
+// ——— Status izin lokasi (2026-11-13) ———
+// Setelah izin ditolak, situs tidak bisa meminta lagi atau membuka pengaturan browser: karyawan harus mengubahnya
+// sendiri. Status dibaca lewat Permissions API (Safari ≥ 16, Chrome, Firefox) agar panduan muncul sebelum absen.
+
+export type GeoPermission = "granted" | "denied" | "prompt" | "unknown";
+
+async function permissionStatus(): Promise<PermissionStatus | null> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) return null;
+    return await navigator.permissions.query({ name: "geolocation" as PermissionName });
+  } catch {
+    return null;
+  }
+}
+
+export async function geoPermission(): Promise<GeoPermission> {
+  const s = await permissionStatus();
+  return s ? (s.state as GeoPermission) : "unknown";
+}
+
+/** Pantau perubahan izin (mis. karyawan kembali dari pengaturan). Mengembalikan fungsi berhenti. */
+export function watchGeoPermission(cb: (p: GeoPermission) => void): () => void {
+  let status: PermissionStatus | null = null;
+  let stopped = false;
+  const onChange = () => status && cb(status.state as GeoPermission);
+  void permissionStatus().then((s) => {
+    if (stopped || !s) return;
+    status = s;
+    s.addEventListener("change", onChange);
+  });
+  return () => {
+    stopped = true;
+    status?.removeEventListener("change", onChange);
+  };
+}
+
+export type GeoPlatform = "ios" | "android" | "desktop";
+
+/** Platform untuk langkah membuka izin. iPadOS terbaru ber-UA Mac → dikenali dari layar sentuh. */
+export function geoPlatform(): GeoPlatform {
+  if (typeof navigator === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return "android";
+  if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+  return "desktop";
+}
