@@ -112,6 +112,7 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
   const info = loaded.kind === "ok" ? loaded.info : null;
   const reset = info?.purpose === "reset_password";
   const expiry = info ? formatExpiry(info.expires_at) : null;
+  const purpose = info?.role === "waiter" ? "absen dan mencatat pesanan meja" : "absen masuk & pulang";
 
   return (
     <>
@@ -154,48 +155,50 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
           </p>
         )}
 
-        {ios ? (
-          <div className="mt-6">
-            <p className="mb-3 text-[14px] leading-relaxed text-[#525866]">
-              Aplikasi Sissi belum tersedia untuk iPhone. Aktifkan akunmu di sini, lalu pakai Sissi lewat website.
-            </p>
-            <ActivateOnWeb code={code} reset={reset} primary />
-          </div>
-        ) : (
+        {android ? (
           <>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              {android ? (
-                <a
+              <a
                   href={inviteIntentUrl(code, host, downloadUrl)}
                   className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-[#f1702c] px-5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-[#ff7a45] focus:ring-2 focus:ring-[#f1702c] focus:ring-offset-2 focus:outline-none"
                 >
                   Buka di aplikasi
                 </a>
-              ) : null}
               <Link
                 href="/download"
-                className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none ${
-                  android
-                    ? "border border-[#e4e9e7] bg-white text-[#292e31] hover:bg-[#f3f6f5] focus:ring-[#f1702c]"
-                    : "bg-[#f1702c] text-white shadow-sm hover:bg-[#ff7a45] focus:ring-[#f1702c]"
-                }`}
+                className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[#e4e9e7] bg-white px-5 text-base font-semibold text-[#292e31] transition-colors hover:bg-[#f3f6f5] focus:ring-2 focus:ring-[#f1702c] focus:ring-offset-2 focus:outline-none"
               >
                 <Download size={18} aria-hidden /> Unduh aplikasi
               </Link>
             </div>
-            {!android && (
-              <p className="mt-3 text-[13.5px] leading-relaxed text-[#525866]">
-                Sissi tersedia untuk HP Android. Buka tautan ini di HP Android-mu, atau ketik kodenya di aplikasi.
-              </p>
-            )}
 
             <div className="mt-6 border-t border-[#e4e9e7] pt-6">
               <p className="mb-3 text-[14px] leading-relaxed text-[#525866]">
-                Tidak memakai aplikasi? Aktifkan akunmu di sini untuk {info?.role === "waiter" ? "absen dan mencatat pesanan meja" : "absen masuk & pulang"} lewat website (HP atau komputer).
+                Tidak memakai aplikasi? Aktifkan akunmu di sini untuk {purpose} lewat website (HP atau komputer).
               </p>
               <ActivateOnWeb code={code} reset={reset} />
             </div>
           </>
+        ) : ios ? (
+          // iPhone: aplikasi belum ada → aktivasi web jadi satu-satunya jalur.
+          <div className="mt-6">
+            <p className="mb-3 text-[14px] leading-relaxed text-[#525866]">
+              Aplikasi Sissi baru tersedia untuk HP Android. Di iPhone, aktifkan akunmu di sini lalu pakai Sissi lewat
+              website.
+            </p>
+            <ActivateOnWeb code={code} reset={reset} primary />
+          </div>
+        ) : (
+          // Laptop/PC: APK tidak bisa dipasang di sini → aktivasi web jadi tombol utama, aplikasi cukup sebagai info.
+          <div className="mt-6">
+            <p className="mb-3 text-[14px] leading-relaxed text-[#525866]">
+              Aktifkan akunmu di sini untuk {purpose} lewat website.
+            </p>
+            <ActivateOnWeb code={code} reset={reset} primary />
+            <p className="mt-3 text-[13.5px] leading-relaxed text-[#525866]">
+              Pakai HP Android? Buka tautan ini di HP-mu untuk memasang aplikasi Sissi.
+            </p>
+          </div>
         )}
       </div>
 
