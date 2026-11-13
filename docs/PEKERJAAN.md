@@ -173,6 +173,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Halaman undangan di laptop/PC: aktivasi web jadi utama (Claude Opus 5.5).** Selain Android: tombol
+  "Unduh aplikasi" diganti info "Pakai HP Android? Buka tautan ini di HP-mu…", "Aktifkan lewat website" oranye; kartu
+  langkah app tetap. iPhone: teks "Aplikasi Sissi baru tersedia untuk HP Android…". Android tidak berubah. Uji: tsc +
+  eslint bersih; tangkapan layar iPhone/Android/laptop dengan undangan pelayan sementara di API lokal.
 - **2026-11-13 · Pelayan lewat web — menu Meja di `/karyawan` (Claude Opus 5.5; kontrak `api.md` "Pelayan lewat web").**
   Pelayan (`role: waiter`, akses penuh) mendapat tab **Meja** (+ Absen/Riwayat) dan langsung ke Meja setelah masuk.
   `/karyawan/meja` denah (Semua/Kosong/Terisi, area, muat ulang 10 dtk); `/karyawan/meja/[id]` rincian per ronde + total,
