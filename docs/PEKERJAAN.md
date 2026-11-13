@@ -173,6 +173,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Bug: izin lokasi sudah diizinkan tetapi absen tetap ditolak sampai halaman dimuat ulang (temuan pemilik,
+  iPhone).** Safari membaca izin baru hanya setelah muat ulang, padahal status izin sudah "granted" sehingga panel
+  hilang. "Coba lagi" kini benar-benar mengambil lokasi; masih ditolak tapi status izin bukan `denied` → muat ulang
+  otomatis; plus tombol "Muat ulang halaman". Uji puppeteer (Chrome): ditolak → "masih diblokir"; diizinkan → panel
+  hilang → absen masuk tercatat. Kondisi basi khas Safari belum bisa diuji di sini → perlu uji di iPhone asli.
 - **2026-11-13 · RILIS web: panduan izin lokasi (`ef008e3`) + konfirmasi absen tanpa lokasi (cherry-pick `40389a4`).** Tanpa
   Duitku; Vercel menayangkan dari `main`.
 - **2026-11-13 · Absen web: konfirmasi absen tanpa lokasi (Claude Opus 5.5; keputusan pemilik: konfirmasi, bukan tolak).**

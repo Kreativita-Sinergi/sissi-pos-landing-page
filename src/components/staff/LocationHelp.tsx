@@ -69,25 +69,26 @@ export function LocationHelp({ required, onGranted }: { required: boolean; onGra
   const [still, setStill] = useState<string | null>(null);
   const s = STEPS[platform];
 
+  // Status izin (Permissions API) bisa sudah "granted" padahal halaman yang sama masih ditolak saat mengambil
+  // lokasi (Safari iPhone baru membaca izin baru setelah halaman dimuat ulang — temuan pemilik 2026-11-13). Jadi
+  // "Coba lagi" benar-benar mengambil lokasi; masih ditolak → muat ulang halaman sekali.
   async function retry() {
     setChecking(true);
     setStill(null);
-    const p = await geoPermission();
-    if (p === "granted") {
+    const r = await locate();
+    if (!r.failure) {
       setChecking(false);
       return onGranted();
     }
-    if (p === "denied") {
+    if (r.failure === "denied") {
+      if ((await geoPermission()) !== "denied") return window.location.reload();
       setChecking(false);
       return setStill("Izin lokasi masih diblokir. Periksa lagi langkah di atas.");
     }
-    // Browser tanpa Permissions API / status "minta": coba ambil lokasi (memunculkan dialog izin bila masih bisa).
-    const r = await locate();
     setChecking(false);
-    if (!r.failure) onGranted();
-    else if (r.failure === "denied") setStill("Izin lokasi masih diblokir. Periksa lagi langkah di atas.");
-    else setStill("Lokasi belum ditemukan. Pastikan lokasi HP menyala, lalu coba lagi.");
+    setStill("Lokasi belum ditemukan. Pastikan lokasi HP menyala, lalu coba lagi.");
   }
+
 
   return (
     <section
@@ -123,6 +124,14 @@ export function LocationHelp({ required, onGranted }: { required: boolean; onGra
         className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-[14.5px] font-semibold text-text-heading hover:border-border-active disabled:opacity-60 ${focusRing}`}
       >
         {checking ? <Spinner size={16} /> : <RotateCw size={16} aria-hidden />} Coba lagi
+      </button>
+      {/* Cadangan bila status izin browser ikut basi: muat ulang membaca izin terbaru. */}
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className={`mt-3 ml-2 inline-flex min-h-11 items-center rounded-[12px] px-3 text-[14px] font-semibold text-text-body underline-offset-2 hover:underline ${focusRing}`}
+      >
+        Muat ulang halaman
       </button>
     </section>
   );
