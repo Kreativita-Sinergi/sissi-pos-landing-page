@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import { MapPinOff, RotateCw } from "lucide-react";
-import { focusRing, Spinner } from "@/components/admin/ui";
-import { geoPermission, geoPlatform, locate, type GeoPlatform } from "@/lib/staff/geo";
+import { focusRing } from "@/components/admin/ui";
+import { geoPlatform, type GeoPlatform } from "@/lib/staff/geo";
 
 // Panduan saat izin lokasi browser diblokir. Situs tidak bisa membuka pengaturan atau meminta izin lagi setelah
-// ditolak, jadi karyawan diberi langkah sesuai perangkatnya lalu "Coba lagi" memeriksa ulang izin.
+// ditolak, jadi karyawan diberi langkah sesuai perangkatnya lalu memuat ulang halaman.
 
 const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extra?: React.ReactNode }> = {
   ios: {
@@ -19,7 +19,7 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
       <>
         Pilih <b>Pengaturan Situs Web</b> (atau <b>Pengaturan Situs</b>) › <b>Lokasi</b> › <b>Izinkan</b>.
       </>,
-      <>Kembali ke sini lalu ketuk <b>Coba lagi</b>.</>,
+      <>Kembali ke sini lalu ketuk <b>Muat ulang halaman</b>.</>,
     ],
     extra: (
       <>
@@ -33,7 +33,7 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
     steps: [
       <>Ketuk ikon di kiri alamat situs (gembok/setelan).</>,
       <>Pilih <b>Izin</b> › <b>Lokasi</b> › <b>Izinkan</b>.</>,
-      <>Kembali ke sini lalu ketuk <b>Coba lagi</b>.</>,
+      <>Kembali ke sini lalu ketuk <b>Muat ulang halaman</b>.</>,
     ],
     extra: <>Pastikan juga <b>Lokasi</b> HP menyala (tarik panel atas layar).</>,
   },
@@ -41,8 +41,8 @@ const STEPS: Record<GeoPlatform, { title: string; steps: React.ReactNode[]; extr
     title: "Di komputer",
     steps: [
       <>Klik ikon gembok/setelan di kiri alamat situs.</>,
-      <>Ubah <b>Lokasi</b> menjadi <b>Izinkan</b>, lalu muat ulang halaman bila diminta.</>,
-      <>Klik <b>Coba lagi</b>.</>,
+      <>Ubah <b>Lokasi</b> menjadi <b>Izinkan</b>.</>,
+      <>Klik <b>Muat ulang halaman</b>.</>,
     ],
   },
 };
@@ -63,33 +63,12 @@ function MenuGlyph() {
   );
 }
 
-export function LocationHelp({ required, onGranted }: { required: boolean; onGranted: () => void }) {
+export function LocationHelp({ required }: { required: boolean }) {
   const [platform] = useState<GeoPlatform>(() => geoPlatform());
-  const [checking, setChecking] = useState(false);
-  const [still, setStill] = useState<string | null>(null);
   const s = STEPS[platform];
 
-  // Status izin (Permissions API) bisa sudah "granted" padahal halaman yang sama masih ditolak saat mengambil
-  // lokasi (Safari iPhone baru membaca izin baru setelah halaman dimuat ulang — temuan pemilik 2026-11-13). Jadi
-  // "Coba lagi" benar-benar mengambil lokasi; masih ditolak → muat ulang halaman sekali.
-  async function retry() {
-    setChecking(true);
-    setStill(null);
-    const r = await locate();
-    if (!r.failure) {
-      setChecking(false);
-      return onGranted();
-    }
-    if (r.failure === "denied") {
-      if ((await geoPermission()) !== "denied") return window.location.reload();
-      setChecking(false);
-      return setStill("Izin lokasi masih diblokir. Periksa lagi langkah di atas.");
-    }
-    setChecking(false);
-    setStill("Lokasi belum ditemukan. Pastikan lokasi HP menyala, lalu coba lagi.");
-  }
-
-
+  // Izin baru baru terbaca setelah halaman dimuat ulang (Safari iPhone; "Coba lagi" di halaman yang sama tetap ditolak —
+  // temuan pemilik 2026-11-13), jadi satu-satunya tombol = muat ulang.
   return (
     <section
       role="alert"
@@ -112,26 +91,12 @@ export function LocationHelp({ required, onGranted }: { required: boolean; onGra
         ))}
       </ol>
       {s.extra && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{s.extra}</p>}
-      {still && (
-        <p className="mt-2 text-[13.5px] font-medium text-danger">
-          {still}
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={retry}
-        disabled={checking}
-        className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-[14.5px] font-semibold text-text-heading hover:border-border-active disabled:opacity-60 ${focusRing}`}
-      >
-        {checking ? <Spinner size={16} /> : <RotateCw size={16} aria-hidden />} Coba lagi
-      </button>
-      {/* Cadangan bila status izin browser ikut basi: muat ulang membaca izin terbaru. */}
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className={`mt-3 ml-2 inline-flex min-h-11 items-center rounded-[12px] px-3 text-[14px] font-semibold text-text-body underline-offset-2 hover:underline ${focusRing}`}
+        className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-[14.5px] font-semibold text-text-heading hover:border-border-active ${focusRing}`}
       >
-        Muat ulang halaman
+        <RotateCw size={16} aria-hidden /> Muat ulang halaman
       </button>
     </section>
   );

@@ -72,22 +72,6 @@ export async function geoPermission(): Promise<GeoPermission> {
   return s ? (s.state as GeoPermission) : "unknown";
 }
 
-/** Pantau perubahan izin (mis. karyawan kembali dari pengaturan). Mengembalikan fungsi berhenti. */
-export function watchGeoPermission(cb: (p: GeoPermission) => void): () => void {
-  let status: PermissionStatus | null = null;
-  let stopped = false;
-  const onChange = () => status && cb(status.state as GeoPermission);
-  void permissionStatus().then((s) => {
-    if (stopped || !s) return;
-    status = s;
-    s.addEventListener("change", onChange);
-  });
-  return () => {
-    stopped = true;
-    status?.removeEventListener("change", onChange);
-  };
-}
-
 export type GeoPlatform = "ios" | "android" | "desktop";
 
 /** Platform untuk langkah membuka izin. iPadOS terbaru ber-UA Mac → dikenali dari layar sentuh. */
