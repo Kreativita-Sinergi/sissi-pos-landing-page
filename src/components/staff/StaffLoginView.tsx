@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { btn, Field, focusRing, inputClass, Notice, Spinner } from "@/components/admin/ui";
 import { staffApi, staffDeviceId } from "@/lib/staff/api";
-import { safeStaffNext } from "@/lib/staff/clock";
+import { safeStaffNext, staffHome } from "@/lib/staff/clock";
 import { loginErrorMessage, type StaffMessage } from "@/lib/staff/errors";
 import { ApiError } from "@/lib/sissiApi";
 import { StaffMockBanner } from "./StaffShell";
@@ -33,8 +33,8 @@ export function StaffLoginView() {
     const ctrl = new AbortController();
     staffApi()
       .then((api) => api.me(ctrl.signal))
-      .then(() => {
-        if (!ctrl.signal.aborted) router.replace(next);
+      .then((s) => {
+        if (!ctrl.signal.aborted) router.replace(staffHome(s.user.role, next));
       })
       .catch(() => {});
     return () => ctrl.abort();
@@ -58,8 +58,8 @@ export function StaffLoginView() {
     if (Object.keys(missing).length) return;
     setBusy(true);
     try {
-      await (await staffApi()).login({ identifier: id, password, remember_me: remember, device_id: staffDeviceId() });
-      router.replace(next);
+      const s = await (await staffApi()).login({ identifier: id, password, remember_me: remember, device_id: staffDeviceId() });
+      router.replace(staffHome(s.user.role, next));
     } catch (err) {
       setBusy(false);
       setPassword("");

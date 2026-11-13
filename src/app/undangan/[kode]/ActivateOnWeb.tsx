@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Globe } from "lucide-react";
 import { Notice, Spinner } from "@/components/admin/ui";
 import { staffApi, staffDeviceId } from "@/lib/staff/api";
+import { staffHome } from "@/lib/staff/clock";
 import { acceptErrorMessage, type StaffMessage } from "@/lib/staff/errors";
 
 // "Aktifkan lewat website": buat kata sandi dari tautan undangan/reset lalu langsung masuk /karyawan
@@ -35,8 +36,8 @@ export function ActivateOnWeb({ code, reset, primary = false }: { code: string; 
     if (f.password || f.confirm) return;
     setBusy(true);
     try {
-      await (await staffApi()).accept(code, { password, remember_me: remember, device_id: staffDeviceId() });
-      router.replace("/karyawan");
+      const s = await (await staffApi()).accept(code, { password, remember_me: remember, device_id: staffDeviceId() });
+      router.replace(staffHome(s.user.role));
     } catch (err) {
       setBusy(false);
       const m = acceptErrorMessage(err);

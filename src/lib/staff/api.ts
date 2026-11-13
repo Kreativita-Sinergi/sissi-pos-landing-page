@@ -13,7 +13,12 @@ import type {
   StaffLoginInput,
   StaffSession,
   StaffToday,
+  WaiterCreateInput,
+  WaiterFloor,
+  WaiterItemInput,
+  WaiterOrder,
 } from "./types";
+import type { Menu } from "@/lib/selfOrder/types";
 
 export const STAFF_MOCK = process.env.NEXT_PUBLIC_STAFF_MOCK === "1";
 
@@ -27,6 +32,13 @@ export interface StaffApi {
   /** `idempotencyKey` = UUID per percobaan; dipakai ulang saat mengulang karena galat jaringan. */
   clock(body: ClockInput, idempotencyKey: string): Promise<StaffAttendance>;
   history(q: { month?: string }, signal?: AbortSignal): Promise<StaffHistory>;
+  // Pelayan lewat web (api.md "Pelayan lewat web"). Rute tulis memakai Idempotency-Key per percobaan.
+  waiterMenu(outletId: string, signal?: AbortSignal): Promise<Menu>;
+  waiterFloor(outletId: string, signal?: AbortSignal): Promise<WaiterFloor>;
+  waiterOrder(saleId: string, signal?: AbortSignal): Promise<WaiterOrder>;
+  waiterCreate(body: WaiterCreateInput, idempotencyKey: string): Promise<WaiterOrder>;
+  waiterAddItems(saleId: string, items: WaiterItemInput[], idempotencyKey: string): Promise<WaiterOrder>;
+  waiterBillRequest(saleId: string, idempotencyKey: string): Promise<WaiterOrder>;
 }
 
 /** Galat web karyawan. `details` selalu `[{ field, message }]` (mis. OUTSIDE_AREA `[{ field: "distance_m", message: "340" }]`). */
@@ -152,6 +164,18 @@ const httpApi: StaffApi = {
   today: (q, signal) => call<StaffToday>("GET", `/today${qs(q)}`, { signal }),
   clock: (body, idempotencyKey) => call<StaffAttendance>("POST", "/attendance/clock", { body, idempotencyKey }),
   history: (q, signal) => call<StaffHistory>("GET", `/attendance${qs(q)}`, { signal }),
+  waiterMenu: (outletId, signal) => call<Menu>("GET", `/waiter/menu${qs({ outlet_id: outletId })}`, { signal }),
+  waiterFloor: (outletId, signal) => call<WaiterFloor>("GET", `/waiter/floor${qs({ outlet_id: outletId })}`, { signal }),
+  waiterOrder: async (saleId, signal) =>
+    (await call<{ order: WaiterOrder }>("GET", `/waiter/orders/${enc(saleId)}`, { signal })).order,
+  waiterCreate: async (body, idempotencyKey) =>
+    (await call<{ order: WaiterOrder }>("POST", "/waiter/orders", { body, idempotencyKey })).order,
+  waiterAddItems: async (saleId, items, idempotencyKey) =>
+    (await call<{ order: WaiterOrder }>("POST", `/waiter/orders/${enc(saleId)}/items`, { body: { items }, idempotencyKey }))
+      .order,
+  waiterBillRequest: async (saleId, idempotencyKey) =>
+    (await call<{ order: WaiterOrder }>("POST", `/waiter/orders/${enc(saleId)}/bill-request`, { body: {}, idempotencyKey }))
+      .order,
 };
 
 let mockApi: Promise<StaffApi> | null = null;

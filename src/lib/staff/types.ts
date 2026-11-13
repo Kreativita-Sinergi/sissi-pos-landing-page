@@ -3,7 +3,14 @@ import type { AttendanceSource, AttendanceVia } from "../attendanceVia";
 
 export type StaffRole = "cashier" | "kitchen" | "staff" | "waiter";
 
-export type StaffUser = { id: string; name: string; role: StaffRole | string; job_title: string | null };
+export type StaffUser = {
+  id: string;
+  name: string;
+  role: StaffRole | string;
+  job_title: string | null;
+  /** Sejak 2026-11-13 (server lama tidak mengirim). Pelayan butuh "full" untuk menu Meja. */
+  personal_access?: "staff_space" | "full";
+};
 export type StaffBusiness = { id: string; name: string; timezone: string };
 export type StaffOutlet = { id: string; name: string };
 
@@ -117,3 +124,89 @@ export type StaffHistory = { month: string; items: StaffAttendance[]; summary: S
 
 export type StaffLoginInput = { identifier: string; password: string; remember_me: boolean; device_id?: string };
 export type StaffAcceptInput = { password: string; remember_me?: boolean; device_id?: string };
+
+// ——— Pelayan lewat web — kontrak: sissi-pos-service/docs/api.md "Pelayan lewat web (2026-11-13)" ———
+
+export type WaiterOrderBrief = {
+  id: string;
+  receipt_no: string;
+  total: number;
+  item_count: number;
+  customer_name: string;
+  created_at: string;
+  updated_at: string;
+  bill_requested: boolean;
+};
+
+export type WaiterTable = { id: string; name: string; area_id: string | null; orders: WaiterOrderBrief[] };
+
+export type WaiterFloor = {
+  server_time: string;
+  outlet: StaffOutlet;
+  kitchen: boolean;
+  areas: { id: string; name: string }[];
+  tables: WaiterTable[];
+};
+
+export type WaiterOrderItem = {
+  line_id: string;
+  product_id: string | null;
+  name: string;
+  variant_name: string | null;
+  quantity: number;
+  unit_price: number;
+  modifiers: { name: string; price: number }[];
+  note: string;
+  discount: number;
+};
+
+export type WaiterRoundItem = {
+  name: string;
+  variant_name: string | null;
+  modifiers: string[];
+  note: string;
+  quantity: number;
+  status: string;
+};
+
+export type WaiterRound = {
+  id: string;
+  round: number;
+  ordered_at: string;
+  created_by_name: string | null;
+  items: WaiterRoundItem[];
+};
+
+export type WaiterOrder = {
+  id: string;
+  outlet_id: string;
+  table_id: string | null;
+  table_name: string | null;
+  receipt_no: string;
+  status: "open" | "unpaid" | "partial" | "paid" | "void" | "refunded" | string;
+  customer_name: string;
+  notes: string;
+  items: WaiterOrderItem[];
+  subtotal: number;
+  discount_total: number;
+  service_fee: number;
+  tax_total: number;
+  rounding: number;
+  total: number;
+  rounds: WaiterRound[];
+  bill_requested: boolean;
+  bill_requested_at: string | null;
+  bill_printed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WaiterItemInput = {
+  product_id: string;
+  variant_id: string | null;
+  quantity: number;
+  note: string;
+  modifiers: { group_id: string; option_id: string }[];
+};
+
+export type WaiterCreateInput = { outlet_id: string; table_id: string; items: WaiterItemInput[] };

@@ -191,7 +191,7 @@ async function InviteContent({ params }: { params: Promise<{ kode: string }> }) 
 
             <div className="mt-6 border-t border-[#e4e9e7] pt-6">
               <p className="mb-3 text-[14px] leading-relaxed text-[#525866]">
-                Tidak memakai aplikasi? Aktifkan akunmu di sini untuk absen masuk & pulang lewat website (HP atau komputer).
+                Tidak memakai aplikasi? Aktifkan akunmu di sini untuk {info?.role === "waiter" ? "absen dan mencatat pesanan meja" : "absen masuk & pulang"} lewat website (HP atau komputer).
               </p>
               <ActivateOnWeb code={code} reset={reset} />
             </div>
