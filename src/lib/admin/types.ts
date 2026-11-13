@@ -440,7 +440,14 @@ export type AdminPayment = {
   voided_by: AdminRef | null;
   voided_at: string | null;
   created_at: string;
+  /** Nomor invoice, mis. `INV/2026/11/00012` (server 2026-11-13; opsional demi server lama). */
+  invoice_no?: string;
+  /** Biaya layanan pembayaran online (0 untuk manual). */
+  service_fee?: number;
 };
+
+/** Hasil `POST …/payments/{id}/invoice/send`. */
+export type InvoiceSent = { invoice_no: string; sent_to: string };
 
 export type AdminSubscription = {
   business: {

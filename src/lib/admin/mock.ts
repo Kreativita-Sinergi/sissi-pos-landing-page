@@ -1041,6 +1041,34 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       });
       return { subscription: toAdminSubscription(s, b), payment: publicPayment(rec) };
     },
+    async invoicePdf(id, pid) {
+      await guard();
+      await sleep(250);
+      const { s } = subOf(id);
+      const p = s.payments.find((x) => x.id === pid);
+      if (!p) throw new ApiError("Pembayaran tidak ditemukan.", 404, "NOT_FOUND");
+      const no = publicPayment(p).invoice_no ?? "INV";
+      // Mode tiruan: PDF satu halaman berisi teks polos (bukan tata letak server).
+      const text = `${no} ${p.status === "void" ? "DIBATALKAN" : "LUNAS"} Rp${p.amount}`;
+      const pdf = `%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length ${text.length + 30}>>stream\nBT /F1 14 Tf 60 780 Td (${text}) Tj ET\nendstream endobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF`;
+      return { blob: new Blob([pdf], { type: "application/pdf" }), fileName: `invoice-${no.replaceAll("/", "-")}.pdf` };
+    },
+    async sendInvoice(id, pid) {
+      await guard();
+      await sleep(300);
+      const { b, s } = subOf(id);
+      const p = s.payments.find((x) => x.id === pid);
+      if (!p) throw new ApiError("Pembayaran tidak ditemukan.", 404, "NOT_FOUND");
+      if (p.status === "void") {
+        throw new ApiError("Pembayaran ini sudah dibatalkan, invoice-nya tidak dikirim ke pelanggan", 409, "PAYMENT_VOIDED");
+      }
+      const email = toAdminSubscription(s, b).business.owner?.email;
+      if (!email) {
+        throw new ApiError("Pemilik usaha belum punya email. Unduh invoice lalu kirim lewat WhatsApp.", 422, "OWNER_EMAIL_MISSING");
+      }
+      const [local, domain] = email.split("@");
+      return { invoice_no: publicPayment(p).invoice_no ?? "", sent_to: `${local.slice(0, 1)}•••@${domain}` };
+    },
     async voidPayment(id, pid, reason) {
       await guard();
       await sleep(250);

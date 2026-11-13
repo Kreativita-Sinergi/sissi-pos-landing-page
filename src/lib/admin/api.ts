@@ -29,6 +29,7 @@ import type {
   SecurityReport,
   Features,
   FeaturesInput,
+  InvoiceSent,
   LoginResult,
   MeResult,
   PageMeta,
@@ -94,6 +95,10 @@ export interface AdminApi {
   subscription(businessId: string, signal?: AbortSignal): Promise<SubscriptionDetail>;
   recordPayment(businessId: string, body: RecordPaymentInput): Promise<SubscriptionPaymentResult>;
   voidPayment(businessId: string, paymentId: string, reason: string): Promise<SubscriptionPaymentResult>;
+  /** Invoice PDF pembayaran (biner, bukan JSON). */
+  invoicePdf(businessId: string, paymentId: string): Promise<{ blob: Blob; fileName: string }>;
+  /** Kirim (ulang) invoice ke email pemilik. */
+  sendInvoice(businessId: string, paymentId: string): Promise<InvoiceSent>;
   /** Bentuk `data` respons belum dirinci kontrak → pemanggil memuat ulang detail. */
   extendSubscription(businessId: string, body: ExtendInput): Promise<void>;
   saveOverrides(businessId: string, body: OverridesInput): Promise<void>;
@@ -199,6 +204,40 @@ async function call<T>(
 
   const error = toError(res.status, json, res.headers.get("Retry-After"));
   if (res.status === 401 && !opts.skipAuthRedirect) unauthorizedHandler?.();
+  if (res.status === 403 && error.code === "PASSWORD_CHANGE_REQUIRED") passwordChangeHandler?.();
+  throw error;
+}
+
+// fetchPdf mengunduh berkas biner; galat tetap berbentuk JSON base response.
+async function fetchPdf(path: string): Promise<{ blob: Blob; fileName: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${ADMIN_BASE}${path}`, {
+      headers: { Accept: "application/pdf, application/json", "X-Sissi-Admin": "1" },
+      credentials: "include",
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (err) {
+    const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+    throw new ApiError(
+      isTimeout ? "Server tidak merespons. Coba lagi sebentar lagi." : "Tidak dapat terhubung ke server.",
+      0,
+      isTimeout ? "TIMEOUT" : "NETWORK_ERROR"
+    );
+  }
+  if (res.ok && (res.headers.get("Content-Type") ?? "").startsWith("application/pdf")) {
+    const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "invoice.pdf";
+    return { blob: await res.blob(), fileName: name };
+  }
+  let json: BaseResponse<unknown> | null = null;
+  try {
+    json = (await res.json()) as BaseResponse<unknown>;
+  } catch {
+    // Bukan JSON.
+  }
+  const error = toError(res.status, json, res.headers.get("Retry-After"));
+  if (res.status === 401) unauthorizedHandler?.();
   if (res.status === 403 && error.code === "PASSWORD_CHANGE_REQUIRED") passwordChangeHandler?.();
   throw error;
 }
@@ -371,6 +410,9 @@ const httpApi: AdminApi = {
         body: { reason },
       })
     ).data,
+  invoicePdf: (id, pid) => fetchPdf(`/businesses/${enc(id)}/subscription/payments/${enc(pid)}/invoice`),
+  sendInvoice: async (id, pid) =>
+    (await call<InvoiceSent>("POST", `/businesses/${enc(id)}/subscription/payments/${enc(pid)}/invoice/send`)).data,
   extendSubscription: async (id, body) => {
     await call<unknown>("POST", `/businesses/${enc(id)}/subscription/extend`, { body });
   },

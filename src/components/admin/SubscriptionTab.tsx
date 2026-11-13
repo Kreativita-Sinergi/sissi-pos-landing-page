@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useId, useState } from "react";
-import { ArrowRight, CalendarPlus, CircleSlash, Receipt, ReceiptText, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, CalendarPlus, CircleSlash, Download, Mail, Receipt, ReceiptText, SlidersHorizontal } from "lucide-react";
 import { adminApi } from "@/lib/admin/api";
 import type {
   AdminPayment,
@@ -142,6 +142,8 @@ export function SubscriptionTab({ businessId, businessName }: { businessId: stri
       </div>
 
       <PaymentsSection
+        businessId={businessId}
+        ownerEmail={s.business.owner?.email || null}
         payments={detail.payments}
         latestId={latestRecorded?.id ?? null}
         onPay={() => setDialog("pay")}
@@ -221,6 +223,7 @@ function monthLabel(month: string) {
 function auditText(d: Record<string, unknown> | null): string {
   if (!d) return "";
   const parts: string[] = [];
+  if (typeof d.invoice_no === "string") parts.push(d.invoice_no);
   if (typeof d.amount === "number") parts.push(formatRupiah(d.amount));
   if (typeof d.cycle === "string") parts.push(labelOf(BILLING_CYCLES, d.cycle).toLowerCase());
   if (typeof d.days === "number") parts.push(`+${d.days} hari`);
@@ -334,11 +337,15 @@ function StatusCard({
 // ——— Riwayat pembayaran ———
 
 function PaymentsSection({
+  businessId,
+  ownerEmail,
   payments,
   latestId,
   onPay,
   onVoid,
 }: {
+  businessId: string;
+  ownerEmail: string | null;
   payments: AdminPayment[];
   latestId: string | null;
   onPay: () => void;
@@ -389,6 +396,7 @@ function PaymentsSection({
                       {p.voided_at ? `, ${formatDateTime(p.voided_at)}` : ""}: {p.void_reason || "—"}
                     </p>
                   )}
+                  <InvoiceActions businessId={businessId} payment={p} ownerEmail={ownerEmail} />
                 </div>
                 <div className="hidden sm:block">{isVoid ? <Badge tone="danger">Dibatalkan</Badge> : <Badge tone="success">Sah</Badge>}</div>
                 <div className="col-start-2 row-start-1 flex justify-end sm:col-start-4">
@@ -417,6 +425,65 @@ function PaymentsSection({
         </p>
       )}
     </Section>
+  );
+}
+
+// Unduh invoice PDF + kirim (ulang) ke email pemilik. Invoice otomatis terkirim saat pembayaran dicatat.
+function InvoiceActions({ businessId, payment, ownerEmail }: { businessId: string; payment: AdminPayment; ownerEmail: string | null }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState<null | "pdf" | "send">(null);
+  const isVoid = payment.status === "void";
+  const link = `inline-flex min-h-8 items-center gap-1.5 rounded-[8px] px-2 text-[13px] font-semibold text-brand-ink hover:bg-brand-tint disabled:opacity-60 ${focusRing}`;
+
+  const download = async () => {
+    setBusy("pdf");
+    try {
+      const { blob, fileName } = await (await adminApi()).invoicePdf(businessId, payment.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const send = async () => {
+    setBusy("send");
+    try {
+      const r = await (await adminApi()).sendInvoice(businessId, payment.id);
+      toast.success(`Invoice ${r.invoice_no} dikirim ke ${r.sent_to}.`);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="-ml-2 mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+      {payment.invoice_no && <span className="px-2 text-[12.5px] tabular-nums text-text-muted">{payment.invoice_no}</span>}
+      <button type="button" className={link} onClick={download} disabled={busy !== null}>
+        {busy === "pdf" ? <Spinner size={14} /> : <Download size={14} aria-hidden />} Unduh invoice
+      </button>
+      {!isVoid && (
+        <button
+          type="button"
+          className={link}
+          onClick={send}
+          disabled={busy !== null || !ownerEmail}
+          title={ownerEmail ? `Kirim ulang ke ${ownerEmail}` : "Pemilik belum punya email — unduh lalu kirim lewat WhatsApp"}
+        >
+          {busy === "send" ? <Spinner size={14} /> : <Mail size={14} aria-hidden />} {ownerEmail ? "Kirim ke email" : "Tanpa email"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -617,7 +684,8 @@ function RecordPaymentForm({
     };
     try {
       const r = await (await adminApi()).recordPayment(businessId, body);
-      toast.success(`Pembayaran ${formatRupiah(amount)} dicatat. Pro ${businessName} aktif sampai ${formatDate(r.subscription.current_period_end)}.`);
+      const mailed = s.business.owner?.email ? ` Invoice dikirim ke ${s.business.owner.email}.` : "";
+      toast.success(`Pembayaran ${formatRupiah(amount)} dicatat. Pro ${businessName} aktif sampai ${formatDate(r.subscription.current_period_end)}.${mailed}`);
       onDone(r);
     } catch (err) {
       const fe = fieldErrors(err);
