@@ -81,6 +81,8 @@ export function ClockView() {
       stop();
     };
   }, []);
+  // Lokasi tidak terbaca di outlet beraturan "Boleh" → tanya dulu sebelum tercatat tanpa lokasi (2026-11-13).
+  const [noGeoAsk, setNoGeoAsk] = useState<Pending | null>(null);
   const [outsideAsk, setOutsideAsk] = useState<{ p: Pending; distance: number | null; radius: number | null } | null>(null);
   /** 409 UNSCHEDULED_CONFIRM / LATE_CONFIRM menunggu jawaban (bisa menyusul OUTSIDE_AREA_CONFIRM: lokasi → jadwal). */
   const [unschedAsk, setUnschedAsk] = useState<{ p: Pending; workStart: string | null } | null>(null);
@@ -289,6 +291,12 @@ export function ClockView() {
     if (loc.failure === "denied") setGeoBlocked(true);
     else if (!loc.failure) setGeoBlocked(false);
     const p: Pending = { key: newKey(), body: { outlet_id: outletId, action, geo: loc.geo }, failure: loc.failure };
+    const g = today.geo;
+    if (loc.failure && g.enabled && g.has_location && g.outside === "flag") {
+      setNoGeoAsk(p);
+      setPhase("idle");
+      return;
+    }
     pending.current = p;
     await send(p, true);
   }
@@ -551,6 +559,29 @@ export function ClockView() {
       <Link href="/karyawan/riwayat" className={`inline-flex min-h-11 items-center gap-2 self-start rounded-[10px] text-[14px] font-semibold text-brand-ink hover:underline ${focusRing}`}>
         <CalendarDays size={16} aria-hidden /> Lihat riwayat kehadiran
       </Link>
+
+      <ConfirmDialog
+        open={!!noGeoAsk}
+        title="Lokasi tidak terbaca"
+        confirmLabel={noGeoAsk?.body.action === "out" ? "Tetap absen pulang" : "Tetap absen masuk"}
+        cancelLabel={noGeoAsk?.failure === "denied" ? "Izinkan lokasi dulu" : "Coba lagi nanti"}
+        onConfirm={() => {
+          const p = noGeoAsk;
+          setNoGeoAsk(null);
+          if (!p) return;
+          pending.current = p;
+          void send(p, true);
+        }}
+        onClose={() => {
+          if (noGeoAsk?.failure === "denied") setGeoBlocked(true);
+          setNoGeoAsk(null);
+        }}
+      >
+        <p>
+          {noGeoAsk?.failure ? `${GEO_FAILURE_TEXT[noGeoAsk.failure]}.` : ""} Absen akan dicatat{" "}
+          <span className="font-semibold text-text-heading">tanpa lokasi</span> dan pemilik bisa melihat tandanya. Tetap absen?
+        </p>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={!!outsideAsk}
