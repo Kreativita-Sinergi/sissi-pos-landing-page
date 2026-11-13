@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-11** · oleh: Claude Opus 5.5 (absen di luar jadwal & konfirmasi telat)
+Terakhir diperbarui: **2026-11-13** · oleh: Claude Opus 5.5 (invoice pembayaran langganan)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -19,6 +19,14 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 | _(kosong)_ | | | | |
 
 ## Sedang dikerjakan
+
+- **Invoice pembayaran langganan di admin (2026-11-13, `development`, belum rilis):** Langganan › Riwayat pembayaran
+  menampilkan nomor invoice + tombol **Unduh invoice** (PDF dari server, `adminApi().invoicePdf` → `fetchPdf`) dan
+  **Kirim ke email** (`sendInvoice`, toast "dikirim ke b•••@…"; nonaktif bila pemilik tanpa email; tidak tampil untuk
+  pembayaran dibatalkan). Toast catat pembayaran menyebut invoice dikirim ke email pemilik. Label audit
+  `subscription.invoice_send`. Tipe `AdminPayment.invoice_no?`/`service_fee?` opsional (toleran server lama). Mode
+  tiruan: PDF teks sederhana. Cek: `tsc`, `eslint`, `npm test` (103 lulus), tangkapan layar mode tiruan. **Rilis setelah
+  service dideploy** (kontrak: `../sissi-pos-service/docs/api.md` "Invoice pembayaran langganan").
 
 - **Absen di luar jadwal & konfirmasi telat (2026-11-11, `development`, belum rilis):** web karyawan menampilkan dialog
   409 `UNSCHEDULED_CONFIRM` ("Kamu tidak punya shift hari ini. Tetap catat masuk kerja?") dan `LATE_CONFIRM` (nama shift,

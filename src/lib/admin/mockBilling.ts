@@ -142,7 +142,11 @@ export function publicPayment(p: PaymentRecord): AdminPayment {
   const { prev_period_end: _p, business_id: _b, ...rest } = p;
   void _p;
   void _b;
-  return rest;
+  // Nomor tiruan stabil dari id (server memakai nomor urut global).
+  const seq = parseInt(p.id.replace(/[^0-9]/g, "").slice(-5) || "0", 10);
+  const d = new Date(p.paid_at);
+  const no = `INV/${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(seq).padStart(5, "0")}`;
+  return { ...rest, invoice_no: rest.invoice_no ?? no, service_fee: rest.service_fee ?? 0 };
 }
 
 // ——— Pembuatan data ———
