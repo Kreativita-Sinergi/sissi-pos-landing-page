@@ -2,12 +2,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Armchair, ReceiptText, RefreshCw } from "lucide-react";
+import { Armchair, Plus, ReceiptText, RefreshCw, UserRound } from "lucide-react";
 import { focusRing, Spinner } from "@/components/admin/ui";
 import { useStaff } from "@/components/staff/StaffShell";
 import { formatRupiah } from "@/lib/selfOrder/pricing";
 import { staffApi } from "@/lib/staff/api";
-import type { WaiterFloor, WaiterTable } from "@/lib/staff/types";
+import type { WaiterFloor, WaiterOrderBrief, WaiterTable } from "@/lib/staff/types";
 import { pickOutlet, rememberOutlet, useRefresh, waiterEnabled, waiterErrorText } from "./shared";
 
 // Menu Meja pelayan (/karyawan/meja): denah meja outlet dengan status kosong/terisi seperti tab Meja di aplikasi.
@@ -168,6 +168,10 @@ export function TablesView() {
             </div>
           )}
 
+          {filter !== "empty" && area === "all" && (
+            <NoTableSection orders={floor.untabled ?? []} outlet={outlet!} />
+          )}
+
           {floor.tables.length === 0 ? (
             <div className="rounded-[18px] border border-border-subtle bg-white px-5 py-10 text-center">
               <Armchair size={30} aria-hidden className="mx-auto mb-3 text-text-muted" />
@@ -254,5 +258,52 @@ function TableCard({ table, outlet }: { table: WaiterTable; outlet: string }) {
         )}
       </span>
     </Link>
+  );
+}
+
+/** Pesanan Makan di tempat tanpa meja (seperti app) + tombol membuat pesanan baru tanpa meja. */
+function NoTableSection({ orders, outlet }: { orders: WaiterOrderBrief[]; outlet: string }) {
+  return (
+    <section aria-labelledby="tanpa-meja-judul" className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="tanpa-meja-judul" className="text-[16px] font-bold text-text-heading">
+          Tanpa meja{orders.length ? ` · ${orders.length}` : ""}
+        </h2>
+        <Link
+          href={`/karyawan/meja/tanpa-meja/tambah?o=${outlet}`}
+          className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border-subtle bg-white px-3.5 text-[14px] font-semibold text-text-heading hover:border-border-active ${focusRing}`}
+        >
+          <Plus size={16} aria-hidden /> Pesanan tanpa meja
+        </Link>
+      </div>
+      {orders.length > 0 && (
+        <ul className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3">
+          {orders.map((o) => (
+            <li key={o.id}>
+              <Link
+                href={`/karyawan/meja/pesanan/${o.id}?o=${outlet}`}
+                className={`flex min-h-[104px] flex-col rounded-[16px] border border-brand-primary/40 bg-brand-tint p-3.5 ${focusRing}`}
+              >
+                <span className="flex items-start justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[16px] font-bold leading-tight text-text-heading">
+                    <UserRound size={16} aria-hidden className="shrink-0" />
+                    <span className="break-words">{o.customer_name || o.receipt_no}</span>
+                  </span>
+                  {o.bill_requested && (
+                    <span title="Tagihan diminta" className="shrink-0 text-brand-deep">
+                      <ReceiptText size={18} aria-label="Tagihan diminta" />
+                    </span>
+                  )}
+                </span>
+                <span className="mt-auto pt-3">
+                  <span className="block text-[15px] font-bold tabular-nums text-text-heading">{formatRupiah(o.total)}</span>
+                  <span className="block text-[13px] text-text-body">{o.item_count} item</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
