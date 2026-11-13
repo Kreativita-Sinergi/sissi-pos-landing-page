@@ -32,8 +32,9 @@ import {
   type LateAsk,
   type StaffMessage,
 } from "@/lib/staff/errors";
-import { GEO_FAILURE_TEXT, locate, type GeoFailure } from "@/lib/staff/geo";
+import { GEO_FAILURE_TEXT, geoPermission, locate, watchGeoPermission, type GeoFailure } from "@/lib/staff/geo";
 import type { ClockInput, StaffAttendance, StaffGeo, StaffToday } from "@/lib/staff/types";
+import { LocationHelp } from "./LocationHelp";
 import { useStaff } from "./StaffShell";
 
 // Halaman Absen (/karyawan) — mobile-first. Jam besar = waktu server (`today.now`) yang berjalan dengan selisih dari
@@ -67,6 +68,19 @@ export function ClockView() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const pending = useRef<Pending | null>(null);
   /** 409 OUTSIDE_AREA_CONFIRM menunggu jawaban karyawan. */
+  // Izin lokasi browser diblokir → panduan membuka izin (dibaca saat halaman dibuka & setelah absen ditolak lokasi).
+  const [geoBlocked, setGeoBlocked] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void geoPermission().then((p) => {
+      if (live) setGeoBlocked(p === "denied");
+    });
+    const stop = watchGeoPermission((p) => setGeoBlocked(p === "denied"));
+    return () => {
+      live = false;
+      stop();
+    };
+  }, []);
   const [outsideAsk, setOutsideAsk] = useState<{ p: Pending; distance: number | null; radius: number | null } | null>(null);
   /** 409 UNSCHEDULED_CONFIRM / LATE_CONFIRM menunggu jawaban (bisa menyusul OUTSIDE_AREA_CONFIRM: lokasi → jadwal). */
   const [unschedAsk, setUnschedAsk] = useState<{ p: Pending; workStart: string | null } | null>(null);
@@ -272,6 +286,8 @@ export function ClockView() {
     if (prev && prev.body.action === action && prev.body.outlet_id === today.outlet_id) return send(prev, false);
     setPhase("locating");
     const loc = await locate();
+    if (loc.failure === "denied") setGeoBlocked(true);
+    else if (!loc.failure) setGeoBlocked(false);
     const p: Pending = { key: newKey(), body: { outlet_id: outletId, action, geo: loc.geo }, failure: loc.failure };
     pending.current = p;
     await send(p, true);
@@ -480,6 +496,11 @@ export function ClockView() {
         </div>
       ) : (
         <div>
+          {geoBlocked && today.geo.enabled && (
+            <div className="mb-3">
+              <LocationHelp required={today.geo.outside === "reject"} onGranted={() => setGeoBlocked(false)} />
+            </div>
+          )}
           <button
             type="button"
             onClick={() => clock(step.kind)}
