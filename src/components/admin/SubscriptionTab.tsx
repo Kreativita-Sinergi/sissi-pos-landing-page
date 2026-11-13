@@ -691,7 +691,7 @@ function RecordPaymentForm({
             />
           </div>
 
-          <div className={`grid gap-3 ${form.cycle === "custom" || form.startMode === "date" ? "sm:grid-cols-2" : ""}`}>
+          <div className={`grid gap-3 ${form.cycle === "custom" ? "sm:grid-cols-2" : ""}`}>
             <div>
               <p className="mb-1.5 text-[13px] font-semibold text-text-heading">Mulai</p>
               <div className="flex flex-col gap-2">

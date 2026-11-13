@@ -124,6 +124,8 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
+- **P2 · Pelayan lewat web `kasir.sissi.id` (disetujui pemilik 2026-11-13, belum dikerjakan)** — pesanan langsung ke
+  meja seperti Pelayan di app, alur semirip mungkin dengan app. Rincian: `sissi-pos-app/docs/PEKERJAAN.md` › Backlog P2.
 - [ ] **P2 · Audit UX 2026-11-11 — sisa web:** laporan > 92 hari & periode URL tak sah diam-diam 7 hari
   (`lib/owner/period.ts:63`, `isDefault` tak dipakai); `min_stock` kosong tampil/tersimpan 0 → peringatan stok tak
   pernah terkirim (`ProductEditor.tsx:170`); toleransi telat maks 240 di web vs 1440 server (`SettingsView.tsx:1065`);
@@ -173,6 +175,12 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-13 · Halaman undangan di iPhone & kolom "Mulai" catat pembayaran (Claude Opus 5.5).** `/undangan/[kode]`:
+  UA `iphone|ipad|ipod` (bukan Android) → tombol "Unduh aplikasi" & kartu "Belum terbuka di aplikasi?" disembunyikan,
+  "Aktifkan lewat website" jadi tombol utama oranye (`ActivateOnWeb` prop `primary`) + catatan "belum tersedia untuk
+  iPhone"; `InvalidInvite` tanpa tombol unduh di iPhone. Android & komputer tetap. Admin `SubscriptionTab`: dua kolom
+  hanya bila Periode = Khusus. Uji: eslint + tsc lolos; tangkapan layar mode tiruan (iPhone/Android/komputer, kode
+  sah & tidak sah) sesuai.
 - **2026-11-11 · Rilis web absen & lembur (Claude Opus 5.5, atas perintah pemilik)** — `main` `606597d` = 12 commit
   dipilih (absen di luar jadwal/libur/telat, Jam kerja belum diatur, absen pulang terlupa, lembur tahap 2, tim, admin
   data perangkat, ikon stok) **tanpa Duitku** (dialog bayar, Pro 6 bulan, halaman Langganan baru tetap di
