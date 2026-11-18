@@ -185,6 +185,21 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-18 · Menu Periode dasbor diringkas (permintaan pemilik; rilis `main` 2026-11-18)** — pilihan kini
+  **Hari ini · 7 hari terakhir · 30 hari terakhir · Pilih tanggal…** (sebelumnya juga Kemarin, Bulan ini, Bulan lalu,
+  dan "Kustom…"). `PERIOD_ORDER` (`src/lib/owner/period.ts`) + label di `PeriodPanel` (`src/components/owner/ui.tsx`).
+  Tautan lama berperiode kemarin/bulan tetap jalan, judulnya tampil sebagai rentang tanggal. Panduan app di
+  `guides.ts` tidak diubah (menjelaskan pemilih periode di aplikasi). Cek: `tsc`, `eslint`, `npm test` 103; belum
+  dicek visual.
+
+- **2026-11-18 · Rilis ke `main` `7e7f386` (Claude Opus 5.5, atas perintah pemilik)** — HANYA cherry-pick `683a5e3`
+  ("Belum dapat meja") → `cd8c930`, `7e27d9d` (iPhone: JS iOS lama, menu Ekspor, Periode) → `03065ac`, `f57a738`
+  (Next 16.4.6) → `7e7f386`. Batch lama di `development` (dialog bayar Duitku, Pro 6 Bulan, desain ulang Langganan,
+  data perangkat admin, dll.) **tetap ditahan**. Gerbang di `development`: `tsc`, `eslint src`, `npm test` 103,
+  `npm run build` lulus; di `main` setelah `npm install`: build lulus. Dipush setelah server `09b0b48` sehat; Vercel
+  sukses. Catatan lokal: `next build` gagal `ENOTEMPTY rmdir .next/server` bila sisa build sebelumnya ada → hapus
+  `.next/server` lalu ulangi. Belum: uji dasbor di iPhone iOS < 16.4 sungguhan; uji "Belum dapat meja" ujung ke ujung.
+
 - **2026-11-18 · Dasbor pemilik di iPhone (Claude Opus 5.5)** — laporan pengguna iPhone. (1) **Tidak bisa
   mengetuk apa pun di sebagian iPhone**: chunk framework Next memakai *class static block* (`static{…}`, Safari 16.4+)
   → iOS < 16.4 gagal mem-parse JS, halaman tampil tetapi mati. `package.json` kini punya `browserslist`
