@@ -197,7 +197,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
-- **2026-11-18 · Menu Periode dasbor diringkas (permintaan pemilik, `development`, belum rilis)** — pilihan kini
+- **2026-11-18 · Menu Periode dasbor diringkas (permintaan pemilik; rilis `main` `87aaa24` 2026-11-18, Vercel sukses)** — pilihan kini
   **Hari ini · 7 hari terakhir · 30 hari terakhir · Pilih tanggal…** (sebelumnya juga Kemarin, Bulan ini, Bulan lalu,
   dan "Kustom…"). `PERIOD_ORDER` (`src/lib/owner/period.ts`) + label di `PeriodPanel` (`src/components/owner/ui.tsx`).
   Tautan lama berperiode kemarin/bulan tetap jalan, judulnya tampil sebagai rentang tanggal. Panduan app di
