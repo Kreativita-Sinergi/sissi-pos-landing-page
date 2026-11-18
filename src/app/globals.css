@@ -92,3 +92,23 @@ html:has(dialog[open]) {
   overflow: hidden;
   scrollbar-gutter: stable;
 }
+
+/* Safari iOS: input tanggal/jam bawaan punya lebar minimum intrinsik dan mengabaikan w-full, jadi di kolom sempit
+   (mis. "Dari"/"Sampai" dua kolom) field meluber dan saling berdempetan. Hanya iOS (-webkit-touch-callout) agar
+   ikon kalender di peramban desktop tidak hilang. */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+    display: block;
+  }
+  input::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.5em;
+  }
+}

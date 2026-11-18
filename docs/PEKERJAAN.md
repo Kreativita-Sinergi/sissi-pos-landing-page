@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-18** · oleh: Claude Opus 5.5 (rilis cherry-pick ke `main` `7e7f386`; sebelumnya: invoice pembayaran langganan)
+Terakhir diperbarui: **2026-11-18** · oleh: Claude Opus 5.5 (input tanggal iOS; sebelumnya: rilis cherry-pick ke `main` `7e7f386`; sebelumnya: invoice pembayaran langganan)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -197,6 +197,11 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-18 · Input tanggal/jam meluber di Safari iOS (laporan pemilik; di `development`, belum dirilis ke `main`)** —
+  "Pilih tanggal…" (Dari/Sampai dua kolom) di iPhone berdempetan: `<input type="date">` bawaan iOS punya lebar
+  minimum intrinsik dan mengabaikan `w-full`. Perbaikan global di `src/app/globals.css` (hanya iOS lewat
+  `@supports (-webkit-touch-callout: none)`): `appearance: none`, `min-width: 0`, `max-width: 100%`, teks rata kiri.
+  Berlaku untuk semua input date/time/datetime-local/month. Belum diuji di iPhone nyata — cek setelah rilis.
 - **2026-11-18 · Menu Periode dasbor diringkas (permintaan pemilik; rilis `main` `87aaa24` 2026-11-18, Vercel sukses)** — pilihan kini
   **Hari ini · 7 hari terakhir · 30 hari terakhir · Pilih tanggal…** (sebelumnya juga Kemarin, Bulan ini, Bulan lalu,
   dan "Kustom…"). `PERIOD_ORDER` (`src/lib/owner/period.ts`) + label di `PeriodPanel` (`src/components/owner/ui.tsx`).
