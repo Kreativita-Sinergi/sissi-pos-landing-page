@@ -7,6 +7,7 @@ import { newUuid, selfOrderApi, type SelfOrderApi } from "@/lib/selfOrder/api";
 import {
   addLine,
   countItems,
+  NO_TABLE,
   resolveLine,
   setQuantity,
   toOrderItems,
@@ -173,8 +174,11 @@ function SelfOrder({ code }: { code: string }) {
     }
     const errs: CartFieldErrors = {};
     const needTable = !addTo && menu.mode.table_select === "choose" && effectiveType === "dine_in" && !!menu.tables;
-    if (needTable && !menu.tables?.some((t) => t.id === tableId)) errs.table = "Pilih meja tempat kamu duduk.";
-    if (!addTo && menu.mode.require_customer_name && !customerName.trim()) errs.name = "Isi nama pemesan.";
+    // "Belum dapat meja": tanpa meja, nama wajib agar pesanan bisa dipanggil & ditaruh ke meja oleh kasir.
+    const noTable = needTable && tableId === NO_TABLE;
+    if (needTable && !noTable && !menu.tables?.some((t) => t.id === tableId)) errs.table = "Pilih meja tempat kamu duduk.";
+    if (noTable && !customerName.trim()) errs.name = "Isi nama pemesan agar pesananmu mudah ditemukan.";
+    else if (!addTo && menu.mode.require_customer_name && !customerName.trim()) errs.name = "Isi nama pemesan.";
     setFieldErrors(errs);
     if (errs.table || errs.name) {
       setSubmitError("Lengkapi data yang ditandai dulu.");
@@ -187,7 +191,7 @@ function SelfOrder({ code }: { code: string }) {
         ? null
         : menu.mode.table_select === "per_table"
           ? (menu.table?.id ?? null)
-          : needTable
+          : needTable && !noTable
             ? tableId
             : null,
       order_type: effectiveType,

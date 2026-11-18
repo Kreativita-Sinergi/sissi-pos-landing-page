@@ -6,6 +6,8 @@ export const MAX_LINES = 30;
 export const MAX_QTY = 50;
 export const NOTE_MAX = 200;
 export const NAME_MAX = 40;
+/** Pilihan "Belum dapat meja" di mode pilih meja: makan di tempat tanpa meja (dipanggil dengan nama & nomor pesanan). */
+export const NO_TABLE = "none";
 
 export type CartModifier = { groupId: string; optionId: string };
 
