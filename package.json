@@ -30,5 +30,12 @@
     "puppeteer-core": "25.16.0",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "browserslist": [
+    "chrome >= 109",
+    "edge >= 109",
+    "firefox >= 115",
+    "safari >= 15.4",
+    "ios_saf >= 15.4"
+  ]
 }

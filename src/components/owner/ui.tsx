@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ChevronDown, CloudOff, Download, Lock, RefreshCw } from "lucide-react";
 import { compactRange, FilterPopover, OptionList, PanelFooter, useFilterClose } from "@/components/admin/FilterMenu";
@@ -250,17 +251,41 @@ export function KpiSkeleton({ count = 4 }: { count?: number }) {
 
 export type ExportItem = { label: string; hint?: string; onSelect: () => void; disabled?: boolean };
 
+const EXPORT_MENU_W = 260;
+
 /** Tombol "Ekspor CSV" dengan menu pilihan berkas. */
 export function ExportMenu({ items, label = "Ekspor CSV" }: { items: ExportItem[]; label?: string }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+
+  // Posisi `fixed` dari tombol, rata kanan tombol bila muat, selalu di dalam layar (gutter 8px). Dulu
+  // `absolute right-0`: di HP tombol ada di kiri (aksi PageHeader turun baris) → menu terpotong di kiri layar.
+  const place = useCallback(() => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const w = Math.min(EXPORT_MENU_W, window.innerWidth - 16);
+    setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.right - w, window.innerWidth - 8 - w)) });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, place]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!wrapRef.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -284,16 +309,27 @@ export function ExportMenu({ items, label = "Ekspor CSV" }: { items: ExportItem[
         className={btn.secondary}
         aria-expanded={open}
         aria-controls={menuId}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) place();
+          setOpen((o) => !o);
+        }}
       >
         <Download size={16} aria-hidden />
         {label}
         <ChevronDown size={15} aria-hidden className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
+      {open &&
+        createPortal(
         <div
+          ref={menuRef}
           id={menuId}
-          className="absolute top-full right-0 z-30 mt-1.5 w-[260px] overflow-hidden rounded-[12px] border border-border-subtle bg-white p-1.5 shadow-[0_12px_32px_-8px_rgba(16,24,40,0.18)]"
+          style={{
+            top: pos.top,
+            left: pos.left,
+            width: `min(${EXPORT_MENU_W}px, calc(100vw - 16px))`,
+            maxHeight: `calc(100dvh - ${pos.top + 8}px)`,
+          }}
+          className="fixed z-40 overflow-y-auto rounded-[12px] border border-border-subtle bg-white p-1.5 shadow-[0_12px_32px_-8px_rgba(16,24,40,0.18)]"
         >
           {items.map((it) => (
             <button
@@ -310,8 +346,9 @@ export function ExportMenu({ items, label = "Ekspor CSV" }: { items: ExportItem[
               {it.hint && <span className="text-[12.5px] text-text-muted">{it.hint}</span>}
             </button>
           ))}
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </div>
   );
 }
