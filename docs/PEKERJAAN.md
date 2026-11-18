@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-13** · oleh: Claude Opus 5.5 (invoice pembayaran langganan)
+Terakhir diperbarui: **2026-11-18** · oleh: Claude Opus 5.5 (rilis cherry-pick ke `main` `7e7f386`; sebelumnya: invoice pembayaran langganan)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -196,6 +196,14 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 - **Urutan kategori** dari web = `reorderCategories` aplikasi (indeks → `sort_order`, hanya baris berubah).
 
 ## Selesai
+
+- **2026-11-18 · Rilis ke `main` `7e7f386` (Claude Opus 5.5, atas perintah pemilik)** — HANYA cherry-pick `683a5e3`
+  ("Belum dapat meja") → `cd8c930`, `7e27d9d` (iPhone: JS iOS lama, menu Ekspor, Periode) → `03065ac`, `f57a738`
+  (Next 16.4.6) → `7e7f386`. Batch lama di `development` (dialog bayar Duitku, Pro 6 Bulan, desain ulang Langganan,
+  data perangkat admin, dll.) **tetap ditahan**. Gerbang di `development`: `tsc`, `eslint src`, `npm test` 103,
+  `npm run build` lulus; di `main` setelah `npm install`: build lulus. Dipush setelah server `09b0b48` sehat; Vercel
+  sukses. Catatan lokal: `next build` gagal `ENOTEMPTY rmdir .next/server` bila sisa build sebelumnya ada → hapus
+  `.next/server` lalu ulangi. Belum: uji dasbor di iPhone iOS < 16.4 sungguhan; uji "Belum dapat meja" ujung ke ujung.
 
 - **2026-11-18 · Dasbor pemilik di iPhone (Claude Opus 5.5)** — laporan pengguna iPhone. (1) **Tidak bisa
   mengetuk apa pun di sebagian iPhone**: chunk framework Next memakai *class static block* (`static{…}`, Safari 16.4+)
