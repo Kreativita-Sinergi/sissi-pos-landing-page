@@ -4,7 +4,7 @@
 > `docs/PEKERJAAN.md` di `sissi-pos-app` dan `sissi-pos-service`). Isinya: apa yang sedang dikerjakan, berikutnya,
 > backlog, keputusan terbuka, dan riwayat selesai. Hanya lokal di repo ini.
 
-Terakhir diperbarui: **2026-11-18** · oleh: Claude Opus 5.5 (input tanggal iOS; sebelumnya: rilis cherry-pick ke `main` `7e7f386`; sebelumnya: invoice pembayaran langganan)
+Terakhir diperbarui: **2026-11-18** · oleh: Claude Opus 5.5 (rilis input tanggal iOS `dce88f9`; sebelumnya: rilis cherry-pick ke `main` `7e7f386`; sebelumnya: invoice pembayaran langganan)
 
 Repo ini berisi situs pemasaran **dan** web dasbor pemilik (`/dasbor`), web karyawan (`/karyawan`), admin (`/admin`),
 pesan mandiri. Kontrak API: `../sissi-pos-service/docs/api.md`. Cabang kerja: `development` (tanpa workflow CI di repo
@@ -197,7 +197,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
-- **2026-11-18 · Input tanggal/jam meluber di Safari iOS (laporan pemilik; di `development`, belum dirilis ke `main`)** —
+- **2026-11-18 · Input tanggal/jam meluber di Safari iOS (laporan pemilik; DIRILIS `main` `dce88f9` 2026-11-18, hanya `globals.css`; build lokal lulus, Vercel sukses)** —
   "Pilih tanggal…" (Dari/Sampai dua kolom) di iPhone berdempetan: `<input type="date">` bawaan iOS punya lebar
   minimum intrinsik dan mengabaikan `w-full`. Perbaikan global di `src/app/globals.css` (hanya iOS lewat
   `@supports (-webkit-touch-callout: none)`): `appearance: none`, `min-width: 0`, `max-width: 100%`, teks rata kiri.
