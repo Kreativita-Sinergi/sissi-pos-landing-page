@@ -133,6 +133,9 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
+- [ ] **Form produk web (`components/owner/catalog/ProductEditor.tsx`): pilihan stasiun Dapur | Bar** (2026-11-18) —
+  app & server sudah punya `products.station` (`kitchen|bar`, service `fee24bf`); web masih hanya "Kirim ke dapur".
+
 - [ ] **P2 · Audit UX 2026-11-11 — sisa web:** laporan > 92 hari & periode URL tak sah diam-diam 7 hari
   (`lib/owner/period.ts:63`, `isDefault` tak dipakai); `min_stock` kosong tampil/tersimpan 0 → peringatan stok tak
   pernah terkirim (`ProductEditor.tsx:170`); toleransi telat maks 240 di web vs 1440 server (`SettingsView.tsx:1065`);
@@ -181,6 +184,12 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 - **Urutan kategori** dari web = `reorderCategories` aplikasi (indeks → `sort_order`, hanya baris berubah).
 
 ## Selesai
+
+- **2026-11-18 · Pesanan QR "Belum dapat meja" (Claude Opus 5.5)** — mode pilih meja (`table_select = choose`):
+  keranjang menambah pilihan **Belum dapat meja** di bawah daftar meja (`NO_TABLE`, `src/lib/selfOrder/cart.ts`) →
+  pesanan makan di tempat tanpa meja, nama pemesan wajib ("dipanggil dengan nama dan nomor pesanan"). Mock ikut
+  aturan server. Cek: `tsc`, `eslint` self-order, `npm test` 103 lulus; belum dicek visual di peramban.
+  **Butuh server `06d53e0`** (deploy dulu; server lama menolak 422 `table_id`).
 
 - **2026-11-13 · Panduan izin lokasi: muat ulang halaman (usul pemilik).** "Coba lagi" tetap gagal di iPhone (izin baru
   hanya terbaca setelah muat ulang). Langkah terakhir kini "ketuk Muat ulang halaman", satu tombol `reload()`, panel tidak

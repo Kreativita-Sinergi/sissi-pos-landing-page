@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Armchair, ChevronRight, Plus, ShoppingBag, UtensilsCrossed } from "lucide-react";
-import { MAX_QTY, NAME_MAX, NOTE_MAX, type ResolvedLine } from "@/lib/selfOrder/cart";
+import { MAX_QTY, NAME_MAX, NO_TABLE, NOTE_MAX, type ResolvedLine } from "@/lib/selfOrder/cart";
 import { formatRate, formatRupiah, type Breakdown } from "@/lib/selfOrder/pricing";
 import type { Menu, OrderType, PublicTable } from "@/lib/selfOrder/types";
 import { Sheet } from "./Sheet";
@@ -279,6 +279,25 @@ export function CartSheet({
                     </div>
                   </div>
                 ))}
+                <label
+                  className={`flex min-h-[50px] cursor-pointer flex-col justify-center rounded-[14px] border-2 px-4 py-2 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-primary ${
+                    tableId === NO_TABLE
+                      ? "border-brand-primary bg-brand-tint"
+                      : fieldErrors.table
+                        ? "border-danger/40 bg-white"
+                        : "border-so-line bg-white hover:border-border-active"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="meja"
+                    className="sr-only"
+                    checked={tableId === NO_TABLE}
+                    onChange={() => onTable(NO_TABLE)}
+                  />
+                  <span className="text-[15px] font-bold text-text-heading">Belum dapat meja</span>
+                  <span className="text-[13px] text-text-muted">Isi nama pemesan; pesananmu dipanggil dengan nama dan nomor pesanan.</span>
+                </label>
               </div>
               {fieldErrors.table && (
                 <p id="err-meja" className="mt-2 text-[14px] font-semibold text-danger">
@@ -307,7 +326,9 @@ export function CartSheet({
             <div>
               <label htmlFor="nama-pemesan" className={`block ${sectionTitle}`}>
                 Nama pemesan{" "}
-                {!mode.require_customer_name && <span className="font-normal text-text-muted">(opsional)</span>}
+                {!mode.require_customer_name && !(chooseTable && tableId === NO_TABLE) && (
+                  <span className="font-normal text-text-muted">(opsional)</span>
+                )}
               </label>
               <input
                 id="nama-pemesan"
@@ -315,7 +336,7 @@ export function CartSheet({
                 onChange={(e) => onCustomerName(e.target.value.slice(0, NAME_MAX))}
                 maxLength={NAME_MAX}
                 autoComplete="given-name"
-                required={mode.require_customer_name}
+                required={mode.require_customer_name || (chooseTable && tableId === NO_TABLE)}
                 aria-invalid={!!fieldErrors.name || undefined}
                 aria-describedby={fieldErrors.name ? "err-nama" : "bantu-nama"}
                 placeholder="Agar mudah dipanggil"

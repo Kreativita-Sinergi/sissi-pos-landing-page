@@ -418,8 +418,10 @@ export const mockApi: SelfOrderApi = {
     if (menu.mode.require_customer_name && !body.customer_name.trim()) {
       details.push({ field: "customer_name", message: "Nama pemesan wajib diisi" });
     }
-    if (menu.mode.table_select === "choose" && body.order_type === "dine_in" && !body.table_id && !body.group_key) {
-      details.push({ field: "table_id", message: "Pilih meja" });
+    // Cermin server: makan di tempat tanpa meja ("Belum dapat meja") boleh asal nama pemesan diisi.
+    if (menu.mode.table_select === "choose" && body.order_type === "dine_in" && !body.table_id && !body.group_key &&
+        !body.customer_name.trim()) {
+      details.push({ field: "customer_name", message: "Isi nama pemesan untuk pesanan tanpa meja" });
     }
 
     let group: MockOrder[] = [];
