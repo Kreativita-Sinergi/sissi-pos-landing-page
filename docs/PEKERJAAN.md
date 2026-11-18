@@ -197,6 +197,13 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-18 · Menu Periode dasbor diringkas (permintaan pemilik, `development`, belum rilis)** — pilihan kini
+  **Hari ini · 7 hari terakhir · 30 hari terakhir · Pilih tanggal…** (sebelumnya juga Kemarin, Bulan ini, Bulan lalu,
+  dan "Kustom…"). `PERIOD_ORDER` (`src/lib/owner/period.ts`) + label di `PeriodPanel` (`src/components/owner/ui.tsx`).
+  Tautan lama berperiode kemarin/bulan tetap jalan, judulnya tampil sebagai rentang tanggal. Panduan app di
+  `guides.ts` tidak diubah (menjelaskan pemilih periode di aplikasi). Cek: `tsc`, `eslint`, `npm test` 103; belum
+  dicek visual.
+
 - **2026-11-18 · Rilis ke `main` `7e7f386` (Claude Opus 5.5, atas perintah pemilik)** — HANYA cherry-pick `683a5e3`
   ("Belum dapat meja") → `cd8c930`, `7e27d9d` (iPhone: JS iOS lama, menu Ekspor, Periode) → `03065ac`, `f57a738`
   (Next 16.4.6) → `7e7f386`. Batch lama di `development` (dialog bayar Duitku, Pro 6 Bulan, desain ulang Langganan,

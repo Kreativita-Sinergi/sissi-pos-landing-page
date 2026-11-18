@@ -119,7 +119,7 @@ export function usePeriod(fallback: PeriodId = "7d") {
   return { ...p, setPeriod, qs };
 }
 
-/** Pemilih periode: Hari ini, Kemarin, 7/30 hari, Bulan ini, Bulan lalu, Kustom (≤ 92 hari). */
+/** Pemilih periode: Hari ini, 7/30 hari terakhir, Pilih tanggal (≤ 92 hari). */
 export function PeriodFilter({
   from,
   to,
@@ -160,7 +160,7 @@ function PeriodPanel({
   const [draftTo, setDraftTo] = useState(to);
   const fromRef = useRef<HTMLInputElement>(null);
   const today = zonedToday();
-  const options = [...PERIOD_ORDER.map((id) => ({ value: id, label: PERIOD_LABELS[id] })), { value: "custom", label: "Kustom…" }];
+  const options = [...PERIOD_ORDER.map((id) => ({ value: id, label: PERIOD_LABELS[id] })), { value: "custom", label: "Pilih tanggal…" }];
   const selected = preset ? [preset] : ["custom"];
   const dateInput = `${inputClass} min-h-9 px-2 text-[13.5px] tabular-nums`;
   const tooLong = draftFrom && draftTo && spanDays(draftFrom, draftTo) > MAX_DAYS;

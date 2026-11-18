@@ -12,10 +12,11 @@ export const PERIOD_LABELS: Record<PeriodId | "custom", string> = {
   "30d": "30 hari terakhir",
   month: "Bulan ini",
   last_month: "Bulan lalu",
-  custom: "Kustom",
+  custom: "Pilih tanggal",
 };
 
-export const PERIOD_ORDER: PeriodId[] = ["today", "yesterday", "7d", "30d", "month", "last_month"];
+// Pilihan di menu periode dasbor (keputusan pemilik 2026-11-18). Preset lain tetap dikenali `presetRange`.
+export const PERIOD_ORDER: PeriodId[] = ["today", "7d", "30d"];
 
 export function addDays(day: string, n: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
