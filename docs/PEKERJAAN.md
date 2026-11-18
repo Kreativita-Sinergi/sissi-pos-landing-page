@@ -203,7 +203,7 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   `@supports (-webkit-touch-callout: none)`): `appearance: none`, `min-width: 0`, `max-width: 100%`, teks rata kiri.
   Berlaku untuk semua input date/time/datetime-local/month. Belum diuji di iPhone nyata — cek setelah rilis.
   Susulan: di iPhone teks tanggal menempel di atas field → `padding-block: 0.5625rem` + `line-height: 1.25rem` (tinggi 40px dari isi,
-  bukan sisa `min-h`). Unlayered, jadi menang atas utilitas Tailwind.
+  bukan sisa `min-h`). Unlayered, jadi menang atas utilitas Tailwind. DIRILIS `main` `fc90c41` (build lulus, Vercel sukses).
 - **2026-11-18 · Menu Periode dasbor diringkas (permintaan pemilik; rilis `main` `87aaa24` 2026-11-18, Vercel sukses)** — pilihan kini
   **Hari ini · 7 hari terakhir · 30 hari terakhir · Pilih tanggal…** (sebelumnya juga Kemarin, Bulan ini, Bulan lalu,
   dan "Kustom…"). `PERIOD_ORDER` (`src/lib/owner/period.ts`) + label di `PeriodPanel` (`src/components/owner/ui.tsx`).
