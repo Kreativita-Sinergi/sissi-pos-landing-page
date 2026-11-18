@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, X } from "lucide-react";
 import { jakartaDate } from "./filters";
 import { btn, focusRing, inputClass } from "./ui";
@@ -113,7 +114,8 @@ export function FilterPopover({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!wrapRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
     };
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
@@ -138,7 +140,8 @@ export function FilterPopover({
         }
       }}
       onBlur={(e) => {
-        if (open && !wrapRef.current?.contains(e.relatedTarget as Node | null) && e.relatedTarget) setOpen(false);
+        const next = e.relatedTarget as Node | null;
+        if (open && next && !wrapRef.current?.contains(next) && !panelRef.current?.contains(next)) setOpen(false);
       }}
     >
       <button
@@ -168,7 +171,11 @@ export function FilterPopover({
         )}
         <ChevronDown size={15} aria-hidden className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
+      {/* Portal ke <body>: di HP baris filter bergulir horizontal (overflow-x-auto); panel `fixed` di dalam
+          wadah bergulir di iOS Safari bisa terpotong / tidak menerima ketukan (laporan pemilik: "Hari ini" tidak
+          bisa dipencet). React tetap meneruskan event & context lewat portal. */}
+      {open &&
+        createPortal(
         <div
           ref={panelRef}
           id={popup === "dialog" ? panelId : undefined}
@@ -183,8 +190,9 @@ export function FilterPopover({
           className="fixed z-40 overflow-y-auto overflow-x-hidden rounded-[12px] border border-border-subtle bg-white shadow-[0_12px_32px_-8px_rgba(16,24,40,0.18)]"
         >
           <CloseContext.Provider value={close}>{children}</CloseContext.Provider>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </div>
   );
 }

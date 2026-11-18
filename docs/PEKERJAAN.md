@@ -185,6 +185,17 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Selesai
 
+- **2026-11-18 · Dasbor pemilik di iPhone (Claude Opus 5.5)** — laporan pengguna iPhone. (1) **Tidak bisa
+  mengetuk apa pun di sebagian iPhone**: chunk framework Next memakai *class static block* (`static{…}`, Safari 16.4+)
+  → iOS < 16.4 gagal mem-parse JS, halaman tampil tetapi mati. `package.json` kini punya `browserslist`
+  (Safari/iOS ≥ 15.4) → build menurunkan sintaks; dicek: chunk tanpa `static{`, semua lolos parse ES2022.
+  (2) **Menu "Ekspor CSV" terpotong** di HP (`absolute right-0` 260px, tombol rata kiri): kini portal ke `body`,
+  `fixed`, dijepit di dalam layar (`components/owner/ui.tsx`). (3) **"Hari ini" di Periode tidak bisa dipencet**:
+  panel `FilterPopover` (`fixed` di dalam baris filter `overflow-x-auto`) kini portal ke `body`; cek klik-luar/blur
+  ikut panel. Cek: `tsc`, `eslint`, `npm test` 103. **Belum diuji di peramban/iPhone**: `next build`/`next dev`
+  menolak jalan (Next 16.4.4 kena advisori GHSA-mfr8-8qww-v76h & GHSA-vc7v-qv4w-wrv8; perbaikan di 16.4.6) —
+  perlu keputusan pemilik untuk upgrade.
+
 - **2026-11-18 · Pesanan QR "Belum dapat meja" (Claude Opus 5.5)** — mode pilih meja (`table_select = choose`):
   keranjang menambah pilihan **Belum dapat meja** di bawah daftar meja (`NO_TABLE`, `src/lib/selfOrder/cart.ts`) →
   pesanan makan di tempat tanpa meja, nama pemesan wajib ("dipanggil dengan nama dan nomor pesanan"). Mock ikut
