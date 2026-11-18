@@ -192,9 +192,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
   (2) **Menu "Ekspor CSV" terpotong** di HP (`absolute right-0` 260px, tombol rata kiri): kini portal ke `body`,
   `fixed`, dijepit di dalam layar (`components/owner/ui.tsx`). (3) **"Hari ini" di Periode tidak bisa dipencet**:
   panel `FilterPopover` (`fixed` di dalam baris filter `overflow-x-auto`) kini portal ke `body`; cek klik-luar/blur
-  ikut panel. Cek: `tsc`, `eslint`, `npm test` 103. **Belum diuji di peramban/iPhone**: `next build`/`next dev`
-  menolak jalan (Next 16.4.4 kena advisori GHSA-mfr8-8qww-v76h & GHSA-vc7v-qv4w-wrv8; perbaikan di 16.4.6) —
-  perlu keputusan pemilik untuk upgrade.
+  ikut panel. Cek: `tsc`, `eslint`, `npm test` 103. Next **16.4.4 → 16.4.6** (izin pemilik; advisori
+  GHSA-mfr8-8qww-v76h & GHSA-vc7v-qv4w-wrv8 membuat `next build`/`next dev` menolak jalan; `npm audit` kini 0).
+  `next build` lulus; chunk tanpa `static{}`. Uji Chrome viewport 375px (mock): menu Ekspor utuh di dalam layar,
+  "Hari ini" mengubah periode. Belum diuji di iPhone iOS < 16.4 sungguhan.
 
 - **2026-11-18 · Pesanan QR "Belum dapat meja" (Claude Opus 5.5)** — mode pilih meja (`table_select = choose`):
   keranjang menambah pilihan **Belum dapat meja** di bawah daftar meja (`NO_TABLE`, `src/lib/selfOrder/cart.ts`) →
