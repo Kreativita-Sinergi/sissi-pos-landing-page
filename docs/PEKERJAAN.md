@@ -133,6 +133,18 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Backlog
 
+- [ ] **Survei 2026-11-18: fitur pemilik yang baru ada di app** (dicek dari kode; urut perkiraan manfaat):
+  (1) Shift & kas: **koreksi tutup kasir** & **ekspor CSV riwayat shift** (daftar/rincian shift sudah ada);
+  (2) **HPP lanjutan**: kalkulator harga jual, biaya operasional, titik impas, laba rugi;
+  (3) **Meja & area (denah)** + **reservasi meja** (+DP) — web hanya menampilkan label di transaksi;
+  (4) Pengaturan **Pesan mandiri (QR)**: cara pesan, pembayaran, kode QR meja/outlet;
+  (5) Pengaturan **fitur outlet**: meja, pesanan ke dapur, cara dapur (cetak saja/layar), tandai diantar;
+  (6) **Lokasi absen** (titik & radius) — web baru menampilkan jarak hasil absen;
+  (7) **Harga & ketersediaan menu per outlet** (`outlet_products`);
+  (8) **Stasiun Dapur | Bar** di form produk (lihat butir di bawah); (9) **riwayat pergerakan stok** & pemakaian
+  bahan; (10) usaha **Sewa** (unit, tarif, booking) & **Jasa** (antrean servis) — bila web ingin mencakup jenis usaha itu.
+  Bukan celah: printer/laci & notifikasi (khusus perangkat).
+
 - [ ] **Form produk web (`components/owner/catalog/ProductEditor.tsx`): pilihan stasiun Dapur | Bar** (2026-11-18) —
   app & server sudah punya `products.station` (`kitchen|bar`, service `fee24bf`); web masih hanya "Kirim ke dapur".
 
