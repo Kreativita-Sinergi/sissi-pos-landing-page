@@ -3,7 +3,7 @@
 // apipos.sissi.id ikut lewat `credentials: 'include'`, header `X-Sissi-Admin: 1` wajib (CSRF).
 // Mode tiruan (NEXT_PUBLIC_ADMIN_MOCK=1) memuat data contoh secara dinamis — tidak ikut terunduh saat mati.
 import { API_BASE_URL, ApiError, type ApiFieldError } from "@/lib/sissiApi";
-import type { BusinessPerformance, MerchantGrowth, MerchantInsights, MerchantRange, PerformanceDays } from "./merchant";
+import type { BusinessPerformance, MerchantGrowth, MerchantInsights, MerchantRange, PerformanceQuery } from "./merchant";
 import type {
   AccountDeletion,
   AdminListItem,
@@ -90,7 +90,7 @@ export interface AdminApi {
   merchantInsights(range: MerchantRange, signal?: AbortSignal): Promise<MerchantInsights>;
   merchantGrowth(signal?: AbortSignal): Promise<MerchantGrowth>;
   setTestAccount(id: string, isTest: boolean): Promise<void>;
-  businessPerformance(id: string, q: { days: PerformanceDays; outlet_id?: string }, signal?: AbortSignal): Promise<BusinessPerformance>;
+  businessPerformance(id: string, q: PerformanceQuery & { outlet_id?: string }, signal?: AbortSignal): Promise<BusinessPerformance>;
   subscriptions(q: SubscriptionQuery, signal?: AbortSignal): Promise<Paged<AdminSubscription, SubscriptionFacets>>;
   subscription(businessId: string, signal?: AbortSignal): Promise<SubscriptionDetail>;
   recordPayment(businessId: string, body: RecordPaymentInput): Promise<SubscriptionPaymentResult>;
