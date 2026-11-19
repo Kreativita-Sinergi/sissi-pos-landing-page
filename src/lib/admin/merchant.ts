@@ -92,8 +92,14 @@ export type HeatCell = { dow: number; hour: number; count: number; value: number
 
 export type PerformanceDays = 1 | 7 | 30 | 90;
 
+/** `days` (berakhir hari ini) atau `from`+`to` (YYYY-MM-DD WIB, inklusif, maks 366 hari). */
+export type PerformanceQuery = { days: PerformanceDays } | { from: string; to: string };
+
+export const MAX_PERFORMANCE_DAYS = 366;
+
 export type BusinessPerformance = {
-  range: { days: PerformanceDays; from: string; to: string; tz: string };
+  /** `days` = panjang rentang (bebas bila memakai from/to). */
+  range: { days: number; from: string; to: string; tz: string };
   kpis: { value: MerchantKpi; count: MerchantKpi; average: MerchantKpi };
   activity: {
     users_active_today: number;

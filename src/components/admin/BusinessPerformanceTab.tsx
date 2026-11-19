@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { adminApi } from "@/lib/admin/api";
-import { peakLabel, type BusinessPerformance, type PerformanceDays } from "@/lib/admin/merchant";
+import { MAX_PERFORMANCE_DAYS, peakLabel, type BusinessPerformance, type PerformanceDays, type PerformanceQuery } from "@/lib/admin/merchant";
 import type { BusinessDetail } from "@/lib/admin/types";
 import { TimeChart, type ChartRow } from "./charts";
-import { FilterBar, FilterSelect } from "./FilterMenu";
-import { useQueryState } from "./filters";
+import { DateFilter, FilterBar, FilterSelect, spanDays, type DatePreset } from "./FilterMenu";
+import { jakartaDate, useQueryState } from "./filters";
 import { bucketLabels, Change, ChangeChip } from "./MetricsView";
 import { OnlinePill, PaymentMethodList, SalesHeatmap, SegmentedControl, TopProductsList, type HeatMetric } from "./merchantUi";
 import {
@@ -22,21 +22,36 @@ import {
   useLoad,
 } from "./ui";
 
-const PERIODS: { value: string; label: string }[] = [
-  { value: "1", label: "Hari ini" },
-  { value: "7", label: "7 hari terakhir" },
-  { value: "30", label: "30 hari terakhir" },
-  { value: "90", label: "90 hari terakhir" },
+const PERIODS: DatePreset[] = [
+  { label: "Hari ini", days: 1 },
+  { label: "7 hari terakhir", days: 7 },
+  { label: "30 hari terakhir", days: 30 },
+  { label: "90 hari terakhir", days: 90 },
 ];
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** `?dari=&sampai=` (rentang khusus, divalidasi seperti server) atau `?periode=1|7|90` (bawaan 30). */
+function periodFromQuery(get: (k: string) => string): PerformanceQuery {
+  const from = get("dari");
+  const to = get("sampai");
+  if (DATE_RE.test(from) && DATE_RE.test(to) && from <= to && to <= jakartaDate(0) && spanDays(from, to) <= MAX_PERFORMANCE_DAYS) {
+    return { from, to };
+  }
+  const p = get("periode");
+  return { days: (["1", "7", "90"].includes(p) ? Number(p) : 30) as PerformanceDays };
+}
 
 export function BusinessPerformanceTab({ b }: { b: BusinessDetail }) {
   const qs = useQueryState();
-  const days = (["1", "7", "90"].includes(qs.get("periode")) ? Number(qs.get("periode")) : 30) as PerformanceDays;
+  const period = periodFromQuery(qs.get);
+  const key = "from" in period ? `${period.from}_${period.to}` : String(period.days);
   const outletParam = qs.get("outlet");
   const outletId = b.outlets.some((o) => o.id === outletParam) ? outletParam : "";
   const { state, reload } = useLoad<BusinessPerformance>(
-    async (signal) => (await adminApi()).businessPerformance(b.id, { days, outlet_id: outletId || undefined }, signal),
-    [b.id, days, outletId]
+    async (signal) => (await adminApi()).businessPerformance(b.id, { ...period, outlet_id: outletId || undefined }, signal),
+    // `key` mewakili `period` (objek baru tiap render).
+    [b.id, key, outletId]
   );
 
   return (
@@ -48,13 +63,19 @@ export function BusinessPerformanceTab({ b }: { b: BusinessDetail }) {
           ) : undefined
         }
       >
-        <FilterSelect
+        <DateFilter
           label="Periode"
           required
-          highlight={false}
-          options={PERIODS}
-          selected={[String(days)]}
-          onChange={(n) => qs.update({ periode: n[0] === "30" ? null : n[0] })}
+          maxDays={MAX_PERFORMANCE_DAYS}
+          customLabel="Pilih rentang…"
+          presets={PERIODS}
+          from={"from" in period ? period.from : jakartaDate(period.days - 1)}
+          to={"from" in period ? period.to : ""}
+          onChange={(from, to) => {
+            const preset = to === "" ? PERIODS.find((p) => jakartaDate(p.days - 1) === from) : undefined;
+            if (preset) qs.update({ periode: preset.days === 30 ? null : String(preset.days), dari: null, sampai: null });
+            else qs.update({ periode: null, dari: from, sampai: to });
+          }}
         />
         {b.outlets.length > 1 && (
           <FilterSelect
@@ -76,6 +97,8 @@ function PerformanceBody({ p }: { p: BusinessPerformance }) {
   const [metric, setMetric] = useState<HeatMetric>("count");
   const { kpis, activity } = p;
   const days = p.range.days;
+  // Satu hari yang sedang berjalan dibandingkan server dengan kemarin sampai jam yang sama.
+  const live = days === 1 && p.range.to === jakartaDate(0);
   const multiYear = p.weekly[0]?.week.slice(0, 4) !== p.weekly[p.weekly.length - 1]?.week.slice(0, 4);
   const rows: ChartRow[] = p.weekly.map((w) => ({
     ...bucketLabels(w.week, "week", multiYear),
@@ -89,9 +112,9 @@ function PerformanceBody({ p }: { p: BusinessPerformance }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
-        <StatCard label="Nilai transaksi" value={formatRupiahShort(kpis.value.value)} hint={<Change k={kpis.value} days={days} short />} />
-        <StatCard label="Jumlah transaksi" value={kpis.count.value} hint={<Change k={kpis.count} days={days} short />} />
-        <StatCard label="Rata-rata per transaksi" value={formatRupiah(kpis.average.value)} hint={<Change k={kpis.average} days={days} short />} />
+        <StatCard label="Nilai transaksi" value={formatRupiahShort(kpis.value.value)} hint={<Change k={kpis.value} days={days} live={live} short />} />
+        <StatCard label="Jumlah transaksi" value={kpis.count.value} hint={<Change k={kpis.count} days={days} live={live} short />} />
+        <StatCard label="Rata-rata per transaksi" value={formatRupiah(kpis.average.value)} hint={<Change k={kpis.average} days={days} live={live} short />} />
         <StatCard
           label="Pengguna aktif hari ini"
           value={`${activity.users_active_today} dari ${activity.users_total}`}
@@ -143,7 +166,7 @@ function PerformanceBody({ p }: { p: BusinessPerformance }) {
           </Section>
 
           {multiOutlet && (
-            <Section title="Per outlet" description={days === 1 ? "Dibanding kemarin di jam yang sama." : "Dibanding periode sebelumnya."} bodyClass="p-0" className="flex-1">
+            <Section title="Per outlet" description={live ? "Dibanding kemarin di jam yang sama." : "Dibanding periode sebelumnya."} bodyClass="p-0" className="flex-1">
               <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[460px] text-[14px]">
                   <thead>

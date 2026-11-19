@@ -1,5 +1,5 @@
 // Data contoh mode tiruan untuk informasi merchant. Angka ditentukan dari id bisnis agar stabil antar muat ulang.
-import type { BusinessPerformance, BusinessSales, HeatCell, MerchantGrowth, MerchantInsights, MerchantRange, PerformanceDays } from "./merchant";
+import type { BusinessPerformance, BusinessSales, HeatCell, MerchantGrowth, MerchantInsights, MerchantRange, PerformanceQuery } from "./merchant";
 import type { BusinessDetail } from "./types";
 
 const DAY = 86_400_000;
@@ -84,8 +84,11 @@ export function mockInsights(businesses: BusinessDetail[], range: MerchantRange)
   };
 }
 
-export function mockPerformance(b: BusinessDetail, days: PerformanceDays, outletId?: string): BusinessPerformance {
+export function mockPerformance(b: BusinessDetail, q: PerformanceQuery, outletId?: string): BusinessPerformance {
   const now = Date.now();
+  const to = "from" in q ? q.to : iso(now);
+  const from = "from" in q ? q.from : iso(now - (q.days - 1) * DAY);
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / DAY) + 1;
   const seed = hash(outletId ?? b.id);
   const heatmap = cellsFor(seed, (days / 30) * (outletId ? 8 : 16));
   const count = heatmap.reduce((a, c) => a + c.count, 0);
@@ -95,7 +98,7 @@ export function mockPerformance(b: BusinessDetail, days: PerformanceDays, outlet
   const peak = peakOf(heatmap);
   const weeklyBase = (value / Math.max(1, days)) * 7;
   return {
-    range: { days, from: iso(now - (days - 1) * DAY), to: iso(now), tz: "Asia/Jakarta" },
+    range: { days, from, to, tz: "Asia/Jakarta" },
     kpis: {
       value: kpi(value, prevValue),
       count: kpi(count, prevCount),

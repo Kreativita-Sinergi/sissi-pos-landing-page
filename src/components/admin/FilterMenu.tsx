@@ -551,25 +551,39 @@ export function compactRange(from: string, to: string): string {
 
 export type DatePreset = { label: string; days: number };
 
-/** Dropdown tanggal: pilihan cepat + "Rentang khusus…" (dua isian tanggal di dalam popover). */
+/** Jumlah hari inklusif dari `from` sampai `to` (YYYY-MM-DD). */
+export function spanDays(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+}
+
+/**
+ * Dropdown tanggal: pilihan cepat + "Rentang khusus…" (dua isian tanggal di dalam popover).
+ * `required`: selalu ada nilai (tanpa "Semua"/reset; rentang khusus wajib dua tanggal). `maxDays`: batas panjang.
+ */
 export function DateFilter({
   label,
   from,
   to,
   presets,
   onChange,
+  required = false,
+  maxDays,
+  customLabel = "Rentang khusus…",
 }: {
   label: string;
   from: string;
   to: string;
   presets: DatePreset[];
   onChange: (from: string, to: string) => void;
+  required?: boolean;
+  maxDays?: number;
+  customLabel?: string;
 }) {
   const preset = presets.find((p) => to === "" && from === jakartaDate(p.days - 1));
   const value = preset ? preset.label : from || to ? compactRange(from, to) : "Semua";
   return (
-    <FilterPopover label={label} value={value} active={!!(from || to)} popup="dialog" width={320}>
-      <DatePanel {...{ label, from, to, presets, preset, onChange }} />
+    <FilterPopover label={label} value={value} active={!required && !!(from || to)} popup="dialog" width={320}>
+      <DatePanel {...{ label, from, to, presets, preset, onChange, required, maxDays, customLabel }} />
     </FilterPopover>
   );
 }
@@ -581,6 +595,9 @@ function DatePanel({
   presets,
   preset,
   onChange,
+  required,
+  maxDays,
+  customLabel,
 }: {
   label: string;
   from: string;
@@ -588,6 +605,9 @@ function DatePanel({
   presets: DatePreset[];
   preset: DatePreset | undefined;
   onChange: (from: string, to: string) => void;
+  required: boolean;
+  maxDays?: number;
+  customLabel: string;
 }) {
   const close = useClose();
   const listId = useId();
@@ -598,10 +618,12 @@ function DatePanel({
   const today = jakartaDate(0);
   const options: FilterOption[] = [
     ...presets.map((p) => ({ value: String(p.days), label: p.label })),
-    { value: "custom", label: "Rentang khusus…" },
+    { value: "custom", label: customLabel },
   ];
   const selected = preset ? [String(preset.days)] : custom ? ["custom"] : [];
   const dateInput = `${inputClass} min-h-9 px-2 text-[13.5px] tabular-nums`;
+  const tooLong = !!(maxDays && draftFrom && draftTo && spanDays(draftFrom, draftTo) > maxDays);
+  const incomplete = required ? !draftFrom || !draftTo : !draftFrom && !draftTo;
 
   return (
     <>
@@ -618,7 +640,7 @@ function DatePanel({
             return;
           }
           const p = presets.find((x) => String(x.days) === v);
-          if (p) onChange(preset === p ? "" : jakartaDate(p.days - 1), "");
+          if (p) onChange(preset === p && !required ? "" : jakartaDate(p.days - 1), "");
           close(true);
         }}
       />
@@ -627,6 +649,7 @@ function DatePanel({
           className="grid grid-cols-2 gap-2 border-t border-border-subtle px-3 pt-2.5 pb-3"
           onSubmit={(e) => {
             e.preventDefault();
+            if (incomplete || tooLong) return;
             onChange(draftFrom, draftTo);
             close(true);
           }}
@@ -653,22 +676,29 @@ function DatePanel({
               onChange={(e) => setDraftTo(e.target.value)}
             />
           </label>
+          {tooLong && (
+            <p role="alert" className="col-span-2 text-[12.5px] text-danger">
+              Rentang maksimal {maxDays} hari.
+            </p>
+          )}
           <button
             type="submit"
             className={`${btn.primary} col-span-2 min-h-9 rounded-[8px] text-[13.5px]`}
-            disabled={!draftFrom && !draftTo}
+            disabled={incomplete || tooLong}
           >
             Terapkan
           </button>
         </form>
       )}
-      <PanelFooter
-        resetDisabled={!from && !to}
-        onReset={() => {
-          onChange("", "");
-          close(true);
-        }}
-      />
+      {!required && (
+        <PanelFooter
+          resetDisabled={!from && !to}
+          onReset={() => {
+            onChange("", "");
+            close(true);
+          }}
+        />
+      )}
     </>
   );
 }

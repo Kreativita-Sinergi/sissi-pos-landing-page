@@ -896,7 +896,7 @@ export function createMockApi(onUnauthorized: () => void, onPasswordChange: () =
       await guard();
       const b = db().businesses.find((x) => x.id === id);
       if (!b) throw new ApiError("Bisnis tidak ditemukan.", 404, "NOT_FOUND");
-      return mockPerformance(b, q.days, q.outlet_id);
+      return mockPerformance(b, q, q.outlet_id);
     },
     async metrics(q) {
       await guard();
