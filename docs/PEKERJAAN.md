@@ -20,6 +20,10 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
+- **Keamanan dependensi (2026-11-19) — DIRILIS ke `main` `7b948bd` (cherry-pick):** `npm audit fix` menaikkan
+  `minimatch` (GHSA-g3hv-75wg-m249, moderat, DoS glob) yang terbawa `@typescript-eslint` (dev/ESLint saja; audit
+  produksi sudah 0 sebelumnya) → Dependabot #12. Hanya `package-lock.json`; `npm audit` 0, `tsc`, `eslint`, tes 103 lulus.
+
 - **Admin › Bisnis › Performa: pilih rentang tanggal (2026-11-19) — DIRILIS ke `main` `6fd07db` (cherry-pick):** menu Periode kini
   `DateFilter` (`required`, `maxDays` 366, opsi "Pilih rentang…") dengan preset Hari ini/7/30/90; rentang khusus
   disimpan di URL `?dari=&sampai=` (divalidasi seperti server, tak valid → kembali ke `periode`). `DateFilter` dapat
