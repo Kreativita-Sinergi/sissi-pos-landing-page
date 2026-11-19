@@ -20,14 +20,13 @@ _Cabang `agent/*` dari agent selain Claude yang menunggu diperiksa. Hapus entri 
 
 ## Sedang dikerjakan
 
-- **Admin › Bisnis › Performa: pilih rentang tanggal (2026-11-19, `development`, belum rilis):** menu Periode kini
+- **Admin › Bisnis › Performa: pilih rentang tanggal (2026-11-19) — DIRILIS ke `main` `6fd07db` (cherry-pick):** menu Periode kini
   `DateFilter` (`required`, `maxDays` 366, opsi "Pilih rentang…") dengan preset Hari ini/7/30/90; rentang khusus
   disimpan di URL `?dari=&sampai=` (divalidasi seperti server, tak valid → kembali ke `periode`). `DateFilter` dapat
   opsi `required`/`maxDays`/`customLabel` + `spanDays`; `Change` dapat `live` (satu hari lampau = "vs sebelumnya",
   bukan "vs kemarin"). Tipe `PerformanceQuery`, `range.days: number`; mock mengikuti rentang. Cek: `tsc`, `eslint`,
   `npm test` (103 lulus), tangkapan layar mode tiruan (pesan "Rentang maksimal 366 hari.", label "1–10 Nov").
-  **Rilis setelah service dideploy** (kontrak `../sissi-pos-service/docs/api.md` performa `from`/`to`; server lama
-  menolak `from`/`to` → 422 untuk rentang khusus, preset tetap jalan).
+  Service sudah dideploy lebih dulu (`e42eb0f`, kontrak `../sissi-pos-service/docs/api.md` performa `from`/`to`).
 
 - **Invoice pembayaran langganan di admin (2026-11-13) — DIRILIS ke `main` `8f2fa17` (cherry-pick, tanpa Duitku):** Langganan › Riwayat pembayaran
   menampilkan nomor invoice + tombol **Unduh invoice** (PDF dari server, `adminApi().invoicePdf` → `fetchPdf`) dan
